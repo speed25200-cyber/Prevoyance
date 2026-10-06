@@ -44,7 +44,14 @@ export async function executer(finale = 'analyse') {
     const affiche = id => getComputedStyle(/** @type {HTMLElement} */ (document.getElementById(id))).display !== 'none';
     for (const vue of ['dossier', 'analyse', 'scenarios', 'plan', 'rapport', 'donnees']) {
       p.aller(vue);
-      await attendre(vue === 'donnees' ? 2200 : 900);                 // les données de référence se chargent avant de s'afficher
+      await attendre(900);
+      if (vue === 'donnees') {
+        // les données de référence se chargent avant de s'afficher : on attend qu'elles y soient, et on mesure
+        const debut = performance.now();
+        while (!document.querySelector('#vue .donnees-tete') && performance.now() - debut < 9000) await attendre(200);
+        noter('données de référence affichées en moins de 3 s', !!document.querySelector('#vue .donnees-tete') && performance.now() - debut < 2100, `${Math.round(performance.now() - debut + 900)} ms`);
+        await attendre(500);
+      }
       const dossier = vue === 'dossier', largeur = document.documentElement.scrollWidth;
       const bon = dossier ? affiche('saisie') && !affiche('vue') : affiche('vue') && !affiche('saisie') && document.body.dataset.vue === vue;
       const contenu = /** @type {HTMLElement} */ (document.getElementById(dossier ? 'saisie' : 'vue')).innerText.trim().length;
