@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="color-scheme" content="only light">
+<title>Icône Prévoyance</title>
+<!-- Icône de l'application, style « Liquid Glass » : trois piliers de verre qui montent, bords lumineux, reflets,
+     lumière qui se rassemble au pied. Dessinée en SVG (carré de 1024), trois variantes.
+     ?v=a|b|c affiche une seule variante en plein cadre (pour l'exporter en PNG de 1024 px) ; sans paramètre, la planche. -->
+<style>
+  html, body { margin: 0; background: #dfe5ee; }
+  body { display: flex; gap: 40px; padding: 40px; align-items: flex-start; font: 600 22px/1.3 "Segoe UI", system-ui, sans-serif; color: #0b1322; }
+  figure { margin: 0; display: grid; gap: 16px; justify-items: center; }
+  figure svg { width: 440px; height: 440px; border-radius: 22.5%; box-shadow: 0 30px 60px -30px rgba(11, 19, 34, .6); }
+  body.seule { padding: 0; gap: 0; background: none; }
+  body.seule figure { display: none; }
+  body.seule figure.choisie { display: block; }
+  body.seule figure svg { width: 1024px; height: 1024px; border-radius: 0; box-shadow: none; display: block; }
+  body.seule figcaption { display: none; }
+</style>
+<body>
+<script>
+  /** Un pilier de verre : ombre portée, corps translucide, lumière au pied, reflet, bord lumineux. */
+  function pilier(id, x, y, l, h, { teinte = '#ffffff', corps = [0.42, 0.12], bord = 0.95, ombre = '#04122b', pied = 0.5 } = {}) {
+    const r = l / 2;
+    return `
+    <defs>
+      <linearGradient id="c${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${teinte}" stop-opacity="${corps[0]}"/><stop offset=".55" stop-color="${teinte}" stop-opacity="${corps[1]}"/><stop offset="1" stop-color="${teinte}" stop-opacity="${corps[0] * 0.8}"/></linearGradient>
+      <linearGradient id="b${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${bord}"/><stop offset=".38" stop-color="#fff" stop-opacity=".12"/><stop offset=".7" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#fff" stop-opacity="${bord * 0.6}"/></linearGradient>
+      <radialGradient id="p${id}" cx=".5" cy="1" r=".75"><stop offset="0" stop-color="#fff" stop-opacity="${pied}"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <linearGradient id="r${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <clipPath id="k${id}"><rect x="${x}" y="${y}" width="${l}" height="${h}" rx="${r}"/></clipPath>
+    </defs>
+    <rect x="${x + 10}" y="${y + 34}" width="${l}" height="${h}" rx="${r}" fill="${ombre}" opacity=".45" filter="url(#flou)"/>
+    <rect x="${x}" y="${y}" width="${l}" height="${h}" rx="${r}" fill="url(#c${id})"/>
+    <g clip-path="url(#k${id})">
+      <rect x="${x}" y="${y + h * 0.45}" width="${l}" height="${h * 0.55}" fill="url(#p${id})"/>
+      <rect x="${x + l * 0.16}" y="${y + l * 0.14}" width="${l * 0.26}" height="${Math.min(h * 0.55, l * 1.9)}" rx="${l * 0.13}" fill="url(#r${id})" filter="url(#doux)"/>
+    </g>
+    <rect x="${x + 3}" y="${y + 3}" width="${l - 6}" height="${h - 6}" rx="${r - 3}" fill="none" stroke="url(#b${id})" stroke-width="6"/>`;
+  }
+  const filtres = `<filter id="flou" x="-40%" y="-20%" width="180%" height="150%"><feGaussianBlur stdDeviation="26"/></filter><filter id="doux" x="-60%" y="-20%" width="220%" height="140%"><feGaussianBlur stdDeviation="7"/></filter>`;
+  // les identifiants des dégradés portent la lettre de la variante : trois dessins dans la même page ne se mélangent pas
+  const piliers = (v, options) => [pilier(v + 1, 206, 498, 176, 316, options[0]), pilier(v + 2, 424, 352, 176, 462, options[1]), pilier(v + 3, 642, 206, 176, 608, options[2])].join('');
+  const VARIANTES = {
+    a: ['A — Verre sur bleu nuit', `
+      <defs>${filtres}<linearGradient id="fa" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f6fd0"/><stop offset=".5" stop-color="#143a7a"/><stop offset="1" stop-color="#071634"/></linearGradient>
+        <radialGradient id="la" cx=".2" cy=".08" r=".9"><stop offset="0" stop-color="#9fd0ff" stop-opacity=".75"/><stop offset=".55" stop-color="#9fd0ff" stop-opacity="0"/></radialGradient></defs>
+      <rect width="1024" height="1024" fill="url(#fa)"/><rect width="1024" height="1024" fill="url(#la)"/>
+      ${piliers('a', [{ corps: [0.3, 0.08] }, { corps: [0.4, 0.12] }, { corps: [0.55, 0.2], pied: 0.7 }])}`],
+    b: ['B — Verre bleu sur fond clair', `
+      <defs>${filtres}<linearGradient id="fb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#e3ecf8"/><stop offset="1" stop-color="#c3d3ea"/></linearGradient>
+        <radialGradient id="lb" cx=".85" cy=".95" r=".8"><stop offset="0" stop-color="#7fb0f0" stop-opacity=".45"/><stop offset=".6" stop-color="#7fb0f0" stop-opacity="0"/></radialGradient></defs>
+      <rect width="1024" height="1024" fill="url(#fb)"/><rect width="1024" height="1024" fill="url(#lb)"/>
+      ${piliers('b', [{ teinte: '#5b9cf0', corps: [0.78, 0.5], ombre: '#3b6fb8', pied: 0.22, bord: 0.9 }, { teinte: '#2463c8', corps: [0.9, 0.66], ombre: '#234f97', pied: 0.2, bord: 0.8 }, { teinte: '#0d2a63', corps: [0.97, 0.82], ombre: '#0b2149', pied: 0.18, bord: 0.7 }])}`],
+    c: ['C — Verre sur dégradé lumineux', `
+      <defs>${filtres}<linearGradient id="fc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc3ff"/><stop offset=".45" stop-color="#2f7fe6"/><stop offset="1" stop-color="#1433a6"/></linearGradient>
+        <radialGradient id="lc" cx=".5" cy="1.05" r=".8"><stop offset="0" stop-color="#b9f0ff" stop-opacity=".7"/><stop offset=".6" stop-color="#b9f0ff" stop-opacity="0"/></radialGradient></defs>
+      <rect width="1024" height="1024" fill="url(#fc)"/><rect width="1024" height="1024" fill="url(#lc)"/>
+      ${piliers('c', [{ corps: [0.36, 0.14], ombre: '#0b2a80' }, { corps: [0.48, 0.2], ombre: '#0b2a80' }, { corps: [0.62, 0.28], ombre: '#0b2a80', pied: 0.75 }])}`],
+  };
+  for (const [cle, [nom, contenu]] of Object.entries(VARIANTES)) {
+    document.body.insertAdjacentHTML('beforeend', `<figure data-v="${cle}"><svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">${contenu}</svg><figcaption>${nom}</figcaption></figure>`);
+  }
+  const v = new URLSearchParams(location.search).get('v');
+  if (v) { document.body.classList.add('seule'); document.querySelector(`[data-v="${v}"]`)?.classList.add('choisie'); }
+</script>
+</body>
+</html>
