@@ -23,6 +23,8 @@ const A_CONFIRMER = { 'lpp.tauxInteretMinimal': 'dn_interet', 'laa.gainAssureMax
 export async function monter(ctx, racine) {
   const { t, f } = ctx;
   const [r1, r2, manifeste, impots] = await Promise.all([Donnees.regles(ANNEES[0]), Donnees.regles(ANNEES[1]), Donnees.manifeste(), ctx.impotsBase ?? Donnees.impots(ANNEES[0])]);
+  // les données ont pu arriver après un changement d'onglet : on n'écrit pas par-dessus une autre vue
+  if (etat.vue !== 'donnees') return;
   const mise = (v, nature) => (nature === 'taux' ? `${(v * 100).toFixed(2).replace(/0$/, '')} %` : f.chf(v));
   const etatMaj = h('p', { class: 'note' }, Donnees.dernierControle()
     ? t('dn_controle', { d: new Date(/** @type {string} */ (Donnees.dernierControle())).toLocaleString(etat.langue + '-CH') }) : t('dn_jamais'));

@@ -44,12 +44,16 @@ export async function executer(finale = 'analyse') {
     const affiche = id => getComputedStyle(/** @type {HTMLElement} */ (document.getElementById(id))).display !== 'none';
     for (const vue of ['dossier', 'analyse', 'scenarios', 'plan', 'rapport', 'donnees']) {
       p.aller(vue);
-      await attendre(900);
+      await attendre(vue === 'donnees' ? 2200 : 900);                 // les données de référence se chargent avant de s'afficher
       const dossier = vue === 'dossier', largeur = document.documentElement.scrollWidth;
       const bon = dossier ? affiche('saisie') && !affiche('vue') : affiche('vue') && !affiche('saisie') && document.body.dataset.vue === vue;
       const contenu = /** @type {HTMLElement} */ (document.getElementById(dossier ? 'saisie' : 'vue')).innerText.trim().length;
       noter(`écran ${vue}`, bon && contenu > 80 && largeur <= innerWidth + 1, `${contenu} caractères, largeur ${largeur}/${innerWidth}`);
     }
+    // changement d'onglet rapide : une vue lente (Données) ne doit pas s'écrire sous un autre onglet
+    p.aller('donnees'); p.aller('plan');
+    await attendre(2200);
+    noter('une vue lente ne s’affiche pas sous un autre onglet', document.body.dataset.vue === 'plan' && !document.querySelector('#vue .donnees-tete'));
     // l'analyse : la scène des piliers est dessinée, et aucun texte du résumé ne la recouvre
     p.aller('analyse');
     await attendre(900);
