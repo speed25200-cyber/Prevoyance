@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Moteur de prévoyance — cas de test</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 32px; background: #0f1115; color: #e8e6e1; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  #bilan { font-size: 17px; margin: 0 0 20px; }
+  li { list-style: none; padding: 2px 0; }
+  .ok { color: #7fd1a1; } .ko { color: #ff8a7a; font-weight: 600; }
+  ul { padding: 0; margin: 0; }
+</style>
+<h1>Moteur de prévoyance — cas de test</h1>
+<p id="bilan">Calcul…</p>
+<ul id="liste"></ul>
+<script type="module">
+  import { cas } from './cas.js';
+  import { regles } from '../src/index.js';
+
+  const liste = document.getElementById('liste');
+  const identique = (a, b, t) => typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) <= t : JSON.stringify(a) === JSON.stringify(b);
+  let reussis = 0;
+  const echecs = [];
+  try {
+    cas((nom, obtenu, attendu, tolerance = 0) => {
+      const ok = identique(obtenu, attendu, tolerance);
+      if (ok) reussis += 1; else echecs.push(nom);
+      const li = document.createElement('li');
+      li.className = ok ? 'ok' : 'ko';
+      li.textContent = (ok ? '✓ ' : '✗ ') + nom + (ok ? '' : ` — obtenu ${JSON.stringify(obtenu)}, attendu ${JSON.stringify(attendu)}`);
+      liste.append(li);
+    }, { r26: await regles(2026), r27: await regles(2027) });
+  } catch (erreur) {
+    echecs.push('exception : ' + erreur.message);
+    const li = document.createElement('li');
+    li.className = 'ko';
+    li.textContent = '✗ ' + erreur.stack;
+    liste.append(li);
+  }
+  document.getElementById('bilan').textContent = `${reussis} réussis, ${echecs.length} échecs`;
+  window.__tests = { reussis, echecs };
+</script>
+</html>
