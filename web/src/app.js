@@ -208,6 +208,8 @@ document.addEventListener('visibilitychange', () => {
 });
 await calculer();
 traduire();
+// les données de référence de la vue « Données » sont lues d'avance : la vue s'ouvre sans attendre
+Donnees.manifeste().catch(() => {}); for (const annee of ANNEES) Donnees.regles(annee).catch(() => {});
 document.body.classList.add('pret');
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 // Scénarios, Conseil, Rapport, Données : la page décrit ce qu'elle affiche, l'app le dessine. Chaque changement de la
