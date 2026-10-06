@@ -67,6 +67,7 @@ function monterVue() {
     MODULES[etat.vue].monter(ctx, $('vue'));
     MODULES[etat.vue].afficher(ctx);
     for (const b of $('onglets').children) b.setAttribute('aria-selected', String(/** @type {HTMLElement} */ (b).dataset.vue === etat.vue));
+    if ($('panneaux').firstElementChild) $('panneaux').firstElementChild.textContent = ctx.t('v_' + etat.vue);
   };
   // première image sans transition ; ensuite, fondu-glissé entre les vues quand le navigateur le permet
   const transition = /** @type {any} */ (document).startViewTransition;
@@ -86,6 +87,10 @@ function traduire() {
   for (const b of $('langues').children) b.setAttribute('aria-pressed', String(/** @type {HTMLElement} */ (b).dataset.langue === etat.langue));
   $('onglets').replaceChildren(...VUES.map(v => h('button', { type: 'button', role: 'tab', 'data-vue': v, 'aria-selected': String(v === etat.vue),
     onclick: () => { if (etat.vue === v) return; etat.vue = v; garder(); monterVue(); scrollTo({ top: 0, behavior: 'smooth' }); } }, ctx.t('v_' + v))));
+  // téléphone : bascule entre le dossier et l'analyse
+  $('panneaux').replaceChildren(...['analyse', 'dossier'].map(pn => h('button', { type: 'button', 'data-panneau': pn, 'aria-pressed': String((document.body.dataset.panneau || 'analyse') === pn),
+    onclick: () => { document.body.dataset.panneau = pn; for (const b of $('panneaux').children) b.setAttribute('aria-pressed', String(/** @type {HTMLElement} */ (b).dataset.panneau === pn)); scrollTo({ top: 0 }); } },
+    ctx.t(pn === 'analyse' ? 'v_' + etat.vue : 'dossier'))));
   Formulaire.construire();
   monterVue();
 }
@@ -109,6 +114,7 @@ $('presentation').addEventListener('click', () => {
 
 await calculer();
 traduire();
+document.body.dataset.panneau = 'analyse';
 document.body.classList.add('pret');
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 /** @type {any} */ (window).__prevoyance = { etat, ctx };

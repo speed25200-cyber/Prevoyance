@@ -43,7 +43,9 @@
   background: linear-gradient(90deg, color-mix(in srgb, var(--surface) 55%, transparent) 0%, color-mix(in srgb, var(--surface) 18%, transparent) 38%, transparent 58%); }
 .tete .jauge .piste { stroke: color-mix(in srgb, var(--encre) 14%, transparent); }
 .tete .resume, .tete .jauge { align-self: center; }
-.tete .resume { max-width: min(600px, 100%); padding-right: clamp(0px, 30vw - 200px, 34%); }
+.tete .resume { max-width: min(520px, 54%); }
+.tete .grand { font-size: clamp(34px, 4vw, 58px); }
+.tete .note { font-size: 14px; }
 .scene-point { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: var(--encre); opacity: 0; z-index: 1; will-change: transform;
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--encre) 18%, transparent); transition: opacity .35s var(--aise); pointer-events: none; }
 .scene-point.actif { opacity: 1; } .scene-point.hors { opacity: 0 !important; }
@@ -215,7 +217,7 @@ svg .verse { fill: none; stroke: var(--encre-3); stroke-width: 1.4; stroke-dasha
 @media (max-width: 860px) {
   .tete { grid-template-columns: minmax(0, 1fr); }
   .tete { min-height: 460px; align-content: end; padding-bottom: 86px; }
-  .tete .resume { padding-right: 0; }
+  .tete .resume { max-width: none; }
   .scene-piliers { left: 12px; right: 12px; } .scene-puce { flex: 1; min-width: 0; padding: 7px 9px; } .scene-puce b { font-size: 13px; }
   .scene-voile { background: linear-gradient(0deg, color-mix(in srgb, var(--surface) 80%, transparent) 0%, color-mix(in srgb, var(--surface) 40%, transparent) 46%, transparent 70%); }
   .options, .tenues { grid-template-columns: minmax(0, 1fr); }
@@ -230,3 +232,29 @@ body.presentation .saisie { display: none; }
 body.presentation .scene { grid-template-columns: minmax(0, 1fr); max-width: 1280px; }
 body.presentation .choix-annee { display: none; }
 .toile canvas { touch-action: none; }
+
+/* ---------- rapport : corps de texte plus généreux (lisible une fois imprimé) */
+.page { font-size: 15px; gap: 14px; }
+.page header h2 { font-size: 27px; }
+.page h3 { font-size: 13.5px; margin-top: 16px; }
+.page .r-tableau { font-size: 14.5px; } .page .r-tableau th, .page .r-tableau td { padding: 11px 8px; }
+.page .r-fiche { font-size: 14.5px; } .page .r-fiche th, .page .r-fiche td { padding: 9px 12px 9px 0; }
+.page .lignes li { padding: 9px 0; font-size: 14.5px; } .page .pile { height: 13px; margin: 10px 0 6px; }
+.page .alertes li { font-size: 14px; padding: 10px 14px; }
+.page .attente { font-size: 13.5px; } .page .petit, .page .r-texte { font-size: 13px; } .page .r-sources { font-size: 12.5px; }
+.page svg.colonnes { margin-top: 10px; }
+.r-detail + .r-detail { margin-top: 0; }
+
+/* ---------- téléphone : l'analyse d'abord, le dossier à la demande (bascule en bas de l'écran) */
+.bascule-panneau { display: none; }
+@media (max-width: 860px) {
+  .bascule-panneau { display: inline-flex; position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 6;
+    padding: 4px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid var(--filet);
+    -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .4); }
+  .bascule-panneau button { border: 0; background: none; padding: 10px 20px; border-radius: 999px; font-weight: 650; font-size: 14px; color: var(--encre-2); }
+  .bascule-panneau button[aria-pressed="true"] { background: var(--encre); color: var(--fond); }
+  body[data-panneau="analyse"] .saisie, body[data-panneau="dossier"] .analyse { display: none; }
+  .scene { padding-bottom: 96px; }
+  body.presentation .bascule-panneau { display: none; }
+}
+@media print { .bascule-panneau { display: none !important; } }
