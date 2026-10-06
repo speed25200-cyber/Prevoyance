@@ -17,7 +17,7 @@ export * as Impots from './impots.js';
 export * as Scenarios from './scenarios.js';
 export * as outils from './util.js';
 
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 export const ANNEES = [2026, 2027];
 
 /**
@@ -28,6 +28,19 @@ export async function regles(annee, base = new URL('../regles/', import.meta.url
   const reponse = await fetch(`${base}ch-${annee}.json`);
   if (!reponse.ok) throw new Error(`Règles ${annee} introuvables`);
   return reponse.json();
+}
+
+/**
+ * Communes d'une année (donnees/communes-AAAA.json) : facteur de chaque commune, impôt d'Église. `null` si elles manquent.
+ * @param {number} annee @param {string} [base]
+ */
+export async function communes(annee, base = new URL('../donnees/', import.meta.url).href) {
+  try {
+    const reponse = await fetch(`${base}communes-${annee}.json`);
+    return reponse.ok ? await reponse.json() : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

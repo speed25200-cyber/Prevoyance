@@ -106,7 +106,7 @@ export function cas(egal, { r26, r27, i26 }) {
 }
 
 /** Suite du jeu de cas : impôts par canton (données relevées auprès de l'AFC) et scénarios de conseil. */
-export function casScenarios(egal, { r26, i26 }) {
+export function casScenarios(egal, { r26, i26, c26 }) {
   // ---- interpolation et grilles fiscales
   egal('Interpolation au milieu', Impots.interpoler([0, 10], [0, 100], 5), 50);
   egal('Interpolation prolongée', Impots.interpoler([0, 10, 20], [0, 100, 300], 30), 500);
@@ -118,6 +118,27 @@ export function casScenarios(egal, { r26, i26 }) {
     egal('Marié paie moins que seul (ZH, 120 000)', Impots.impotRevenu(i26, 'ZH', true, 120000).impot < Impots.impotRevenu(i26, 'ZH', false, 120000).impot, true);
     egal('Impôt croissant avec le revenu (GE)', Impots.impotRevenu(i26, 'GE', false, 150000).impot > Impots.impotRevenu(i26, 'GE', false, 100000).impot, true);
     egal('Canton inconnu', Impots.impotRevenu(i26, 'XX', false, 100000), null);
+    if (c26) {
+      const toutes = Object.values(c26.cantons).flat();
+      egal('Communes : les 26 cantons, plus de 2000 communes', Object.keys(c26.cantons).length === 26 && toutes.length > 2000, true);
+      egal('Communes : facteurs plausibles (0,3 à 2)', toutes.every(c => c.k > 0.3 && c.k < 2), true);
+      egal('Communes : contrôle contre le calculateur officiel sous 5 %', c26.ecartMaxControle < 0.05, true);
+      egal('Sans commune ni confession : données inchangées', Impots.localiser(i26, c26, 'VD') === i26, true);
+      for (const canton of ['VD', 'ZH', 'GE', 'TI']) {
+        const chef = c26.cantons[canton].find(c => c.l.some(l => l.startsWith(i26.cantons[canton].npa + ' ')));
+        const ici = Impots.impotRevenu(Impots.localiser(i26, c26, canton, { commune: chef.b }), canton, false, 100000).impot;
+        egal(`Chef-lieu ${canton} choisi comme commune : même impôt`, ici, Impots.impotRevenu(i26, canton, false, 100000).impot, 5);
+      }
+      const basse = [...c26.cantons.ZH].sort((x, y) => x.k - y.k)[0], point = i26.revenus.indexOf(100000);
+      const zhBas = Impots.localiser(i26, c26, 'ZH', { commune: basse.b });
+      egal('Commune la moins imposée de ZH : moins que Zurich', Impots.impotRevenu(zhBas, 'ZH', false, 100000).impot < Impots.impotRevenu(i26, 'ZH', false, 100000).impot, true);
+      egal('Formule : fédéral + (chef-lieu − fédéral) × facteur', zhBas.cantons.ZH.revenu.seul[point][0],
+        Math.round(c26.federal.seul[point] + (i26.cantons.ZH.revenu.seul[point][0] - c26.federal.seul[point]) * basse.k));
+      egal('Le nom du lieu suit la commune', zhBas.cantons.ZH.lieu, basse.n);
+      egal('Les autres cantons ne changent pas', zhBas.cantons.BE === i26.cantons.BE, true);
+      egal('Impôt d’Église à Zurich (réformée) : plus que sans confession', Impots.impotRevenu(Impots.localiser(i26, c26, 'ZH', { confession: 'reformee' }), 'ZH', false, 100000).impot > Impots.impotRevenu(i26, 'ZH', false, 100000).impot, true);
+      egal('Les grilles avec enfants sont ajustées aussi', zhBas.cantons.ZH.revenu.marie2[point][0] < i26.cantons.ZH.revenu.marie2[point][0], true);
+    }
     if (Impots.avecEnfants(i26, 'VD')) {
       const point = i26.revenus.indexOf(100000);
       egal('Impôt VD, marié, 2 enfants = point de grille', Impots.impotRevenu(i26, 'VD', true, 100000, 2).impot, i26.cantons.VD.revenu.marie2[point][0]);

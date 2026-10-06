@@ -114,3 +114,35 @@ export function rachatEchelonne(donnees, canton, marie, brut, montant, maxAnnees
   }
   return out;
 }
+
+/** Confessions pour lesquelles l'impôt d'Église est relevé. */
+export const CONFESSIONS = ['sans', 'reformee', 'catholique'];
+
+/** La commune d'un canton, par son numéro OFS. */
+export const commune = (lieux, canton, numero) => lieux?.cantons?.[canton]?.find(c => c.b === numero) ?? null;
+
+/**
+ * Ramène les grilles d'un canton, relevées pour son chef-lieu, à une commune et à une confession :
+ *   impôt = fédéral + (impôt du chef-lieu − fédéral) × facteur de la commune × (1 + part d'Église).
+ * L'impôt fédéral ne dépend pas du lieu ; le facteur et la part d'Église viennent de communes-AAAA.json.
+ * L'impôt sur les prestations en capital reste celui du chef-lieu.
+ * @param {any} donnees impots-AAAA.json @param {any} lieux communes-AAAA.json @param {string} canton
+ * @param {{commune?: number|null, confession?: string}} [ou]
+ * @returns {any} les mêmes données, avec les grilles du canton ajustées (ou inchangées s'il n'y a rien à ajuster)
+ */
+export function localiser(donnees, lieux, canton, { commune: numero = null, confession = 'sans' } = {}) {
+  const base = donnees?.cantons?.[canton];
+  if (!base || !lieux?.federal) return donnees;
+  const lieu = numero === null || numero === undefined ? null : commune(lieux, canton, numero);
+  const k = lieu?.k ?? 1, eglise = lieux.confessions?.[canton]?.[confession] ?? 0;
+  if (!lieu && eglise === 0) return donnees;
+  const revenu = {};
+  for (const [cle, points] of Object.entries(base.revenu)) {
+    const federal = lieux.federal[cle] ?? lieux.federal[cle.replace(/[0-9]$/, '')];
+    revenu[cle] = /** @type {number[][]} */ (points).map(([impot, marginal], i) => {
+      const f = Math.min(impot, federal?.[i] ?? 0);
+      return [Math.round(f + (impot - f) * k * (1 + eglise)), marginal];
+    });
+  }
+  return { ...donnees, cantons: { ...donnees.cantons, [canton]: { ...base, revenu, lieu: lieu?.n ?? base.lieu, localise: { commune: lieu?.b ?? null, confession, facteur: k, eglise } } } };
+}

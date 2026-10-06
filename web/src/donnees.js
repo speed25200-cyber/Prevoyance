@@ -37,6 +37,7 @@ export async function manifeste() {
 
 export const regles = annee => lire(`regles/ch-${annee}.json`);
 export const impots = annee => lire(`donnees/impots-${annee}.json`);
+export const communes = annee => lire(`donnees/communes-${annee}.json`).catch(() => null);
 export const dernierControle = () => surcharge?.verifieLe ?? null;
 
 /**

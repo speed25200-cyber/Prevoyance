@@ -17,7 +17,7 @@ export const VUES = ['analyse', 'scenarios', 'plan', 'rapport', 'donnees'];
 const identifiant = () => Math.random().toString(36).slice(2, 10);
 
 export const dossierVide = () => ({
-  id: identifiant(), nom: '', modifie: new Date().toISOString(), canton: 'FR', etatCivil: 'celibataire', avecConjoint: false, enfants: /** @type {number[]} */ ([]),
+  id: identifiant(), nom: '', modifie: new Date().toISOString(), canton: 'FR', commune: /** @type {number|null} */ (null), communeTexte: '', confession: 'sans', etatCivil: 'celibataire', avecConjoint: false, enfants: /** @type {number[]} */ ([]),
   personne: { dateNaissance: '1986-05-14', sexe: 'h', statut: 'salarie', revenu: 90000 },
   conjoint: { dateNaissance: '1988-09-02', sexe: 'f', statut: 'salarie', revenu: 60000 },
   besoins: { retraite: 0.8, invalidite: 0.9, deces: 0.7 }, ageRetraite: 65,

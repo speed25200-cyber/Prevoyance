@@ -40,6 +40,19 @@ function champChoix(chemin, cle, valeurs, { structure = false, libelle = v => ct
   return h('label', { class: 'champ' }, h('span', {}, ctx.t(cle)), select);
 }
 
+/** Commune de domicile : on tape un numéro postal ou un nom, la liste propose les localités du canton. */
+function champCommune() {
+  const { t } = ctx, d = dossier(), id = 'liste-communes';
+  const liste = h('datalist', { id });
+  const communes = () => ctx.communes?.cantons?.[d.canton] ?? [];
+  const remplir = () => { if (!liste.childElementCount) liste.replaceChildren(...communes().flatMap(c => c.l.map(l => h('option', { value: l })))); };
+  const trouver = texte => { const v = texte.trim().toLowerCase(); return v ? communes().find(c => c.l.some(l => l.toLowerCase() === v)) ?? communes().find(c => c.n.toLowerCase() === v) ?? null : null; };
+  const note = h('i', {}, d.commune ? '' : t('communeDefaut', { l: ctx.impotsBase?.cantons?.[d.canton]?.lieu ?? '' }));
+  return h('label', { class: 'champ' }, h('span', {}, t('commune'), note), liste,
+    h('input', { type: 'text', list: id, value: d.communeTexte ?? '', placeholder: t('communeIndication'), autocomplete: 'off', onfocus: remplir,
+      oninput: e => { const c = trouver(e.target.value); d.communeTexte = e.target.value; note.textContent = c ? '' : t('communeDefaut', { l: ctx.impotsBase?.cantons?.[d.canton]?.lieu ?? '' }); ecrire('commune', c ? c.b : null); } }));
+}
+
 const champDate = (chemin, cle) => h('label', { class: 'champ' }, h('span', {}, ctx.t(cle)),
   h('input', { type: 'date', value: lire(chemin) || '', min: '1940-01-01', max: aujourdhui(), onchange: e => e.target.value && ecrire(chemin, e.target.value) }));
 
@@ -145,7 +158,10 @@ export function construire() {
   const blocs = [
     portefeuille(),
     bloc('client', ouvert('client', true), champTexte('nom', 'nomClient', t('nomClientIndication')),
-      champChoix('canton', 'canton', CANTONS, { libelle: v => `${v} · ${t('ct_' + v)}` }), ...client.identite),
+      h('label', { class: 'champ' }, h('span', {}, t('canton')), h('select', { onchange: e => { d.commune = null; d.communeTexte = ''; ecrire('canton', e.target.value); construire(); } },
+        ...CANTONS.map(v => h('option', { value: v, selected: d.canton === v }, `${v} · ${t('ct_' + v)}`)))),
+      h('div', { class: 'rangee' }, champCommune(), champChoix('confession', 'confession', ['sans', 'reformee', 'catholique'], { libelle: v => t('cf_' + v) })),
+      ...client.identite),
     bloc('menage', ouvert('menage', true),
       champChoix('etatCivil', 'etatCivil', ['celibataire', 'marie', 'partenariat', 'concubin', 'divorce', 'veuf']),
       compteur('enfants', d.enfants.length, 0, 6, n => { d.enfants = n > d.enfants.length ? [...d.enfants, 5] : d.enfants.slice(0, n); ctx.apresChangement(); construire(); }),

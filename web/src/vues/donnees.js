@@ -22,7 +22,7 @@ const A_CONFIRMER = { 'lpp.tauxInteretMinimal': 'dn_interet', 'laa.gainAssureMax
 
 export async function monter(ctx, racine) {
   const { t, f } = ctx;
-  const [r1, r2, manifeste, impots] = await Promise.all([Donnees.regles(ANNEES[0]), Donnees.regles(ANNEES[1]), Donnees.manifeste(), Donnees.impots(ANNEES[0])]);
+  const [r1, r2, manifeste, impots] = await Promise.all([Donnees.regles(ANNEES[0]), Donnees.regles(ANNEES[1]), Donnees.manifeste(), ctx.impotsBase ?? Donnees.impots(ANNEES[0])]);
   const mise = (v, nature) => (nature === 'taux' ? `${(v * 100).toFixed(2).replace(/0$/, '')} %` : f.chf(v));
   const etatMaj = h('p', { class: 'note' }, Donnees.dernierControle()
     ? t('dn_controle', { d: new Date(/** @type {string} */ (Donnees.dernierControle())).toLocaleString(etat.langue + '-CH') }) : t('dn_jamais'));
@@ -63,6 +63,7 @@ export async function monter(ctx, racine) {
     blocs.push(h('div', { class: 'carte' }, h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('dn_impots')), h('p', {}, t('dn_impots_d', { d: impots.releveLe })))),
       serie(c => Impots.impotRevenu(impots, c, false, 100000)?.impot, t('dn_impotRevenu'), t('dn_impotRevenu_d')),
       serie(c => Impots.impotCapital(impots, c, false, 300000), t('dn_impotCapital'), t('dn_impotCapital_d')),
+      ctx.communes ? h('p', { class: 'remarque' }, t('dn_communes', { n: f.nombre(Object.values(ctx.communes.cantons).reduce((s, l) => s + l.length, 0)), e: `${(ctx.communes.ecartMaxControle * 100).toFixed(1)} %` })) : null,
       h('p', { class: 'petit' }, `${impots.source}. ${impots.hypotheses}.`)));
   }
   blocs.push(h('div', { class: 'carte' }, h('h2', {}, t('rp_sources')),

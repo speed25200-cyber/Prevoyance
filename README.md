@@ -68,7 +68,8 @@ et une chronologie des revenus. Le moteur ne produit aucun texte : il renvoie de
 - **3e pilier** : plafonds 3a avec et sans 2e pilier, capital à la retraite converti en rente, capitaux au décès.
 - **Impôts** : impôt sur le revenu, taux marginal et impôt sur les prestations en capital, pour le chef-lieu de
   chaque canton (personne seule, couple marié, sans enfant ou avec un à trois enfants à charge), interpolés sur les
-  grilles relevées.
+  grilles relevées, puis ramenés à la commune du client et à sa confession (facteur de chaque commune de Suisse et
+  impôt d'Église, contrôlés contre le calculateur officiel).
 - **Scénarios** : âge de départ, rente ou capital, échelonnements, simulation de placement, charge hypothécaire,
   plan de mesures et comparaison avant / après.
 
@@ -76,6 +77,7 @@ et une chronologie des revenus. Le moteur ne produit aucun texte : il renvoie de
 
 ```bash
 python outils/donnees/maj_impots.py 2027        # relève les impôts des 26 cantons (une vingtaine de minutes)
+python outils/donnees/maj_communes.py 2027      # puis les communes et l'impôt d'Église (une quinzaine de minutes)
 ```
 
 Puis ajouter le fichier à `moteur/manifeste.json` et en augmenter la version. Les applications déjà installées
@@ -88,7 +90,7 @@ proposent la mise à jour dans la vue « Données ». Les règles d'une nouvelle
 python -m http.server 8790                       # depuis la racine du dépôt
 ```
 
-- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (115 cas).
+- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (129 cas).
 - Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (23 essais : parcours, quatre langues complètes, largeur de téléphone).
 - Vitesse : une analyse complète prend environ 0,06 ms sur un PC de bureau (mesure dans un navigateur ouvert).
 
@@ -96,8 +98,9 @@ python -m http.server 8790                       # depuis la racine du dépôt
 
 Le moteur donne un ordre de grandeur fiable pour un entretien de conseil, pas un calcul de rente opposable.
 Le revenu annuel moyen déterminant est estimé quand l'extrait de compte individuel manque ; les prestations du
-2e pilier sont au minimum légal quand le certificat manque ; les impôts sont ceux du chef-lieu du canton, sans
-confession (les enfants à charge sont pris en compte jusqu'à trois). Les primes des assurances de risque ne sont pas estimées par l'application : elles dépendent de
+2e pilier sont au minimum légal quand le certificat manque ; l'impôt sur le revenu est ramené à la commune
+par un facteur mesuré à 100 000 de revenu (l'écart avec le calculateur officiel est affiché dans la vue « Données ») ;
+l'impôt sur les prestations en capital reste celui du chef-lieu. Les primes des assurances de risque ne sont pas estimées par l'application : elles dépendent de
 l'âge, de la santé et de l'assureur. Le conseiller saisit celles des offres reçues, et le budget du plan les intègre.
 Les textes allemands, italiens et anglais sont complets mais n'ont pas été relus par une personne de langue maternelle.
 Chaque valeur estimée est signalée comme telle dans le résultat.

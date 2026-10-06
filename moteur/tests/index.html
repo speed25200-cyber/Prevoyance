@@ -15,7 +15,7 @@
 <ul id="liste"></ul>
 <script type="module">
   import { cas, casScenarios } from './cas.js';
-  import { regles, impots } from '../src/index.js';
+  import { regles, impots, communes } from '../src/index.js';
 
   const liste = document.getElementById('liste');
   const identique = (a, b, t) => typeof a === 'number' && typeof b === 'number' ? Math.abs(a - b) <= t : JSON.stringify(a) === JSON.stringify(b);
@@ -30,7 +30,7 @@
       li.textContent = (ok ? '✓ ' : '✗ ') + nom + (ok ? '' : ` — obtenu ${JSON.stringify(obtenu)}, attendu ${JSON.stringify(attendu)}`);
       liste.append(li);
     };
-    const donnees = { r26: await regles(2026), r27: await regles(2027), i26: await impots(2026) };
+    const donnees = { r26: await regles(2026), r27: await regles(2027), i26: await impots(2026), c26: await communes(2026) };
     cas(egal, donnees);
     casScenarios(egal, donnees);
   } catch (erreur) {

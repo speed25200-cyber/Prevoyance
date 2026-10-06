@@ -8,7 +8,7 @@
  * utilise les transitions de vue du navigateur quand elles existent.
  */
 
-import { analyser, ANNEES } from '../../moteur/src/index.js';
+import { analyser, ANNEES, Impots } from '../../moteur/src/index.js';
 import { LANGUES, traducteur, formats } from './i18n.js';
 import { etat, garder, versDossier, dossier, VUES } from './etat.js';
 import * as Donnees from './donnees.js';
@@ -24,7 +24,7 @@ const MODULES = { analyse: VueAnalyse, scenarios: VueScenarios, plan: VuePlan, r
 
 /** @type {any} */
 const ctx = {
-  t: traducteur(etat.langue), f: formats(etat.langue), regles: null, impots: null, analyse: null, analyseAutre: null, dossierMoteur: null,
+  t: traducteur(etat.langue), f: formats(etat.langue), regles: null, impots: null, impotsBase: null, communes: null, analyse: null, analyseAutre: null, dossierMoteur: null,
   /** Recalcule ; `remonter` reconstruit la vue (structure changée), `recharger` relit les données de référence. */
   recalculer: async (remonter = false, recharger = false) => { if (recharger) { ctx.regles = null; ctx.impots = null; } await calculer(); if (remonter) monterVue(); },
   apresChangement, reconstruire: () => { Formulaire.construire(); ctx.recalculer(true); },
@@ -44,10 +44,14 @@ function apresChangement() {
 let anneeChargee = 0;
 async function calculer() {
   if (!ctx.regles || anneeChargee !== etat.annee) {
-    [ctx.regles, ctx.impots] = await Promise.all([Donnees.regles(etat.annee), Donnees.impots(etat.annee).then(x => x ?? Donnees.impots(ANNEES[0]))]);
+    [ctx.regles, ctx.impotsBase, ctx.communes] = await Promise.all([Donnees.regles(etat.annee), Donnees.impots(etat.annee).then(x => x ?? Donnees.impots(ANNEES[0])),
+      Donnees.communes(etat.annee).then(x => x ?? Donnees.communes(ANNEES[0]))]);
     anneeChargee = etat.annee;
   }
   try {
+    // impôts ramenés à la commune et à la confession du dossier (chef-lieu, sans confession, à défaut)
+    const lieu = dossier();
+    ctx.impots = Impots.localiser(ctx.impotsBase, ctx.communes, lieu.canton, { commune: lieu.commune ?? null, confession: lieu.confession ?? 'sans' });
     ctx.dossierMoteur = versDossier();
     ctx.analyse = analyser(ctx.dossierMoteur, ctx.regles, { impots: ctx.impots });
     // couple : la même analyse pour l'autre personne, pour chiffrer la retraite du ménage

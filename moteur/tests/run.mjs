@@ -13,7 +13,8 @@ const egal = (nom, obtenu, attendu, tolerance = 0) => {
   else echecs.push(`${nom} : obtenu ${JSON.stringify(obtenu)}, attendu ${JSON.stringify(attendu)}`);
 };
 const donnees = { r26: await lire(2026), r27: await lire(2027),
-                  i26: JSON.parse(await readFile(new URL('../donnees/impots-2026.json', import.meta.url), 'utf8')) };
+                  i26: JSON.parse(await readFile(new URL('../donnees/impots-2026.json', import.meta.url), 'utf8')),
+                  c26: JSON.parse(await readFile(new URL('../donnees/communes-2026.json', import.meta.url), 'utf8')) };
 cas(egal, donnees);
 casScenarios(egal, donnees);
 

@@ -1,7 +1,7 @@
 {
-  "version": "2026.10.06-2",
+  "version": "2026.10.06-3",
   "date": "2026-10-06",
   "annees": [2026, 2027],
-  "fichiers": ["regles/ch-2026.json", "regles/ch-2027.json", "donnees/impots-2026.json"],
-  "notes": "Règles 2026 en vigueur ; règles 2027 selon la décision du Conseil fédéral du 02.10.2026 ; impôts 2026 relevés auprès de l'AFC, sans enfant et avec un à trois enfants à charge."
+  "fichiers": ["regles/ch-2026.json", "regles/ch-2027.json", "donnees/impots-2026.json", "donnees/communes-2026.json"],
+  "notes": "Règles 2026 en vigueur ; règles 2027 selon la décision du Conseil fédéral du 02.10.2026 ; impôts 2026 relevés auprès de l'AFC : 26 chefs-lieux, un à trois enfants à charge, toutes les communes, impôt d'Église."
 }
