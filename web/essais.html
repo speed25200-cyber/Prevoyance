@@ -39,12 +39,12 @@
     noter('la saisie recalcule', await jusqua(() => p.ctx.analyse.personne.revenu === 150000), String(p.ctx.analyse.personne.revenu));
     // les autres vues
     for (const [vue, motif] of [['scenarios', /63|65|67/], ['plan', /\d/], ['rapport', /CHF/], ['donnees', /2027/]]) {
-      d.querySelector(`[data-vue=${vue}]`).click();
+      d.querySelector(`#onglets [data-vue=${vue}]`).click();
       const marque = { scenarios: '#scenarios .carte', plan: '.plan-tete', rapport: '.page', donnees: '.donnees-table' }[vue];
       const ok = await jusqua(() => d.body.dataset.vue === vue && d.querySelector('#vue ' + marque) && motif.test(d.getElementById('vue').innerText));
       noter(`vue ${vue}`, ok, `${d.getElementById('vue').innerText.length} caractères, vue ${d.body.dataset.vue}, marque ${!!d.querySelector('#vue ' + marque)}, motif ${motif.test(d.getElementById('vue').innerText)}`);
     }
-    d.querySelector('[data-vue=rapport]').click();
+    d.querySelector('#onglets [data-vue=rapport]').click();
     noter('rapport : au moins six pages', await jusqua(() => d.querySelectorAll('.page').length >= 6), String(d.querySelectorAll('.page').length));
     // langues
     for (const l of ['de', 'it', 'en', 'fr']) { d.querySelector(`[data-langue=${l}]`).click(); await jusqua(() => d.documentElement.lang === l && d.querySelectorAll('.page').length >= 6); }
@@ -67,12 +67,16 @@
     if (duree > 0) noter('analyse complète en moins de 4 ms', parAnalyse < 4, `${parAnalyse.toFixed(3)} ms (${TOURS} analyses en ${duree} ms)`);
     // largeur de téléphone : rien ne dépasse de l'écran
     cadre.style.width = '390px'; cadre.style.height = '844px';
-    d.querySelector('[data-vue=analyse]').click(); await jusqua(() => d.body.dataset.vue === 'analyse' && d.querySelector('.scene-puce'));
+    d.querySelector('#onglets [data-vue=analyse]').click(); await jusqua(() => d.body.dataset.vue === 'analyse' && d.querySelector('.scene-puce'));
     await attendre(600);
     noter('téléphone (390 px) : aucun débordement horizontal', d.documentElement.scrollWidth <= 392, `${d.documentElement.scrollWidth} px`);
-    noter('téléphone : bascule Dossier / Analyse visible', w.getComputedStyle(d.getElementById('panneaux')).display !== 'none');
+    d.querySelector('#onglets [data-vue=dossier]').click(); await attendre(300);
+    noter('navigation : « Dossier » ouvre le dossier seul', w.getComputedStyle(d.getElementById('saisie')).display !== 'none' && w.getComputedStyle(d.getElementById('vue')).display === 'none');
+    noter('dossier sur téléphone : aucun débordement', d.documentElement.scrollWidth <= 392, `${d.documentElement.scrollWidth} px`);
+    d.querySelector('.voir-analyse').click(); await attendre(300);
+    noter('« Voir l’analyse » revient à l’analyse', w.getComputedStyle(d.getElementById('vue')).display !== 'none' && d.querySelector('#onglets [data-vue=analyse]').getAttribute('aria-selected') === 'true');
     for (const vue of ['scenarios', 'plan', 'donnees']) {
-      d.querySelector(`[data-vue=${vue}]`).click(); await jusqua(() => d.body.dataset.vue === vue); await attendre(700);
+      d.querySelector(`#onglets [data-vue=${vue}]`).click(); await jusqua(() => d.body.dataset.vue === vue); await attendre(700);
       noter(`téléphone : vue ${vue} sans débordement`, d.documentElement.scrollWidth <= 392, `${d.documentElement.scrollWidth} px`);
     }
   } catch (erreur) {

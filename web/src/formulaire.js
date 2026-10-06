@@ -167,20 +167,23 @@ export function construire() {
       compteur('enfants', d.enfants.length, 0, 6, n => { d.enfants = n > d.enfants.length ? [...d.enfants, 5] : d.enfants.slice(0, n); ctx.apresChangement(); construire(); }),
       ...d.enfants.map((_, i) => curseur(`enfants.${i}`, 'ageEnfant', 0, 24, 1, v => `${v} ${t('ans')}`)),
       bascule('avecConjoint', 'avecConjoint', false, { structure: true })),
-    ...(conjoint ? [bloc('conjoint', ouvert('conjoint', false), ...conjoint.identite, h('p', { class: 'intertitre' }, t('lpp')), ...conjoint.lpp,
+    ...(conjoint ? [bloc('conjoint', ouvert('conjoint', true), ...conjoint.identite, h('p', { class: 'intertitre' }, t('lpp')), ...conjoint.lpp,
       h('p', { class: 'intertitre' }, t('pilier3')), ...conjoint.pilier3)] : []),
-    bloc('lpp', ouvert('lpp', false), ...client.lpp),
-    bloc('pilier3', ouvert('pilier3', false), ...client.pilier3),
-    bloc('logement', ouvert('logement', false), h('div', { class: 'rangee' }, champMontant('bien.valeur', 'valeurBien', { facultatif: true }),
+    bloc('lpp', ouvert('lpp', true), ...client.lpp),
+    bloc('pilier3', ouvert('pilier3', true), ...client.pilier3),
+    bloc('logement', ouvert('logement', true), h('div', { class: 'rangee' }, champMontant('bien.valeur', 'valeurBien', { facultatif: true }),
       champMontant('bien.dette', 'dette', { facultatif: true }))),
-    bloc('besoins', ouvert('besoins', false),
+    bloc('besoins', ouvert('besoins', true),
       curseur('besoins.retraite', 'besoinRetraite', 0.5, 1, 0.05, v => `${Math.round(v * 100)} % ${t('duRevenu')}`),
       curseur('besoins.invalidite', 'besoinInvalidite', 0.5, 1, 0.05, v => `${Math.round(v * 100)} % ${t('duRevenu')}`),
       curseur('besoins.deces', 'besoinDeces', 0.4, 1, 0.05, v => `${Math.round(v * 100)} % ${t('duRevenu')}`),
       curseur('ageRetraite', 'ageRetraite', 58, 70, 1, v => `${v} ${t('ans')}`)),
   ];
   blocs.forEach((b, i) => b.style.setProperty('--i', String(i)));
-  $('saisie').replaceChildren(...blocs);
+  $('saisie').replaceChildren(
+    h('div', { class: 'ecran-titre' }, h('div', {}, h('h1', {}, t('dossier')), h('p', {}, t('dossierAide')))),
+    ...blocs,
+    h('button', { type: 'button', class: 'bouton voir-analyse', onclick: () => /** @type {HTMLElement|null} */ (document.querySelector('#onglets [data-vue=analyse]'))?.click() }, t('voirAnalyse')));
 }
 
 /** @param {typeof ctx} contexte */
