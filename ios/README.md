@@ -34,5 +34,3 @@ Avant TestFlight, trois choses sont à faire par le titulaire du compte Apple (e
    et `codemagic.yaml` (aujourd'hui `ch.prevoyance.app`, provisoire) ;
 2. ajouter ce dépôt comme application dans Codemagic ;
 3. y renseigner la variable `APP_STORE_APPLE_ID` (le numéro de la fiche).
-
-L'icône de 1024 px est un agrandissement de celle de 512 px : à refaire en pleine définition avant une publication.

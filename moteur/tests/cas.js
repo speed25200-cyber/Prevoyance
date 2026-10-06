@@ -118,6 +118,17 @@ export function casScenarios(egal, { r26, i26 }) {
     egal('Marié paie moins que seul (ZH, 120 000)', Impots.impotRevenu(i26, 'ZH', true, 120000).impot < Impots.impotRevenu(i26, 'ZH', false, 120000).impot, true);
     egal('Impôt croissant avec le revenu (GE)', Impots.impotRevenu(i26, 'GE', false, 150000).impot > Impots.impotRevenu(i26, 'GE', false, 100000).impot, true);
     egal('Canton inconnu', Impots.impotRevenu(i26, 'XX', false, 100000), null);
+    if (Impots.avecEnfants(i26, 'VD')) {
+      const point = i26.revenus.indexOf(100000);
+      egal('Impôt VD, marié, 2 enfants = point de grille', Impots.impotRevenu(i26, 'VD', true, 100000, 2).impot, i26.cantons.VD.revenu.marie2[point][0]);
+      egal('Les 26 cantons ont les grilles avec enfants', Object.values(i26.cantons).every(c => ['seul1', 'seul2', 'seul3', 'marie1', 'marie2', 'marie3'].every(k => c.revenu[k]?.length === i26.revenus.length)), true);
+      egal('Chaque enfant allège l’impôt, dans chaque canton (marié, 100 000)', Object.keys(i26.cantons).every(c => [1, 2, 3].every(n => Impots.impotRevenu(i26, c, true, 100000, n).impot <= Impots.impotRevenu(i26, c, true, 100000, n - 1).impot)), true);
+      egal('Au-delà de trois enfants : la grille de trois', Impots.impotRevenu(i26, 'GE', true, 120000, 5).impot, Impots.impotRevenu(i26, 'GE', true, 120000, 3).impot);
+      egal('Sans enfant : la grille de base est inchangée', Impots.impotRevenu(i26, 'ZH', false, 100000, 0).impot, i26.cantons.ZH.revenu.seul[point][0]);
+      const famille = analyser({ dateAnalyse: '2026-01-01', canton: 'VD', etatCivil: 'marie', enfants: [{ dateNaissance: '2018-01-01' }, { dateNaissance: '2020-01-01' }],
+        personne: { dateNaissance: '1986-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, lpp: { avoir: 100000 } } }, r26, { impots: i26 });
+      egal('Analyse : l’impôt tient compte des deux enfants', famille.potentiels.impotRevenu, i26.cantons.VD.revenu.marie2[point][0]);
+    }
     egal('Capital : point de grille VD 300 000', Impots.impotCapital(i26, 'VD', false, 300000), Math.round(i26.cantons.VD.capital.seul[i26.capitaux.indexOf(300000)] / 10) * 10);
     egal('Capital nul', Impots.impotCapital(i26, 'VD', false, 0), 0);
     const ech = Impots.retraitsEchelonnes(i26, 'BE', false, [100000, 100000, 100000]);

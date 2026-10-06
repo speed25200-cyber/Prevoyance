@@ -4,9 +4,9 @@
  *
  * Les chiffres ne sont pas modélisés mais relevés auprès du calculateur officiel de l'Administration fédérale des
  * contributions (outils/donnees/maj_impots.py -> donnees/impots-AAAA.json) : pour le chef-lieu de chaque canton,
- * une personne seule et un couple marié, sur une grille de revenus bruts et de capitaux. Le moteur interpole.
- * Cela donne l'ordre de grandeur juste pour un conseil ; la commune exacte, la confession et les enfants déplacent
- * le résultat de quelques pour cent.
+ * une personne seule et un couple marié, sans enfant ou avec un à trois enfants à charge, sur une grille de revenus
+ * bruts et de capitaux. Le moteur interpole. Cela donne l'ordre de grandeur juste pour un conseil ; la commune
+ * exacte et la confession déplacent le résultat de quelques pour cent.
  */
 
 import { arrondi } from './util.js';
@@ -25,15 +25,28 @@ export function interpoler(xs, ys, x) {
   return ys[n] + (ys[n] - ys[n - 1]) * (x - xs[n]) / (xs[n] - xs[n - 1]);
 }
 
-const grille = (donnees, canton, marie, nature) => donnees?.cantons?.[canton]?.[nature]?.[marie ? 'marie' : 'seul'];
+/** Nombre d'enfants à charge au-delà duquel les grilles ne sont plus relevées. */
+export const ENFANTS_MAX = 3;
+
+/** La grille d'un canton : celle du nombre d'enfants demandé quand elle a été relevée, sinon la plus proche en dessous. */
+const grille = (donnees, canton, marie, nature, enfants = 0) => {
+  const grilles = donnees?.cantons?.[canton]?.[nature], base = marie ? 'marie' : 'seul';
+  if (!grilles) return undefined;
+  for (let n = Math.min(ENFANTS_MAX, Math.max(0, Math.floor(enfants))); n > 0; n--) if (grilles[base + n]) return grilles[base + n];
+  return grilles[base];
+};
+
+/** Les données portent-elles l'impôt avec enfants à charge pour ce canton ? */
+export const avecEnfants = (donnees, canton) => !!donnees?.cantons?.[canton]?.revenu?.marie1;
 
 /**
  * Impôt annuel sur le revenu (Confédération, canton, commune) pour un revenu brut de salarié.
  * @param {any} donnees impots-AAAA.json @param {string} canton @param {boolean} marie @param {number} brut
+ * @param {number} [enfants] enfants à charge (0 par défaut)
  * @returns {{impot: number, marginal: number}|null} `null` si le canton n'est pas dans les données
  */
-export function impotRevenu(donnees, canton, marie, brut) {
-  const g = grille(donnees, canton, marie, 'revenu');
+export function impotRevenu(donnees, canton, marie, brut, enfants = 0) {
+  const g = grille(donnees, canton, marie, 'revenu', enfants);
   if (!g) return null;
   const impot = Math.max(0, interpoler(donnees.revenus, g.map(p => p[0]), brut));
   const pas = Math.max(1000, brut * 0.01);
@@ -46,8 +59,8 @@ export function impotRevenu(donnees, canton, marie, brut) {
  * diminué de la déduction, la déduction étant ramenée à son équivalent brut.
  * @returns {number|null}
  */
-export function economieDeduction(donnees, canton, marie, brut, deduction) {
-  const g = grille(donnees, canton, marie, 'revenu');
+export function economieDeduction(donnees, canton, marie, brut, deduction, enfants = 0) {
+  const g = grille(donnees, canton, marie, 'revenu', enfants);
   if (!g || deduction <= 0) return g ? 0 : null;
   const impots = g.map(p => p[0]);
   const avant = interpoler(donnees.revenus, impots, brut), apres = interpoler(donnees.revenus, impots, Math.max(0, brut - deduction / PART_IMPOSABLE));
@@ -92,10 +105,10 @@ export function retraitsEchelonnes(donnees, canton, marie, capitaux) {
  * Rachat LPP échelonné : économie d'impôt totale selon le nombre d'années sur lesquelles on répartit le rachat.
  * @returns {{annees: number, parAn: number, economie: number}[]}
  */
-export function rachatEchelonne(donnees, canton, marie, brut, montant, maxAnnees = 5) {
+export function rachatEchelonne(donnees, canton, marie, brut, montant, maxAnnees = 5, enfants = 0) {
   const out = [];
   for (let n = 1; n <= maxAnnees; n++) {
-    const e = economieDeduction(donnees, canton, marie, brut, montant / n);
+    const e = economieDeduction(donnees, canton, marie, brut, montant / n, enfants);
     if (e === null) return [];
     out.push({ annees: n, parAn: arrondi(montant / n), economie: arrondi(e * n, 10) });
   }

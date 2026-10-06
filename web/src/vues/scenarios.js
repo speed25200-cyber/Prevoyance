@@ -75,7 +75,7 @@ export function afficher(ctx) {
       if (e && e.economie > 0) lignes.push(h('div', { class: 'levier' }, h('b', {}, t('sc_echLpp')), h('p', {}, t('sc_echLpp_d', { g: f.chf(e.economie) }))));
     }
     if (a.potentiels.rachatLPP.possible > 0) {
-      const plans = Impots.rachatEchelonne(impots, canton, marie, P.revenu + (a.conjoint && marie ? a.conjoint.revenu : 0), a.potentiels.rachatLPP.possible);
+      const plans = Impots.rachatEchelonne(impots, canton, marie, P.revenu + (a.conjoint && marie ? a.conjoint.revenu : 0), a.potentiels.rachatLPP.possible, 5, a.enfantsACharge);
       const mieux = plans.reduce((m, x) => (x.economie > m.economie ? x : m), plans[0]);
       lignes.push(h('div', { class: 'levier' }, h('b', {}, t('sc_rachat')),
         h('p', {}, t('sc_rachat_d', { m: f.chf(a.potentiels.rachatLPP.possible), u: f.chf(plans[0].economie), n: mieux.annees, e: f.chf(mieux.economie), p: f.chf(mieux.parAn) })),
@@ -88,7 +88,7 @@ export function afficher(ctx) {
   // ---- et dans un autre canton ? impôt sur le revenu du ménage, chef-lieu par chef-lieu
   if (impots && canton) {
     const brut = P.revenu + (a.conjoint && marie ? a.conjoint.revenu : 0);
-    const valeurs = Object.keys(impots.cantons).map(c => ({ c, v: Impots.impotRevenu(impots, c, marie, brut)?.impot ?? 0 })).sort((x, y) => x.v - y.v);
+    const valeurs = Object.keys(impots.cantons).map(c => ({ c, v: Impots.impotRevenu(impots, c, marie, brut, a.enfantsACharge)?.impot ?? 0 })).sort((x, y) => x.v - y.v);
     const ici = valeurs.find(x => x.c === canton), max = Math.max(...valeurs.map(x => x.v), 1), moins = valeurs[0];
     blocs.push(carte(t('sc_cantons'), t('sc_cantons_d', { r: f.chf(brut) }),
       h('div', { class: 'cantons-barres' }, ...valeurs.map((x, i) => h('div', { class: x.c === canton ? 'actif' : '', style: { '--i': i }, title: `${t('ct_' + x.c)} · ${f.chf(x.v)}` },

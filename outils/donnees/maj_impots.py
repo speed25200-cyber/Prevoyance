@@ -1,14 +1,18 @@
 """Relève l'impôt des 26 chefs-lieux de canton auprès du calculateur officiel de l'Administration fédérale des
 contributions (swisstaxcalculator.estv.admin.ch) et l'écrit dans moteur/donnees/impots-AAAA.json.
 
-Deux grilles, pour une personne seule et pour un couple marié, sans confession, sans enfant :
-  - impôt sur le revenu (Confédération + canton + commune) et taux marginal, selon le revenu brut d'un salarié ;
+Deux grilles, pour une personne seule et pour un couple marié, sans confession :
+  - impôt sur le revenu (Confédération + canton + commune) et taux marginal, selon le revenu brut d'un salarié,
+    sans enfant puis avec un, deux et trois enfants à charge (clés seul, seul1… marie3) ;
   - impôt sur une prestation en capital de la prévoyance (2e pilier, 3a), selon le montant retiré à 65 ans.
 Le moteur interpole entre les points. Le fichier porte la date du relevé : l'application l'affiche.
 
-Usage : python outils/donnees/maj_impots.py [année] [cantons…]   (année en cours et tous les cantons par défaut ;
-        avec des cantons, seuls ceux-là sont relevés et fusionnés dans le fichier existant)
-Le relevé fait environ 1300 requêtes, espacées, et dure quelques minutes.
+Usage : python outils/donnees/maj_impots.py [année] [cantons…] [--enfants]
+        année en cours et tous les cantons par défaut ;
+        avec des cantons, seuls ceux-là sont relevés et fusionnés dans le fichier existant ;
+        avec --enfants, seules les grilles avec enfants qui manquent sont ajoutées au fichier existant.
+Le relevé complet fait environ 4000 requêtes, espacées, et dure une vingtaine de minutes. Le fichier est écrit
+après chaque canton : un relevé interrompu se reprend avec --enfants.
 """
 import datetime
 import json
@@ -30,8 +34,12 @@ CHEFS_LIEUX = {
 REVENUS = [20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000, 120000, 150000, 200000, 250000, 300000, 400000, 500000]
 CAPITAUX = [25000, 50000, 100000, 150000, 200000, 300000, 400000, 500000, 750000, 1000000, 1500000, 2000000]
 ETATS = {'seul': 1, 'marie': 2}
+ENFANTS_MAX = 3
+AGES_ENFANTS = [8, 10, 12]
 SANS_CONFESSION = 4
 PAUSE = 0.12
+HYPOTHESES = ("Chef-lieu du canton, sans confession ; revenu brut d'un salarié de 45 ans, sans enfant ou avec un à trois "
+              "enfants à charge ; capital retiré à 65 ans")
 
 
 def appel(operation: str, corps: dict):
@@ -65,9 +73,10 @@ def lieu(annee: int, canton: str) -> dict:
     raise RuntimeError(f'Lieu introuvable : {canton} {ville}')
 
 
-def revenu(annee: int, lieu_id: int, etat: int, brut: int) -> list:
+def revenu(annee: int, lieu_id: int, etat: int, brut: int, enfants: int = 0) -> list:
     r = appel('API_calculateDetailedTaxes', {
-        'SimKey': None, 'TaxYear': annee, 'TaxLocationID': lieu_id, 'Relationship': etat, 'Confession1': SANS_CONFESSION, 'Children': [],
+        'SimKey': None, 'TaxYear': annee, 'TaxLocationID': lieu_id, 'Relationship': etat, 'Confession1': SANS_CONFESSION,
+        'Children': [{'Age': a} for a in AGES_ENFANTS[:enfants]],
         'Age1': 45, 'RevenueType1': 1, 'Revenue1': brut, 'Fortune': 0, 'Language': 2,
         'Confession2': SANS_CONFESSION if etat == 2 else 0, 'Age2': 45 if etat == 2 else 0, 'RevenueType2': 0, 'Revenue2': 0, 'Budget': []})
     return [round(r['TotalNetTax']), round(r.get('MarginalTaxRate') or 0, 1)]
@@ -80,30 +89,45 @@ def capital(annee: int, lieu_id: int, etat: int, montant: int) -> int:
     return round(r['TaxFed'] + r['TaxCanton'] + r['TaxCity'] + r.get('TaxChurch', 0))
 
 
-def main() -> None:
-    annee = int(sys.argv[1]) if len(sys.argv) > 1 else datetime.date.today().year
-    sortie = {
-        'annee': annee, 'releveLe': datetime.date.today().isoformat(),
-        'source': 'Administration fédérale des contributions, calculateur d\'impôts (swisstaxcalculator.estv.admin.ch)',
-        'hypotheses': 'Chef-lieu du canton, sans confession, sans enfant ; revenu brut d\'un salarié de 45 ans ; capital retiré à 65 ans',
-        'revenus': REVENUS, 'capitaux': CAPITAUX, 'cantons': {},
-    }
-    cible = RACINE / 'moteur' / 'donnees' / f'impots-{annee}.json'
-    choisis = [c.upper() for c in sys.argv[2:]] or list(CHEFS_LIEUX)
-    if len(choisis) < len(CHEFS_LIEUX) and cible.exists():
-        sortie['cantons'] = json.loads(cible.read_text(encoding='utf-8'))['cantons']
-    for canton in choisis:
-        l = lieu(annee, canton)
-        donnees = {'lieu': CHEFS_LIEUX[canton][0], 'npa': l['ZipCode'], 'commune': l.get('BfsName') or l['City'], 'revenu': {}, 'capital': {}}
-        for nom, etat in ETATS.items():
-            donnees['revenu'][nom] = [revenu(annee, l['TaxLocationID'], etat, r) for r in REVENUS]
-            donnees['capital'][nom] = [capital(annee, l['TaxLocationID'], etat, c) for c in CAPITAUX]
-        sortie['cantons'][canton] = donnees
-        print(canton, l['City'], 'revenu 100000 seul :', donnees['revenu']['seul'][REVENUS.index(100000)],
-              '| capital 300000 seul :', donnees['capital']['seul'][CAPITAUX.index(300000)], flush=True)
+def ecrire(cible: Path, sortie: dict) -> None:
     sortie['cantons'] = {c: sortie['cantons'][c] for c in CHEFS_LIEUX if c in sortie['cantons']}
     cible.parent.mkdir(parents=True, exist_ok=True)
     cible.write_text(json.dumps(sortie, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+
+
+def main() -> None:
+    arguments = [a for a in sys.argv[1:] if not a.startswith('--')]
+    seulement_enfants = '--enfants' in sys.argv
+    annee = int(arguments[0]) if arguments else datetime.date.today().year
+    sortie = {
+        'annee': annee, 'releveLe': datetime.date.today().isoformat(),
+        'source': "Administration fédérale des contributions, calculateur d'impôts (swisstaxcalculator.estv.admin.ch)",
+        'hypotheses': HYPOTHESES, 'revenus': REVENUS, 'capitaux': CAPITAUX, 'cantons': {},
+    }
+    cible = RACINE / 'moteur' / 'donnees' / f'impots-{annee}.json'
+    choisis = [c.upper() for c in arguments[1:]] or list(CHEFS_LIEUX)
+    if (len(choisis) < len(CHEFS_LIEUX) or seulement_enfants) and cible.exists():
+        sortie['cantons'] = json.loads(cible.read_text(encoding='utf-8'))['cantons']
+    for canton in choisis:
+        l = lieu(annee, canton)
+        if seulement_enfants:
+            donnees = sortie['cantons'][canton]
+        else:
+            donnees = {'lieu': CHEFS_LIEUX[canton][0], 'npa': l['ZipCode'], 'commune': l.get('BfsName') or l['City'], 'revenu': {}, 'capital': {}}
+        for nom, etat in ETATS.items():
+            if not seulement_enfants:
+                donnees['revenu'][nom] = [revenu(annee, l['TaxLocationID'], etat, r) for r in REVENUS]
+                donnees['capital'][nom] = [capital(annee, l['TaxLocationID'], etat, c) for c in CAPITAUX]
+            for n in range(1, ENFANTS_MAX + 1):
+                if seulement_enfants and f'{nom}{n}' in donnees['revenu']:
+                    continue
+                donnees['revenu'][f'{nom}{n}'] = [revenu(annee, l['TaxLocationID'], etat, r, n) for r in REVENUS]
+        sortie['cantons'][canton] = donnees
+        i = REVENUS.index(100000)
+        print(canton, l['City'], 'revenu 100000 seul :', donnees['revenu']['seul'][i], '| marié :', donnees['revenu']['marie'][i],
+              '| marié, 2 enfants :', donnees['revenu']['marie2'][i], flush=True)
+        ecrire(cible, sortie)
+    ecrire(cible, sortie)
     print('écrit :', cible, cible.stat().st_size, 'octets')
 
 

@@ -112,7 +112,7 @@ export function afficher(ctx) {
         h('tr', { class: 'fort' }, h('th', {}, t('score')), h('td', {}, String(plan.avant.score)), h('td', {}, String(plan.apres.score))))),
     (() => {
       const brut = a.personne.revenu + (a.conjoint && a.marie ? a.conjoint.revenu : 0);
-      const eco3a = impots && a.canton ? Impots.economieDeduction(impots, a.canton, a.marie, brut, m.versement3a ?? 0) ?? 0 : Math.round((m.versement3a ?? 0) * a.potentiels.tauxMarginal);
+      const eco3a = impots && a.canton ? Impots.economieDeduction(impots, a.canton, a.marie, brut, m.versement3a ?? 0, a.enfantsACharge) ?? 0 : Math.round((m.versement3a ?? 0) * a.potentiels.tauxMarginal);
       const b = budgetPlan(m, eco3a);
       return h('div', {}, h('h3', {}, t('pl_budget')), h('table', { class: 'r-fiche large' },
         ligne(t('pl_budgetEpargne'), `${f.chf(b.epargne)} ${t('parAn')}`), ligne(t('pl_budgetPrimes'), b.attendues ? `${f.chf(b.primes)} ${t('parAn')} (${t('pl_offresAttendues', { n: b.attendues })})` : `${f.chf(b.primes)} ${t('parAn')}`),

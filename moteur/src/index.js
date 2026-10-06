@@ -17,7 +17,7 @@ export * as Impots from './impots.js';
 export * as Scenarios from './scenarios.js';
 export * as outils from './util.js';
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 export const ANNEES = [2026, 2027];
 
 /**

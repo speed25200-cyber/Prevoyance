@@ -85,7 +85,7 @@ export function afficher(ctx) {
   }));
   // effet fiscal des versements déductibles
   const a = avant, brut = a.personne.revenu + (a.conjoint && a.marie ? a.conjoint.revenu : 0);
-  const eco = montant => (impots && a.canton ? Impots.economieDeduction(impots, a.canton, a.marie, brut, montant) ?? 0 : Math.round(montant * a.potentiels.tauxMarginal));
+  const eco = montant => (impots && a.canton ? Impots.economieDeduction(impots, a.canton, a.marie, brut, montant, a.enfantsACharge) ?? 0 : Math.round(montant * a.potentiels.tauxMarginal));
   const eco3a = eco(mesures.versement3a ?? 0), ecoRachat = eco(mesures.rachatLPP ?? 0);
   r.fiscal.replaceChildren(h('div', { class: 'chiffres' },
     h('div', { class: 'chiffre plus' }, h('small', {}, t('pl_eco3a')), h('b', {}, f.chf(eco3a)), h('span', {}, t('parAn'))),
