@@ -82,7 +82,7 @@ export function monter(ctx, racine) {
   r.detail.addEventListener('pointerleave', () => viser(null));
 }
 
-function pointsDuGraphique(a, x) {
+export function pointsDuGraphique(a, x) {
   const chrono = a.chronologie, P = a.personne;
   const parPilier = sources => { const v = {}; for (const s of sources) v['pilier' + s.pilier] = (v['pilier' + s.pilier] ?? 0) + s.montant; return v; };
   if (x.cle === 'retraite') {

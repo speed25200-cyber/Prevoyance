@@ -20,6 +20,7 @@ import * as VueRapport from './vues/rapport.js';
 import * as VueDonnees from './vues/donnees.js';
 import { h, $ } from './ui.js';
 import { installerFond } from './fond.js';
+import * as Natif from './natif.js';
 import * as Verrou from './verrou.js';
 import * as EcranVerrou from './verrou-ecran.js';
 
@@ -44,7 +45,7 @@ function marquer() {
   for (const b of $('onglets').children) b.setAttribute('aria-selected', String(/** @type {HTMLElement} */ (b).dataset.vue === actif));
   placerBulle();
   // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
-  appNative()?.postMessage({ actif, visible: true, dossiers: resumeDossiers(),
+  appNative()?.postMessage({ actif, visible: true, analyse: Natif.analyse(ctx), dossiers: resumeDossiers(),
     textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil') },
     langue: etat.langue, langues: LANGUES, annee: etat.annee, annees: ANNEES, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
 }
@@ -137,6 +138,8 @@ async function calculer() {
   }
   signalerErreur(false);
   MODULES[etat.vue].afficher(ctx);
+  // l'app dessine elle-même l'analyse : on lui remet le modèle d'affichage à chaque calcul
+  appNative()?.postMessage({ analyse: Natif.analyse(ctx) });
 }
 
 let montee = false;
@@ -207,6 +210,11 @@ await calculer();
 traduire();
 document.body.classList.add('pret');
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+// Le formulaire se décrit à l'app à chaque reconstruction ; l'app y écrit par `champ(id, valeur)`.
+Formulaire.quandSchema(schema => appNative()?.postMessage({ schema }));
+/** Écran Analyse natif : risque affiché, personne analysée. */
+function choisirRisque(cle) { if (VueAnalyse.RISQUES.includes(cle)) { etat.risque = cle; garder(); MODULES[etat.vue].afficher(ctx); appNative()?.postMessage({ analyse: Natif.analyse(ctx) }); } }
+function choisirCible(cible) { const d = dossier(); if (d.avecConjoint && ['personne', 'conjoint'].includes(cible) && d.cible !== cible) { d.cible = cible; garder(); ctx.recalculer(true); } }
 /** Réglages demandés par l'app (menu natif) : langue et année des règles. */
 async function regler({ langue, annee } = {}) {
   if (langue && LANGUES.includes(langue) && langue !== etat.langue) { etat.langue = langue; garder(); traduire(); }
@@ -216,4 +224,5 @@ async function regler({ langue, annee } = {}) {
     await calculer(); monterVue();
   }
 }
-/** @type {any} */ (window).__prevoyance = { etat, ctx, aller, regler, ouvrirDossier, creerDossier, annoncer: marquer };
+/** @type {any} */ (window).__prevoyance = { etat, ctx, aller, regler, ouvrirDossier, creerDossier, annoncer: marquer,
+  champ: Formulaire.agir, risque: choisirRisque, cible: choisirCible, modeles: () => ({ analyse: Natif.analyse(ctx) }) };

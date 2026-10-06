@@ -16,7 +16,15 @@ struct Ecran: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Page(vue: navigation.vue).ignoresSafeArea()
+            // écrans dessinés par l'app elle-même ; les autres onglets montrent encore la page
             if navigation.barreVisible && !navigation.accueil {
+                if navigation.onglet == "dossier" {
+                    DossierNatif(navigation: navigation).transition(.opacity)
+                } else if navigation.onglet == "analyse" {
+                    AnalyseNatif(navigation: navigation).transition(.opacity)
+                }
+            }
+            if navigation.barreVisible && !navigation.accueil && !Navigation.natifs.contains(navigation.onglet) {
                 // en haut : retour à l'accueil, titre de l'écran comme un grand titre du système, menu des réglages
                 VStack {
                     HStack(alignment: .center, spacing: 12) {
@@ -53,6 +61,8 @@ struct Ecran: View {
                     .padding(.horizontal, 14)
                     .padding(.bottom, -10)
                     .transition(.opacity)
+                    // le clavier passe par-dessus la barre : elle ne remonte pas sur le formulaire
+                    .ignoresSafeArea(.keyboard, edges: .bottom)
             }
         }
         // l'accueil couvre tout tant qu'aucun dossier n'est ouvert ; il s'efface en fondu quand on entre dans un dossier
@@ -62,8 +72,6 @@ struct Ecran: View {
                     .transition(.opacity.combined(with: .scale(scale: 1.04)))
             }
         }
-        // le clavier passe par-dessus la barre : elle ne remonte pas sur le formulaire
-        .ignoresSafeArea(.keyboard)
     }
 }
 
@@ -80,6 +88,8 @@ struct Page: UIViewRepresentable {
 @MainActor
 final class Navigation: ObservableObject {
     static let vues = ["dossier", "analyse", "scenarios", "plan", "rapport", "donnees"]
+    /// Onglets dont l'écran est dessiné par l'app (SwiftUI), sans passer par la page.
+    static let natifs: Set<String> = ["dossier", "analyse"]
     static let icones = ["dossier": "person", "analyse": "chart.bar", "scenarios": "arrow.triangle.branch",
                          "plan": "checklist", "rapport": "doc.text", "donnees": "cylinder.split.1x2"]
 
@@ -97,6 +107,11 @@ final class Navigation: ObservableObject {
     @Published var accueil = true
     @Published var dossiers: [DossierResume] = []
     @Published var textes: [String: String] = [:]
+    /// Le dossier (rubriques et champs décrits par la page) et l'analyse, pour les écrans natifs.
+    @Published var rubriques: [Rubrique] = []
+    @Published var nomDossier = ""
+    @Published var versionSchema = 0
+    @Published var analyse: AnalyseModele?
 
     let vue: WKWebView
     private let pont: Pont
@@ -164,6 +179,31 @@ final class Navigation: ObservableObject {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.aller && window.__prevoyance.aller('\(cible)')")
     }
 
+    // MARK: écrans natifs
+
+    /// Une valeur saisie dans le dossier natif : la page l'enregistre et recalcule ; le modèle local suit.
+    private func envoyer(_ id: String, _ valeur: Any, garder modifier: (inout Champ) -> Void) {
+        for r in rubriques.indices {
+            if let c = rubriques[r].champs.firstIndex(where: { $0.id == id }) { modifier(&rubriques[r].champs[c]) }
+        }
+        vue.callAsyncJavaScript("window.__prevoyance && window.__prevoyance.champ(id, valeur)", arguments: ["id": id, "valeur": valeur],
+                                in: nil, in: .page, completionHandler: nil)
+    }
+
+    func ecrire(_ id: String, texte: String) { envoyer(id, texte) { $0.texte = texte } }
+    func ecrire(_ id: String, montant: Int?) { envoyer(id, montant.map { $0 as Any } ?? NSNull()) { $0.nombre = montant.map(Double.init) } }
+    func ecrire(_ id: String, actif: Bool) { envoyer(id, actif) { $0.actif = actif } }
+    func ecrire(_ id: String, nombre: Double) { envoyer(id, nombre) { $0.nombre = nombre } }
+    /// Image (signature, logo) : la page reçoit l'image, le modèle local retient seulement qu'elle existe.
+    func ecrire(_ id: String, texte: String, presence: Double) { envoyer(id, texte) { $0.nombre = presence } }
+
+    /// Demande simple à la page : risque affiché, personne analysée.
+    func appeler(_ fonction: String, _ argument: String) {
+        guard ["risque", "cible"].contains(fonction) else { return }
+        vue.callAsyncJavaScript("window.__prevoyance && window.__prevoyance[fonction](argument)", arguments: ["fonction": fonction, "argument": argument],
+                                in: nil, in: .page, completionHandler: nil)
+    }
+
     /// Accueil : ouvrir un dossier (la page l'ouvre et montre son analyse), en créer un, ou y revenir.
     func ouvrir(dossier id: String) {
         guard id.allSatisfy({ $0.isLetter || $0.isNumber }) else { return }
@@ -208,7 +248,8 @@ final class Navigation: ObservableObject {
         if let retour = try? await vue.callAsyncJavaScript(corps, arguments: ["finale": finale], in: nil, contentWorld: .page) as? String {
             page = retour
         }
-        let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count),\"dossiers\":\(dossiers.count),\"textes\":\(textes.count)}"
+        let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count),\"dossiers\":\(dossiers.count),\"textes\":\(textes.count),"
+            + "\"rubriques\":\(rubriques.count),\"champs\":\(rubriques.reduce(0) { $0 + $1.champs.count }),\"analyse\":\(analyse != nil),\"risques\":\(analyse?.risques.count ?? 0),\"ligne\":\(analyse?.ligne.count ?? 0)}"
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? "{\"page\":\(page),\"app\":\(app)}".write(to: documents.appendingPathComponent("autotest.json"), atomically: true, encoding: .utf8)
     }
@@ -216,6 +257,12 @@ final class Navigation: ObservableObject {
     /// Message de la page : `actif` (vue ouverte), `noms` (libellés traduits), `visible` (montrer la barre).
     func recevoir(_ corps: Any) {
         guard let message = corps as? [String: Any] else { return }
+        if let schema = message["schema"] as? [String: Any] {
+            rubriques = (schema["rubriques"] as? [[String: Any]] ?? []).compactMap(Rubrique.init)
+            nomDossier = schema["nom"] as? String ?? ""
+            versionSchema += 1
+        }
+        if let modele = message["analyse"] as? [String: Any], let lu = AnalyseModele(modele), lu != analyse { analyse = lu }
         if let libelles = message["noms"] as? [String: String] { noms = libelles }
         if let valeur = message["langue"] as? String, valeur != langue { langue = valeur }
         if let valeurs = message["langues"] as? [String], valeurs != langues { langues = valeurs }

@@ -16,6 +16,7 @@
 import { h } from './ui.js';
 import { etat, garder, dossier } from './etat.js';
 import * as Signature from './signature.js';
+import * as Collecte from './collecte.js';
 
 const VIE = ['aucune', 'appropriee', 'deconseillee', 'nonVerifiee'];
 
@@ -58,6 +59,8 @@ export function controle(d = dossier()) {
 // ---------------------------------------------------------------------------------------------- saisie
 
 function champ(ctx, objet, cle, libelle, { long = false, indication = '', surChangement = () => {} } = {}) {
+  Collecte.decrire({ type: long ? 'long' : 'texte', libelle: ctx.t(libelle), valeur: objet[cle] ?? '', indication },
+    v => { objet[cle] = String(v ?? ''); dossier().modifie = new Date().toISOString(); garder(); surChangement(); });
   const proprietes = { value: objet[cle] ?? '', placeholder: indication, autocomplete: 'off',
     oninput: e => { objet[cle] = e.target.value; dossier().modifie = new Date().toISOString(); garder(); surChangement(); } };
   const entree = long ? h('textarea', { rows: 3, ...proprietes }, objet[cle] ?? '') : h('input', { type: 'text', ...proprietes });
@@ -65,19 +68,24 @@ function champ(ctx, objet, cle, libelle, { long = false, indication = '', surCha
 }
 
 function choix(ctx, objet, cle, libelle, valeurs, prefixe, surChangement = () => {}) {
+  Collecte.decrire({ type: 'choix', libelle: ctx.t(libelle), valeur: objet[cle] ?? valeurs[0], options: valeurs.map(v => ({ v, l: ctx.t(prefixe + v) })) },
+    v => { objet[cle] = v; garder(); surChangement(); });
   return h('label', { class: 'champ' }, h('span', {}, ctx.t(libelle)),
     h('select', { onchange: e => { objet[cle] = e.target.value; garder(); surChangement(); } },
       ...valeurs.map(v => h('option', { value: v, selected: objet[cle] === v }, ctx.t(prefixe + v)))));
 }
 
-const coche = (ctx, objet, cle, libelle) => h('label', { class: 'bascule' }, ctx.t(libelle),
-  h('input', { type: 'checkbox', checked: !!objet[cle], onchange: e => { objet[cle] = e.target.checked; garder(); } }));
+function coche(ctx, objet, cle, libelle) {
+  Collecte.decrire({ type: 'bascule', libelle: ctx.t(libelle), valeur: !!objet[cle] }, v => { objet[cle] = !!v; garder(); });
+  return h('label', { class: 'bascule' }, ctx.t(libelle),
+    h('input', { type: 'checkbox', checked: !!objet[cle], onchange: e => { objet[cle] = e.target.checked; garder(); } }));
+}
 
 /** Champs du procès-verbal de conseil (par dossier). */
 export function champsConseil(ctx, reconstruire) {
   const c = conseil();
   return [
-    h('p', { class: 'petit sans-marge' }, ctx.t('lg_conseilAide')),
+    (Collecte.decrire({ type: 'note', libelle: ctx.t('lg_conseilAide') }), h('p', { class: 'petit sans-marge' }, ctx.t('lg_conseilAide'))),
     champ(ctx, c, 'besoins', 'lg_besoins', { long: true }),
     champ(ctx, c, 'recommandation', 'lg_recommandation', { long: true }),
     champ(ctx, c, 'raisons', 'lg_raisons', { long: true }),
@@ -87,14 +95,18 @@ export function champsConseil(ctx, reconstruire) {
     coche(ctx, c, 'infoRemise', 'lg_infoRemise'),
     coche(ctx, c, 'consentement', 'lg_consentement'),
     // signatures sur l'écran : reprises sur le procès-verbal du rapport, avec le lieu et la date
-    h('p', { class: 'intertitre' }, ctx.t('lg_signatures')),
-    h('p', { class: 'petit sans-marge' }, ctx.t('lg_signaturesAide')),
+    (Collecte.decrire({ type: 'titre', libelle: ctx.t('lg_signatures') }), h('p', { class: 'intertitre' }, ctx.t('lg_signatures'))),
+    (Collecte.decrire({ type: 'note', libelle: ctx.t('lg_signaturesAide') }), h('p', { class: 'petit sans-marge' }, ctx.t('lg_signaturesAide'))),
     champ(ctx, c, 'lieu', 'lg_lieu'),
-    ...['client', 'conseiller'].map(qui => Signature.zone({ libelle: ctx.t(qui === 'client' ? 'rp_signClient' : 'rp_signConseiller'), effacer: ctx.t('lg_effacer'),
+    ...['client', 'conseiller'].map(qui => (Collecte.decrire({ type: 'signature', libelle: ctx.t(qui === 'client' ? 'rp_signClient' : 'rp_signConseiller'),
+      valeur: c.signatures?.[qui] ? 1 : 0, indication: ctx.t('lg_effacer') }, image => {
+        c.signatures = { ...(c.signatures ?? {}), [qui]: String(image ?? ''), date: new Date().toISOString() };
+        dossier().modifie = new Date().toISOString(); garder();
+      }), Signature.zone({ libelle: ctx.t(qui === 'client' ? 'rp_signClient' : 'rp_signConseiller'), effacer: ctx.t('lg_effacer'),
       valeur: c.signatures?.[qui] ?? '', surChangement: image => {
         c.signatures = { ...(c.signatures ?? {}), [qui]: image, date: new Date().toISOString() };
         dossier().modifie = new Date().toISOString(); garder();
-      } })),
+      } }))),
   ];
 }
 
@@ -102,8 +114,10 @@ export function champsConseil(ctx, reconstruire) {
 export function champsIntermediaire(ctx, reconstruire) {
   const i = intermediaire(), lie = i.genre === 'lie';
   return [
-    h('p', { class: 'petit sans-marge' }, ctx.t('lg_intermediaireAide')),
+    (Collecte.decrire({ type: 'note', libelle: ctx.t('lg_intermediaireAide') }), h('p', { class: 'petit sans-marge' }, ctx.t('lg_intermediaireAide'))),
     // logo du courtier ou de la compagnie : en tête de chaque page du rapport
+    (Collecte.decrire({ type: 'logo', libelle: ctx.t(i.logo ? 'lg_logoChanger' : 'lg_logoChoisir'), valeur: i.logo ? 1 : 0, note: ctx.t('lg_logoAide'), indication: ctx.t('lg_logoRetirer') },
+      image => { i.logo = String(image ?? ''); garder(); reconstruire(); }), null),
     h('div', { class: 'logo-choix' },
       i.logo ? h('img', { src: i.logo, alt: '' }) : h('span', { class: 'petit' }, ctx.t('lg_logoAide')),
       h('label', { class: 'pastille' }, ctx.t(i.logo ? 'lg_logoChanger' : 'lg_logoChoisir'),

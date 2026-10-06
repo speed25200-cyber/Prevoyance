@@ -4,6 +4,7 @@
  * retirer). Le chiffrement lui-même est dans verrou.js ; ce qui est chiffré est décidé dans etat.js.
  */
 
+import * as Collecte from './collecte.js';
 import { h } from './ui.js';
 import * as Verrou from './verrou.js';
 import { deverrouiller, activerVerrou, retirerVerrou, effacerTout } from './etat.js';
@@ -40,9 +41,12 @@ export function demander(t) {
 /** Champs de la carte « Sécurité ». */
 export function champs(ctx, reconstruire) {
   const { t } = ctx;
-  if (!Verrou.disponible()) return [h('p', { class: 'note' }, t('sv_indisponible'))];
+  if (!Verrou.disponible()) { Collecte.decrire({ type: 'note', libelle: t('sv_indisponible') }); return [h('p', { class: 'note' }, t('sv_indisponible'))]; }
   const message = h('p', { class: 'petit', role: 'alert' }, '');
   if (Verrou.actif()) {
+    Collecte.decrire({ type: 'note', libelle: `${t('sv_actif')} ${t('sv_oubli')}` });
+    Collecte.decrire({ type: 'action', libelle: t('sv_verrouiller'), icone: 'verrou' }, () => { Verrou.fermer(); location.reload(); });
+    Collecte.decrire({ type: 'action', libelle: t('sv_retirer'), icone: 'danger', note: t('sv_retirerConfirmer') }, () => { retirerVerrou(); reconstruire(); });
     return [
       h('p', { class: 'note' }, t('sv_actif')), h('p', { class: 'petit sans-marge' }, t('sv_oubli')),
       h('div', { class: 'pastilles' },
@@ -52,6 +56,10 @@ export function champs(ctx, reconstruire) {
     ];
   }
   const code = h('input', { type: 'password', autocomplete: 'new-password' }), encore = h('input', { type: 'password', autocomplete: 'new-password' });
+  Collecte.decrire({ type: 'note', libelle: `${t('sv_aide')} ${t('sv_oubli')}` });
+  Collecte.decrire({ type: 'secret', libelle: t('sv_code', { n: Verrou.LONGUEUR_MIN }) }, v => { code.value = String(v ?? ''); });
+  Collecte.decrire({ type: 'secret', libelle: t('sv_confirmer') }, v => { encore.value = String(v ?? ''); });
+  Collecte.decrire({ type: 'action', libelle: t('sv_activer'), icone: 'verrou' }, () => activer.click());
   const activer = h('button', { type: 'button', class: 'bouton', onclick: async () => {
     if (code.value.length < Verrou.LONGUEUR_MIN) { message.textContent = t('sv_court', { n: Verrou.LONGUEUR_MIN }); return; }
     if (code.value !== encore.value) { message.textContent = t('sv_differents'); return; }

@@ -21,6 +21,25 @@ const LIBELLES = { lppAvoir: 'avoir', lppRenteVieillesse: 'renteVieillesse', lpp
 const pont = () => /** @type {any} */ (window).webkit?.messageHandlers?.scanner ?? null;
 
 /**
+ * Scan lancé depuis le formulaire natif de l'app : l'app photographie ou ouvre le certificat, lit le texte, et les
+ * valeurs reconnues entrent dans les champs du 2e pilier, où le conseiller les vérifie et les corrige.
+ * @param {'certificat'|'fichier'|'photo'} source @param {(cle: string, valeur: number) => void} reprendre @param {() => void} fini
+ */
+export function direct(source, reprendre, fini) {
+  const natif = pont();
+  if (!natif) return;
+  /** @type {any} */ (window).__prevoyanceScan = reponse => {
+    delete /** @type {any} */ (window).__prevoyanceScan;
+    if (!reponse || reponse.erreur) return;
+    const lus = Certificat.extraire(reponse.texte ?? '').champs, duModele = reponse.champs ? Certificat.normaliser(reponse.champs) : {};
+    const champs = { ...lus, ...duModele };
+    for (const [cle, champ] of Object.entries(champs)) reprendre(cle, /** @type {any} */ (champ).valeur);
+    if (Object.keys(champs).length) fini();
+  };
+  natif.postMessage(['certificat', 'fichier', 'photo'].includes(source) ? source : 'certificat');
+}
+
+/**
  * Ouvre le scan pour une personne du dossier.
  * @param {any} ctx @param {(cle: string, valeur: number) => void} reprendre appelé pour chaque champ validé
  */

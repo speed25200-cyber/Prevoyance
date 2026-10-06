@@ -19,7 +19,11 @@ if app.get('noms') != 6:
     echecs.append({'nom': 'six libellés reçus par la barre native', 'detail': str(app)})
 if not app.get('dossiers') or not app.get('textes'):
     echecs.append({'nom': 'accueil : dossiers et libellés reçus de la page', 'detail': str(app)})
-print(f"BILAN {appareil} : {len(resultats) + 3 - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
+if (app.get('rubriques') or 0) < 7 or (app.get('champs') or 0) < 30:
+    echecs.append({'nom': 'dossier natif : rubriques et champs reçus de la page', 'detail': str(app)})
+if not app.get('analyse') or app.get('risques') != 5 or (app.get('ligne') or 0) < 10:
+    echecs.append({'nom': 'analyse native : modèle reçu de la page', 'detail': str(app)})
+print(f"BILAN {appareil} : {len(resultats) + 5 - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
 for r in echecs:
     print(f"error: {appareil} — {r.get('nom')} : {r.get('detail', '')}")
 sys.exit(1 if echecs or not resultats else 0)

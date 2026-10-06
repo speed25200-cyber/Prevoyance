@@ -6,6 +6,7 @@
  */
 
 import { h, $ } from './ui.js';
+import * as Collecte from './collecte.js';
 import * as Scan from './scan.js';
 import * as Conformite from './conformite.js';
 import * as EcranVerrou from './verrou-ecran.js';
@@ -25,6 +26,8 @@ function ecrire(chemin, valeur) {
 
 function champMontant(chemin, cle, { facultatif = false } = {}) {
   const { t, f } = ctx, valeur = lire(chemin);
+  Collecte.decrire({ type: 'montant', libelle: t(cle), valeur: valeur === undefined || valeur === '' ? null : +valeur, facultatif },
+    v => ecrire(chemin, v === null || v === undefined || v === '' ? undefined : Math.max(0, Math.round(+v))));
   const entree = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', value: valeur === undefined || valeur === '' ? '' : f.nombre(valeur),
     oninput: e => { const brut = e.target.value.replace(/[^\d]/g, ''); ecrire(chemin, brut === '' ? undefined : +brut); },
     onblur: e => { const v = lire(chemin); e.target.value = v === undefined ? '' : f.nombre(v); },
@@ -33,11 +36,14 @@ function champMontant(chemin, cle, { facultatif = false } = {}) {
 }
 
 function champTexte(chemin, cle, indication = '') {
+  Collecte.decrire({ type: 'texte', libelle: ctx.t(cle), valeur: lire(chemin) ?? '', indication }, v => { ecrire(chemin, String(v ?? '')); majTitre(); });
   return h('label', { class: 'champ' }, h('span', {}, ctx.t(cle)),
     h('input', { type: 'text', value: lire(chemin) ?? '', placeholder: indication, autocomplete: 'off', oninput: e => { ecrire(chemin, e.target.value); majTitre(); } }));
 }
 
 function champChoix(chemin, cle, valeurs, { structure = false, libelle = v => ctx.t(v === 'h' ? 'homme' : v === 'f' ? 'femme' : v) } = {}) {
+  Collecte.decrire({ type: 'choix', libelle: ctx.t(cle), valeur: lire(chemin) ?? valeurs[0], options: valeurs.map(v => ({ v, l: libelle(v) })) },
+    v => { ecrire(chemin, v); if (structure) construire(); });
   const select = h('select', { onchange: e => { ecrire(chemin, e.target.value); if (structure) construire(); } },
     ...valeurs.map(v => h('option', { value: v, selected: lire(chemin) === v }, libelle(v))));
   return h('label', { class: 'champ' }, h('span', {}, ctx.t(cle)), select);
@@ -51,18 +57,27 @@ function champCommune() {
   const remplir = () => { if (!liste.childElementCount) liste.replaceChildren(...communes().flatMap(c => c.l.map(l => h('option', { value: l })))); };
   const trouver = texte => { const v = texte.trim().toLowerCase(); return v ? communes().find(c => c.l.some(l => l.toLowerCase() === v)) ?? communes().find(c => c.n.toLowerCase() === v) ?? null : null; };
   const note = h('i', {}, d.commune ? '' : t('communeDefaut', { l: ctx.impotsBase?.cantons?.[d.canton]?.lieu ?? '' }));
+  Collecte.decrire({ type: 'texte', libelle: t('commune'), valeur: d.communeTexte ?? '', indication: t('communeIndication'), note: note.textContent ?? '' },
+    v => { const c = trouver(String(v ?? '')); d.communeTexte = String(v ?? ''); ecrire('commune', c ? c.b : null); });
   return h('label', { class: 'champ' }, h('span', {}, t('commune'), note), liste,
     h('input', { type: 'text', list: id, value: d.communeTexte ?? '', placeholder: t('communeIndication'), autocomplete: 'off', onfocus: remplir,
       oninput: e => { const c = trouver(e.target.value); d.communeTexte = e.target.value; note.textContent = c ? '' : t('communeDefaut', { l: ctx.impotsBase?.cantons?.[d.canton]?.lieu ?? '' }); ecrire('commune', c ? c.b : null); } }));
 }
 
-const champDate = (chemin, cle) => h('label', { class: 'champ' }, h('span', {}, ctx.t(cle)),
-  h('input', { type: 'date', value: lire(chemin) || '', min: '1940-01-01', max: aujourdhui(), onchange: e => e.target.value && ecrire(chemin, e.target.value) }));
+function champDate(chemin, cle) {
+  Collecte.decrire({ type: 'date', libelle: ctx.t(cle), valeur: lire(chemin) || '' }, v => { if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) ecrire(chemin, v); });
+  return h('label', { class: 'champ' }, h('span', {}, ctx.t(cle)),
+    h('input', { type: 'date', value: lire(chemin) || '', min: '1940-01-01', max: aujourdhui(), onchange: e => e.target.value && ecrire(chemin, e.target.value) }));
+}
 
-const bascule = (chemin, cle, defaut, { structure = false } = {}) => h('label', { class: 'bascule' }, ctx.t(cle),
-  h('input', { type: 'checkbox', checked: lire(chemin) ?? defaut, onchange: e => { ecrire(chemin, e.target.checked); if (structure) construire(); } }));
+function bascule(chemin, cle, defaut, { structure = false } = {}) {
+  Collecte.decrire({ type: 'bascule', libelle: ctx.t(cle), valeur: !!(lire(chemin) ?? defaut) }, v => { ecrire(chemin, !!v); if (structure) construire(); });
+  return h('label', { class: 'bascule' }, ctx.t(cle),
+    h('input', { type: 'checkbox', checked: lire(chemin) ?? defaut, onchange: e => { ecrire(chemin, e.target.checked); if (structure) construire(); } }));
+}
 
 function compteur(cle, valeur, min, max, surChangement) {
+  Collecte.decrire({ type: 'compteur', libelle: ctx.t(cle), valeur, min, max }, v => { const n = Math.min(max, Math.max(min, Math.round(+v))); if (n !== valeur) surChangement(n); });
   const pas = delta => () => { const v = Math.min(max, Math.max(min, valeur + delta)); if (v !== valeur) surChangement(v); };
   return h('div', { class: 'champ' }, h('span', {}, ctx.t(cle)),
     h('div', { class: 'compteur' }, h('button', { type: 'button', 'aria-label': '−', onclick: pas(-1) }, '−'), h('b', {}, String(valeur)),
@@ -70,6 +85,9 @@ function compteur(cle, valeur, min, max, surChangement) {
 }
 
 export function curseur(chemin, cle, min, max, pas, afficher, { lecture = lire, ecriture = ecrire } = {}) {
+  const pasN = Math.round((max - min) / pas);
+  Collecte.decrire({ type: 'curseur', libelle: ctx.t(cle), valeur: +lecture(chemin), min, max, pas,
+    etiquettes: Array.from({ length: pasN + 1 }, (_, i) => afficher(Math.round((min + i * pas) * 1000) / 1000)) }, v => ecriture(chemin, +v));
   const sortie = h('output', {}, afficher(lecture(chemin)));
   const regler = el => el.style.setProperty('--part', `${(+el.value - min) / (max - min) * 100}%`);
   const entree = h('input', { type: 'range', min, max, step: pas, value: lecture(chemin),
@@ -78,13 +96,23 @@ export function curseur(chemin, cle, min, max, pas, afficher, { lecture = lire, 
   return h('label', { class: 'champ curseur' }, h('span', {}, ctx.t(cle), sortie), entree);
 }
 
-const bloc = (cle, ouvert, ...champs) => h('details', { class: 'bloc', open: ouvert, 'data-bloc': cle }, h('summary', {}, ctx.t(cle)), h('div', { class: 'champs' }, ...champs));
+/** Rubriques décrites pour l'app pendant la construction (voir collecte.js). */
+let rubriquesDecrites = [];
+/** Appelé quand le formulaire vient d'être reconstruit : l'app redessine le dossier. */
+let surSchema = /** @type {(schema: any) => void} */ (() => {});
+export const quandSchema = f => { surSchema = f; };
+export const agir = (id, valeur) => Collecte.agir(id, valeur);
+
+function bloc(cle, ouvert, ...champs) {
+  rubriquesDecrites.push({ cle, titre: ctx.t(cle), champs: Collecte.prendre() });
+  return h('details', { class: 'bloc', open: ouvert, 'data-bloc': cle }, h('summary', {}, ctx.t(cle)), h('div', { class: 'champs' }, ...champs));
+}
 
 /** Champs d'une personne (client ou conjoint) : identité, AVS, 2e pilier, 3e pilier. */
 function champsPersonne(prefixe) {
   const p = lire(prefixe) ?? {}, independant = p.statut === 'independant', c = suite => `${prefixe}.${suite}`;
   return {
-    identite: [
+    identite: () => [
       h('div', { class: 'rangee' }, champDate(c('dateNaissance'), 'naissance'), champChoix(c('sexe'), 'sexe', ['h', 'f'])),
       champChoix(c('statut'), 'statut', ['salarie', 'independant', 'sans'], { structure: true }),
       champMontant(c('revenu'), 'revenu'),
@@ -92,11 +120,14 @@ function champsPersonne(prefixe) {
         compteur('anneesManquantes', +p.anneesManquantes || 0, 0, 20, v => { ecrire(c('anneesManquantes'), v); construire(); }),
         champMontant(c('ramd'), 'ramd', { facultatif: true })),
     ],
-    lpp: [
+    lpp: () => [
       ...(independant ? [bascule(c('lppAffilie'), 'affilie', false, { structure: true })] : []),
       ...(!independant || p.lppAffilie ? [
+        (Collecte.decrire({ type: 'action', libelle: ctx.t('sc_bouton'), icone: 'scan', options: [{ v: 'certificat', l: ctx.t('sc_photographier') },
+          { v: 'fichier', l: ctx.t('sc_fichier') }, { v: 'photo', l: ctx.t('sc_photo') }] },
+          source => Scan.direct(source, (cle, valeur) => ecrire(c(cle), valeur), construire)),
         h('button', { type: 'button', class: 'pastille scan-bouton', onclick: () => Scan.ouvrir(ctx, (cle, valeur) => { ecrire(c(cle), valeur); construire(); }) },
-          h('span', { class: 'scan-icone', 'aria-hidden': 'true' }), ctx.t('sc_bouton')),
+          h('span', { class: 'scan-icone', 'aria-hidden': 'true' }), ctx.t('sc_bouton'))),
         champMontant(c('lppAvoir'), 'avoir', { facultatif: true }),
         h('div', { class: 'rangee' }, champMontant(c('lppRenteVieillesse'), 'renteVieillesse', { facultatif: true }),
           champMontant(c('lppRenteInvalidite'), 'renteInvalidite', { facultatif: true })),
@@ -107,13 +138,19 @@ function champsPersonne(prefixe) {
       bascule(c('laa'), 'laa', !independant && p.statut !== 'sans'),
       bascule(c('ijm'), 'ijm', false),
     ],
-    pilier3: [
+    pilier3: () => [
       h('div', { class: 'rangee' }, champMontant(c('avoir3a'), 'avoir3a', { facultatif: true }), champMontant(c('versement3a'), 'versement3a', { facultatif: true })),
       h('div', { class: 'rangee' }, champMontant(c('avoir3b'), 'avoir3b', { facultatif: true }), champMontant(c('fortune'), 'fortune', { facultatif: true })),
       h('div', { class: 'rangee' }, champMontant(c('rentePrivee'), 'renteInvaliditePrivee', { facultatif: true }),
         champMontant(c('capitalDecesPrive'), 'capitalDecesPrive', { facultatif: true })),
     ],
   };
+}
+
+/** Sous-titre à l'intérieur d'une rubrique. */
+function intertitre(texte) {
+  Collecte.decrire({ type: 'titre', libelle: texte });
+  return h('p', { class: 'intertitre' }, texte);
 }
 
 function majTitre() {
@@ -162,23 +199,31 @@ export function construire() {
   const { t } = ctx, d = dossier();
   const ouverts = Object.fromEntries([...document.querySelectorAll('#saisie .bloc[data-bloc]')].map(b => [/** @type {HTMLElement} */ (b).dataset.bloc, /** @type {HTMLDetailsElement} */ (b).open]));
   const ouvert = (cle, defaut) => ouverts[cle] ?? defaut;
+  // les trois groupes de champs d'une personne sont créés au moment où leur rubrique les demande
   const client = champsPersonne('personne'), conjoint = d.avecConjoint ? champsPersonne('conjoint') : null;
+  Collecte.commencer();
+  rubriquesDecrites = [];
+  // les champs se décrivent dans l'ordre où ils sont créés : ceux de chaque rubrique sont créés juste avant elle
+  const portefeuilleBloc = portefeuille();
+  Collecte.prendre();
   const blocs = [
-    portefeuille(),
+    portefeuilleBloc,
     bloc('client', ouvert('client', true), champTexte('nom', 'nomClient', t('nomClientIndication')),
+      (Collecte.decrire({ type: 'choix', libelle: t('canton'), valeur: d.canton, options: CANTONS.map(v => ({ v, l: `${v} · ${t('ct_' + v)}` })) },
+        v => { d.commune = null; d.communeTexte = ''; ecrire('canton', v); construire(); }),
       h('label', { class: 'champ' }, h('span', {}, t('canton')), h('select', { onchange: e => { d.commune = null; d.communeTexte = ''; ecrire('canton', e.target.value); construire(); } },
-        ...CANTONS.map(v => h('option', { value: v, selected: d.canton === v }, `${v} · ${t('ct_' + v)}`)))),
+        ...CANTONS.map(v => h('option', { value: v, selected: d.canton === v }, `${v} · ${t('ct_' + v)}`))))),
       h('div', { class: 'rangee' }, champCommune(), champChoix('confession', 'confession', ['sans', 'reformee', 'catholique'], { libelle: v => t('cf_' + v) })),
-      ...client.identite),
+      ...client.identite()),
     bloc('menage', ouvert('menage', true),
       champChoix('etatCivil', 'etatCivil', ['celibataire', 'marie', 'partenariat', 'concubin', 'divorce', 'veuf']),
       compteur('enfants', d.enfants.length, 0, 6, n => { d.enfants = n > d.enfants.length ? [...d.enfants, 5] : d.enfants.slice(0, n); ctx.apresChangement(); construire(); }),
       ...d.enfants.map((_, i) => curseur(`enfants.${i}`, 'ageEnfant', 0, 24, 1, v => `${v} ${t('ans')}`)),
       bascule('avecConjoint', 'avecConjoint', false, { structure: true })),
-    ...(conjoint ? [bloc('conjoint', ouvert('conjoint', true), ...conjoint.identite, h('p', { class: 'intertitre' }, t('lpp')), ...conjoint.lpp,
-      h('p', { class: 'intertitre' }, t('pilier3')), ...conjoint.pilier3)] : []),
-    bloc('lpp', ouvert('lpp', true), ...client.lpp),
-    bloc('pilier3', ouvert('pilier3', true), ...client.pilier3),
+    ...(conjoint ? [bloc('conjoint', ouvert('conjoint', true), ...conjoint.identite(), intertitre(t('lpp')), ...conjoint.lpp(),
+      intertitre(t('pilier3')), ...conjoint.pilier3())] : []),
+    bloc('lpp', ouvert('lpp', true), ...client.lpp()),
+    bloc('pilier3', ouvert('pilier3', true), ...client.pilier3()),
     bloc('logement', ouvert('logement', true), h('div', { class: 'rangee' }, champMontant('bien.valeur', 'valeurBien', { facultatif: true }),
       champMontant('bien.dette', 'dette', { facultatif: true }))),
     bloc('besoins', ouvert('besoins', true),
@@ -221,6 +266,7 @@ export function construire() {
     h('div', { class: 'ecran-titre' }, h('div', {}, h('h1', {}, t('dossier')), h('p', {}, t('dossierAide')))),
     blocs[0], liste, ...rubriques,
     h('button', { type: 'button', class: 'bouton voir-analyse', onclick: () => /** @type {HTMLElement|null} */ (document.querySelector('#onglets [data-vue=analyse]'))?.click() }, t('voirAnalyse')));
+  if (Collecte.active()) surSchema({ nom: d.nom || t('sansNom'), rubriques: rubriquesDecrites });
 }
 
 /** @param {typeof ctx} contexte */
