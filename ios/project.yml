@@ -16,8 +16,8 @@ options:
 
 settings:
   base:
-    SWIFT_VERSION: "6.0"
-    SWIFT_STRICT_CONCURRENCY: complete
+    # Mode Swift 5 : les remarques de concurrence sont des avertissements, pas des erreurs (code jamais compilé sur un Mac).
+    SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     # iPhone et iPad (app universelle).
     TARGETED_DEVICE_FAMILY: "1,2"

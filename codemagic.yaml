@@ -69,7 +69,13 @@ workflows:
         script: agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0) + 1))
       - name: IPA
         working_directory: ios
-        script: xcode-project build-ipa --project Prevoyance.xcodeproj --scheme Prevoyance
+        script: |
+          # en cas d'échec, les erreurs du compilateur sont affichées : sans cela le journal ne dit que « Failed to archive »
+          xcode-project build-ipa --project Prevoyance.xcodeproj --scheme Prevoyance || {
+            echo "==== erreurs de compilation ===="
+            grep -h -E "error:|error :|BUILD FAILED|ARCHIVE FAILED|Provisioning profile|entitlement" /tmp/xcodebuild_logs/*.log | sort -u | head -80
+            exit 65
+          }
     artifacts:
       - ios/build/ios/ipa/*.ipa
     publishing:
