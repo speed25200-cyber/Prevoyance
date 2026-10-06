@@ -63,7 +63,7 @@ export function economieEstimee(revenu, deduction, marie = false) {
 function profil(regles, p, { quand, hyp, marie, enfants }) {
   const age = ageA(p.dateNaissance, quand);
   const ref = AVS.ageReference(regles, p.sexe, anneeNaissance(p.dateNaissance));
-  const ageRetraite = hyp.ageRetraite;
+  const ageRetraite = Math.max(age, hyp.ageRetraite ?? ref.ans);
   const revenu = Math.max(0, p.revenu || 0);
   // années avec un enfant de moins de 16 ans (bonifications pour tâches éducatives), estimées d'après l'aîné
   const agesEnfants = enfants.map(e => ageA(e.dateNaissance, quand)).filter(a => a >= 0);
@@ -117,7 +117,8 @@ export function analyser(dossier, regles, contexte = {}) {
     .filter(e => e.age < e.fin).map(e => ({ ...e, mineur: e.age < 18 }));
   const nombreEnfants = aCharge.length;
   const P = profil(regles, dossier.personne, { quand, hyp, marie, enfants });
-  const C = dossier.conjoint ? profil(regles, dossier.conjoint, { quand, hyp, marie, enfants }) : null;
+  // le conjoint part à son propre âge de référence : l'âge de départ choisi ne vaut que pour la personne analysée
+  const C = dossier.conjoint ? profil(regles, dossier.conjoint, { quand, hyp: { ...hyp, ageRetraite: undefined }, marie, enfants }) : null;
   const alertes = [];
   const alerte = (cle, gravite, valeurs = {}) => alertes.push({ cle, gravite, valeurs });
 
@@ -126,12 +127,15 @@ export function analyser(dossier, regles, contexte = {}) {
   // Avant, il n'y a pas de rente : `pontAVS` compte les années à financer soi-même.
   const refAVS = P.ref.ans + P.ref.mois / 12;
   // Femmes nées de 1961 à 1969 (AVS 21) : anticipation dès 62 ans à taux réduits, ou supplément de rente sans anticipation.
-  const transitoire = AVS.generationTransitoire(regles, P.sexe, P.naissance, P.ramd);
+  const transitoire = AVS.generationTransitoire(regles, P.sexe, P.naissance, P.ramd, P.echelle);
   const anticipationMax = transitoire?.anticipationMax ?? regles.avs.anticipationMaxAnnees;
   const ecartAVS = hyp.flexibilisationAVS ?? borne(P.ageRetraite - refAVS, -anticipationMax, 5);
-  const flex = transitoire && ecartAVS < 0 ? 1 - transitoire.reductions[Math.min(3, Math.ceil(-ecartAVS))] : AVS.facteurFlexibilisation(regles, ecartAVS);
+  // taux réduits de la génération transitoire : au mois près entre deux années entières
+  const reductionTransitoire = annees => { const bas = Math.floor(annees), haut = Math.min(3, bas + 1), r = /** @type {any} */ (transitoire).reductions;
+    return r[Math.min(3, bas)] + (r[haut] - r[Math.min(3, bas)]) * (annees - bas); };
+  const flex = transitoire && ecartAVS < 0 ? 1 - reductionTransitoire(Math.min(3, -ecartAVS)) : AVS.facteurFlexibilisation(regles, ecartAVS);
   const supplementAVS = transitoire && ecartAVS >= 0 ? transitoire.supplementMensuel * 12 : 0;
-  const debutAVS = Math.max(P.ageRetraite, Math.ceil(refAVS - anticipationMax));
+  const debutAVS = Math.max(P.age, P.ageRetraite, Math.ceil(refAVS - anticipationMax));
   const pontAVS = Math.max(0, debutAVS - P.ageRetraite);
   let avsMensuelle = AVS.renteVieillesse(regles, P.ramd, P.echelle);
   let avsConjointMensuelle = C ? AVS.renteVieillesse(regles, C.ramd, C.echelle) : 0;
@@ -156,7 +160,10 @@ export function analyser(dossier, regles, contexte = {}) {
     { cle: 'pilier3a', pilier: 3, montant: enRente(capital3a - impot3a), capital: capital3a, impotRetrait: impot3a },
     { cle: 'pilier3b', pilier: 3, montant: enRente(capital3b), capital: capital3b },
     { cle: 'fortune', pilier: 3, montant: enRente(P.fortuneRetraite), capital: P.fortuneRetraite },
-  ], { annees: dureeRente, escompte: hyp.escompte });
+  ], { annees: dureeRente, escompte: hyp.escompte,
+       // années de pont : l'AVS comptée ci-dessus n'est pas encore versée, il faut la financer soi-même
+       capitalBesoin: arrondi(valeurActuelleRente(avsAnnuelle + supplementAVS, pontAVS, hyp.escompte), 100) });
+  retraite.capitalPont = retraite.capitalBesoin;
   // capital à constituer d'ici la retraite : ramené à aujourd'hui, et en épargne annuelle
   const actualisation = Math.pow(1 + hyp.escompte, -P.anneesRestantes);
   retraite.capitalAujourdhui = arrondi(retraite.capital * actualisation, 100);
@@ -236,9 +243,10 @@ export function analyser(dossier, regles, contexte = {}) {
   // - LPP (art. 19) : enfant à charge, ou 45 ans révolus ; sinon une allocation unique de trois rentes annuelles ;
   // - LAA (art. 29) : enfant ayant droit à une rente ; la veuve aussi dès 45 ans ou si elle a des enfants adultes.
   const sexeSurvivant = dossier.conjoint?.sexe ?? (dossier.personne.sexe === 'h' ? 'f' : 'h');
-  const survivantA45 = C ? C.age >= 45 : false;
+  // conjoint non saisi : on le suppose du même âge que la personne
+  const survivantA45 = (C ? C.age : P.age) >= 45;
   const conjointAyantDroitAVS = marie && (sexeSurvivant === 'f' ? enfants.length > 0 || survivantA45 : aCharge.some(e => e.mineur));
-  const rentierLPP = marie && (nombreEnfants > 0 || (C ? survivantA45 : true));
+  const rentierLPP = marie && (nombreEnfants > 0 || survivantA45);
   const conjointAyantDroitLPP = rentierLPP || (etatCivil === 'concubin' && !!dossier.personne.lpp?.renteConjoint);
   const allocationLPP = marie && !rentierLPP ? 3 * P.lpp.renteConjoint : 0;
   const conjointAyantDroitLAA = marie && (nombreEnfants > 0 || (sexeSurvivant === 'f' && (enfants.length > 0 || survivantA45)));
@@ -249,7 +257,7 @@ export function analyser(dossier, regles, contexte = {}) {
   const besoinDeces = aQuelquun ? P.revenu * besoins.deces : 0;
   const plusJeune = nombreEnfants ? Math.min(...aCharge.map(e => e.age)) : null;
   const anneesEnfants = plusJeune === null ? 0 : Math.max(...aCharge.map(e => e.fin - e.age));
-  const anneesConjoint = (marie || etatCivil === 'concubin') && C ? Math.max(0, C.ageRetraite - C.age) : 0;
+  const anneesConjoint = marie || etatCivil === 'concubin' ? (C ? Math.max(0, C.ref.ans - C.age) : anneesJusquaRetraite) : 0;
   const anneesDeces = Math.max(anneesEnfants, Math.min(anneesConjoint, anneesJusquaRetraite));
   const capitauxDeces = P.lpp.capitalDeces + allocationLPP + somme(P.contrats.map(c => (c.capitalDeces ?? 0) + (c.forme === 'assurance' ? 0 : c.avoir ?? 0)))
     + (dossier.personne.fortune ?? 0);
@@ -316,7 +324,7 @@ export function analyser(dossier, regles, contexte = {}) {
                               economieImpot: Math.max(0, economie(potentiel3a + retro3a) - economie(potentiel3a)) },
                 capitalSupplementaire: arrondi(valeurFuture(0, potentiel3a, P.anneesRestantes, hyp.rendement3a), 100) },
     rachatLPP: { possible: P.lpp.rachatPossible, economieImpot: economie(P.lpp.rachatPossible),
-                 renteSupplementaire: arrondi(P.lpp.rachatPossible * regles.lpp.tauxConversion) },
+                 renteSupplementaire: arrondi(P.lpp.rachatPossible * (P.lpp.tauxConversion ?? regles.lpp.tauxConversion)) },
     avs: { anneesManquantes: P.manquantes, perteMensuelle: arrondi(AVS.renteComplete(regles, P.ramd) - avsMensuelleBrute(regles, P)) },
   };
 
@@ -338,7 +346,7 @@ export function analyser(dossier, regles, contexte = {}) {
   if (invaliditeMaladie.lacune > invaliditeAccident.lacune + 1000) alerte('ecartMaladieAccident', 'attention',
     { ecart: invaliditeMaladie.lacune - invaliditeAccident.lacune });
   if (P.sexe === 'f' && P.ref.mois > 0) alerte('generationTransitoire', 'info', { ans: P.ref.ans, mois: P.ref.mois });
-  // femmes nées de 1961 à 1969 : supplément de rente ou taux d'anticipation réduits (AVS 21), non chiffrés ici
+  // femmes nées de 1961 à 1969 (AVS 21) : supplément de rente ou taux d'anticipation réduits, chiffrés plus haut
   if (transitoire) alerte('supplementTransitoire', 'info', { supplement: transitoire.supplementMensuel, anticipe: ecartAVS < 0 ? 1 : 0 });
   if (pontAVS > 0) alerte('pontAVS', 'attention', { annees: pontAVS, age: debutAVS });
   if (P.anneesRestantes <= 10 && P.lpp.affilie) alerte('choixRenteCapital', 'info', { annees: P.anneesRestantes });
@@ -379,7 +387,8 @@ function chronologie(regles, { P, hyp, avsAnnuelle, debutAVS, retraite, invalidi
     const depuis = a - P.age;
     // les deux premières années : salaire ou indemnités journalières tant qu'elles durent, puis la rente (dès 12 mois)
     const parcours = r => {
-      if (!actif) return retraite.total;
+      // les rentes d'invalidité courent jusqu'à l'âge de référence, quel que soit l'âge de départ prévu ; ensuite, la retraite
+      if (a >= P.ref.ans) return retraite.total - (a < debutAVS ? avsAnnuelle : 0);
       if (depuis >= 2) return r.total;
       const part = borne((r.attente.jours - 365 * depuis) / 365, 0, 1);
       return r.attente.montant * part + (depuis >= 1 ? r.total * (1 - part) : 0);

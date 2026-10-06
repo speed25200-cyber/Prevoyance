@@ -70,7 +70,7 @@ export function afficher(ctx) {
     pied(2));
 
   // ---- 3. retraite
-  const ages = Scenarios.agesDeDepart(dossierMoteur, regles, [62, 63, 64, 65, 66, 67, 68]);
+  const ages = Scenarios.agesDeDepart(dossierMoteur, regles, [62, 63, 64, 65, 66, 67, 68], { impots });
   const retraite = page('', entete(t('retraite')), bloc(a.risques.retraite),
     h('h3', {}, t('sc_age')),
     colonnes(ages.map(x => ({ libelle: String(x.age), besoin: x.besoin, actif: x.age === P.ageRetraite, note: x.lacune > 0 ? '− ' + f.court(x.lacune) : '✓',
@@ -138,6 +138,9 @@ export function afficher(ctx) {
       ligne(t('rp_escompte'), `${(hyp.escompte * 100).toFixed(1)} %`), ligne(t('rp_finRente'), `${hyp.ageFinRente} ${t('ans')}`),
       ligne(t('rp_fiscal'), impots && a.canton ? `${impots.cantons[a.canton].lieu} — ${impots.source} (${impots.releveLe})` : t('rp_fiscalMoyen')),
       ligne(t('rp_moteur'), `v${VERSION}`)),
+    // ce que le calcul suppose, pour que le client et le conseiller sachent ce qui reste à vérifier
+    h('h3', {}, t('rp_suppose')),
+    h('ul', { class: 'r-sources' }, ...['rp_s_enfants', 'rp_s_mariage', 'rp_s_depart', 'rp_s_capitaux', 'rp_s_caisses'].map(cle => h('li', {}, t(cle)))),
     h('h3', {}, t('rp_sources')),
     h('ul', { class: 'r-sources' }, ...Object.values(regles.sources).map(s => h('li', {}, String(s)))),
     pied(avecDeces ? 8 : 7));

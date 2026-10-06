@@ -15,23 +15,25 @@ import { anneeNaissance, arrondi, renteDepuisCapital, valeurFuture } from './uti
  * LPP : l'avoir s'arrête plus tôt ou continue de croître ; le taux de conversion baisse d'environ 0,2 point par
  * année d'anticipation et monte d'autant en cas d'ajournement (usage des caisses ; le règlement fait foi).
  * @param {import('./analyse.js').Dossier} dossier @param {any} regles @param {number[]} [ages]
+ * @param {{impots?: any}} [contexte] données fiscales (3a compté après l'impôt sur son retrait, comme dans l'analyse)
  */
-export function agesDeDepart(dossier, regles, ages = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70]) {
+export function agesDeDepart(dossier, regles, ages = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70], contexte = {}) {
   // âge de référence de la personne (femmes nées de 1961 à 1963 : entre 64 et 65 ans)
   const ref = AVS.ageReference(regles, dossier.personne.sexe, anneeNaissance(dossier.personne.dateNaissance));
   const reference = ref.ans + ref.mois / 12;
   return ages.map(age => {
-    const ecart = age - ref.ans;
+    // écart en années entières par rapport à l'âge de référence (64 ans et 6 mois compte comme 65)
+    const ecart = age - Math.round(reference);
     // l'analyse applique elle-même l'effet de l'âge de départ : réduction ou supplément AVS, avoir et conversion LPP
     const hypotheses = { ...(dossier.hypotheses ?? {}), ageRetraite: age };
     delete hypotheses.flexibilisationAVS;
-    const a = analyser({ ...dossier, hypotheses }, regles);
+    const a = analyser({ ...dossier, hypotheses }, regles, contexte);
     const r = a.risques.retraite;
     const de = cle => r.sources.filter(s => s.cle === cle).reduce((s, x) => s + x.montant, 0);
     return { age, ecart, avs: de('avs'), lpp: de('lpp'), pilier3: r.sources.filter(s => s.pilier === 3).reduce((s, x) => s + x.montant, 0),
              total: r.total, besoin: r.besoin, lacune: r.lacune, couverture: r.couverture,
              // avant 63 ans, l'AVS ne peut pas encore être touchée : il faut un pont
-             pontAVS: a.personne.pontAVS };
+             pontAVS: a.personne.pontAVS, debutAVS: a.personne.debutAVS };
   });
 }
 

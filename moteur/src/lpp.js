@@ -80,9 +80,16 @@ export function prestationsLPP(regles, p) {
   // certificat, données pour l'âge de référence, sont ajustées dans la même proportion : le niveau du plan est conservé.
   const conversionReference = c.tauxConversion ?? regles.lpp.tauxConversion;
   const conversion = Math.max(0, conversionReference + (regles.lpp.conversionParAnneeEcart ?? 0.002) * ecart);
-  const rapportAvoir = ecart !== 0 && aReference.avoirFinal > 0 ? projection.avoirFinal / aReference.avoirFinal : 1;
+  // Rente du certificat sans avoir saisi : l'avoir à l'âge de référence est celui que la rente suppose (rente / taux).
+  // Partir plus tôt lui retire les bonifications et les intérêts des années manquantes ; partir plus tard lui ajoute des intérêts.
+  const interet = p.interet ?? regles.lpp.tauxInteretMinimal;
+  const implicite = c.avoir === undefined && c.renteVieillesse !== undefined && conversionReference > 0 ? c.renteVieillesse / conversionReference : 0;
+  const rapportAvoir = ecart === 0 ? 1
+    : implicite > 0 ? Math.max(0, ecart < 0 ? (implicite - (aReference.avoirFinal - projection.avoirFinal)) / Math.pow(1 + interet, -ecart) : implicite * Math.pow(1 + interet, ecart)) / implicite
+    : aReference.avoirFinal > 0 ? projection.avoirFinal / aReference.avoirFinal : 1;
   const rapportConversion = ecart !== 0 && conversionReference > 0 ? conversion / conversionReference : 1;
-  const avoirRetraite = c.capitalRetraite !== undefined ? arrondi(c.capitalRetraite * rapportAvoir) : projection.avoirFinal;
+  const avoirRetraite = c.capitalRetraite !== undefined ? arrondi(c.capitalRetraite * rapportAvoir)
+    : implicite > 0 ? arrondi(implicite * rapportAvoir) : projection.avoirFinal;
   const renteVieillesse = c.renteVieillesse !== undefined ? arrondi(c.renteVieillesse * rapportAvoir * rapportConversion) : arrondi(avoirRetraite * conversion);
   // risque, minimum légal (LPP art. 24) : avoir acquis + bonifications futures sans intérêts jusqu'à l'âge de référence,
   // sur le salaire coordonné actuel, x taux de conversion ; conjoint 60 %, enfant 20 %. Indépendant de l'âge de départ choisi.
@@ -90,7 +97,7 @@ export function prestationsLPP(regles, p) {
   const renteInvalidite = c.renteInvalidite ?? arrondi(risque.sansInteret * regles.lpp.tauxConversion);
   const estime = c.renteVieillesse === undefined || c.renteInvalidite === undefined;
   return {
-    affilie: true, estime, salaireCoordonne: coordonne,
+    affilie: true, estime, salaireCoordonne: coordonne, tauxConversion: conversion,
     avoirActuel: c.avoir ?? 0, avoirRetraite, renteVieillesse, capitalRetraite: avoirRetraite,
     renteInvalidite,
     renteConjoint: c.renteConjoint ?? arrondi(renteInvalidite * regles.lpp.survivants.conjoint),

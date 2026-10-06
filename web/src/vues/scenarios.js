@@ -24,7 +24,7 @@ export function afficher(ctx) {
   const blocs = [];
 
   // ---- âge de départ
-  const ages = Scenarios.agesDeDepart(dossierMoteur, regles);
+  const ages = Scenarios.agesDeDepart(dossierMoteur, regles, undefined, { impots });
   const graphe = colonnes(ages.map(x => ({
     libelle: String(x.age), besoin: x.besoin, actif: x.age === P.ageRetraite, note: x.lacune > 0 ? '− ' + f.court(x.lacune) : '✓',
     couches: [{ valeur: x.avs, couleur: 'var(--p1)' }, { valeur: x.lpp, couleur: 'var(--p2)' }, { valeur: x.pilier3, couleur: 'var(--p3)' }],
@@ -36,7 +36,7 @@ export function afficher(ctx) {
       chiffre(t('sc_ecartReference'), (choisi.total - reference.total >= 0 ? '+ ' : '− ') + f.chf(Math.abs(choisi.total - reference.total)), t('parAn'),
         choisi.total < reference.total ? 'moins' : 'plus'),
       chiffre(t('lacune'), choisi.lacune > 0 ? f.chf(choisi.lacune / 12) : t('aucuneLacune'), choisi.lacune > 0 ? t('parMois') : '', choisi.lacune > 0 ? 'moins' : 'plus')),
-    choisi.pontAVS > 0 ? h('p', { class: 'remarque' }, t('sc_pont', { n: choisi.pontAVS })) : null,
+    choisi.pontAVS > 0 ? h('p', { class: 'remarque' }, t('sc_pont', { n: choisi.pontAVS, a: choisi.debutAVS })) : null,
     h('p', { class: 'petit' }, t('sc_age_note'))));
 
   // ---- rente ou capital

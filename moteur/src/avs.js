@@ -69,15 +69,17 @@ export function ageReference(regles, sexe, anneeNaissance) {
  * Génération transitoire d'AVS 21 (femmes nées de 1961 à 1969) : supplément de rente mensuel si la rente n'est pas
  * anticipée, ou taux de réduction plus bas en cas d'anticipation (possible dès 62 ans). Les deux dépendent du revenu
  * annuel moyen. `null` pour toute autre personne.
- * @param {any} regles @param {'h'|'f'} sexe @param {number} anneeNaissance @param {number} ramd
+ * Le supplément suit l'échelle de rente : il est réduit quand la durée de cotisation est incomplète.
+ * @param {any} regles @param {'h'|'f'} sexe @param {number} anneeNaissance @param {number} ramd @param {number} [echelleRente]
  * @returns {{classe: number, supplementMensuel: number, reductions: number[], anticipationMax: number}|null}
  */
-export function generationTransitoire(regles, sexe, anneeNaissance, ramd) {
+export function generationTransitoire(regles, sexe, anneeNaissance, ramd, echelleRente = 44) {
   const g = regles.avs.generationTransitoire;
   if (!g || sexe !== 'f' || anneeNaissance < g.de || anneeNaissance > g.a) return null;
   const minimale = regles.avs.renteMinMensuelle * 12;
   const classe = ramd <= minimale * g.seuilsRamd[0] ? 0 : ramd <= minimale * g.seuilsRamd[1] ? 1 : 2;
-  return { classe, supplementMensuel: arrondi(g.supplement[classe] * (g.echelonnement[String(anneeNaissance)] ?? 0)),
+  const partEchelle = Math.min(1, echelleRente / regles.avs.dureeCotisationComplete);
+  return { classe, supplementMensuel: arrondi(g.supplement[classe] * (g.echelonnement[String(anneeNaissance)] ?? 0) * partEchelle),
            reductions: [0, g.anticipation['1'][classe], g.anticipation['2'][classe], g.anticipation['3'][classe]], anticipationMax: g.anticipationMaxAnnees };
 }
 
@@ -87,7 +89,12 @@ export function generationTransitoire(regles, sexe, anneeNaissance, ramd) {
  */
 export function facteurFlexibilisation(regles, annees) {
   if (annees < 0) return 1 - regles.avs.reductionAnticipationParAn * Math.min(-annees, regles.avs.anticipationMaxAnnees);
-  if (annees > 0) return 1 + (regles.avs.supplementsAjournement[String(Math.min(5, Math.floor(annees)))] ?? 0);
+  // ajournement : un an au moins ; entre deux années entières, le supplément progresse mois par mois
+  if (annees >= 1) {
+    const s = regles.avs.supplementsAjournement, a = Math.min(5, annees), bas = Math.floor(a), haut = Math.min(5, bas + 1);
+    const de = s[String(bas)] ?? 0, vers = s[String(haut)] ?? de;
+    return 1 + de + (vers - de) * (a - bas);
+  }
   return 1;
 }
 

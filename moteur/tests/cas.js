@@ -332,6 +332,39 @@ export function casScenarios(egal, { r26, r27, i26, c26 }) {
     egal('Conseil : le texte du décès ne dit jamais « 0 par mois » quand un capital est proposé',
       conseil.points.filter(p => p.cle === 'cs_deces').every(p => p.v.mensuelChf > 0), true);
   }
+  {
+    // relecture du 06.10.2026
+    const base = { dateNaissance: '1986-01-01', sexe: 'h', statut: 'salarie', revenu: 90000, avs: { ramd: 90720 }, lpp: { avoir: 100000 } };
+    const a = (age, personne = base) => analyser({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire', personne, hypotheses: { ageRetraite: age } }, r26);
+    // pont : départ à 60 ans, AVS (28 305) dès 63 ans : trois années à financer, comptées dans le capital
+    const pont = a(60).risques.retraite;
+    egal('Départ à 60 ans : trois années de pont comptées dans le capital de retraite', [a(60).personne.pontAVS, pont.capitalPont > 80000, pont.capitalPont < 85000, pont.capital >= pont.capitalRente + pont.capitalPont - 100],
+      [3, true, true, true]);
+    // âge de départ dépassé : une personne de 63 ans ne part pas à 60
+    const age63 = a(60, { ...base, dateNaissance: '1962-06-01' });
+    egal('Âge de départ inférieur à l’âge actuel : ramené à l’âge actuel, sans pont', [age63.personne.ageRetraite, age63.personne.pontAVS], [63, 0]);
+    // certificat sans avoir : -1 an = environ -3,4 % d'avoir et -0,2 point de conversion
+    const cert = Scenarios.agesDeDepart({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire',
+      personne: { dateNaissance: '1976-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, lpp: { renteVieillesse: 36000 } } }, r26, [64, 65]);
+    egal('Certificat sans avoir, départ à 64 ans : rente d’environ 33 750', Math.abs(cert[0].lpp - 33750) < 250, true);
+    egal('Certificat sans avoir : l’avoir de retraite est celui que la rente suppose', Math.abs(a(65, { ...base, lpp: { renteVieillesse: 36000 } }).personne.lpp.avoirRetraite - 529412) <= 1, true);
+    // AVS 21 : supplément réduit selon l'échelle (34/44 de 160 = 124) ; six mois d'anticipation = moitié du taux d'un an
+    egal('AVS 21 : supplément réduit avec une durée de cotisation incomplète', AVS.generationTransitoire(r26, 'f', 1965, 50000, 34).supplementMensuel, 124);
+    const f62 = a(64, { ...base, dateNaissance: '1962-03-01', sexe: 'f', avs: { ramd: 100000 } });
+    egal('Femme de 1962, départ à 64 ans (6 mois d’anticipation, classe haute) : réduction de 1,75 %', Math.abs(f62.personne.facteurAVS - 0.9825) < 1e-9, true);
+    egal('AVS ajournement d’un an et demi : entre 5,2 et 10,8 %', AVS.facteurFlexibilisation(r26, 1.5), 1.08, 1e-9);
+    egal('AVS ajournement de moins d’un an : aucun supplément', AVS.facteurFlexibilisation(r26, 0.5), 1);
+    // conjoint : sa rente LPP ne dépend pas de l'âge de départ de la personne analysée
+    const couple = age => analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', hypotheses: { ageRetraite: age }, personne: base,
+      conjoint: { dateNaissance: '1988-01-01', sexe: 'f', statut: 'salarie', revenu: 70000, lpp: { avoir: 60000 } } }, r26).conjoint.lppRente;
+    egal('Conjoint : rente LPP identique quel que soit l’âge de départ de la personne', couple(60), couple(68));
+    // parcours d'invalidité : rentes jusqu'à 65 ans même pour un départ prévu à 60
+    const ligne = a(60).chronologie.find(x => x.age === 62);
+    egal('Ligne de vie, départ à 60 ans : à 62 ans, l’invalide touche encore ses rentes d’invalidité', ligne.invaliditeMaladie, a(60).risques.invaliditeMaladie.total);
+    // marié, conjoint non saisi : une durée de besoin et un capital cohérents
+    const seul = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', personne: base }, r26).risques.decesMaladie;
+    egal('Marié sans conjoint saisi : la lacune de décès a une durée et un capital', [seul.annees > 0, seul.lacune > 0 ? seul.capital > 0 : true], [true, true]);
+  }
   egal('AVS plafond couple, échelles 44 et 30 (RAVS art. 53bis : 2 x 44 + 30, sur 3)', AVS.plafonnerCouple(r26, 2520, 1718, 44, 30), [2009, 1370]);
   egal('Économie d’impôt estimée d’un rachat de 200 000 sur 100 000 de revenu : bornée par les paliers', Analyse.economieEstimee(100000, 200000), 17600);
   egal('Économie d’impôt estimée d’une petite déduction : taux du palier', Analyse.economieEstimee(100000, 7258), 2030);
