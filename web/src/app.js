@@ -83,6 +83,14 @@ function apresChangement() {
   setTimeout(lancer, 80);
 }
 
+/** Un calcul qui échoue ne doit jamais laisser des chiffres périmés à l'écran sans le dire. */
+function signalerErreur(visible) {
+  let bandeau = document.getElementById('erreur-calcul');
+  if (!visible) { bandeau?.remove(); return; }
+  if (!bandeau) { bandeau = h('p', { id: 'erreur-calcul', role: 'alert' }); document.body.append(bandeau); }
+  bandeau.textContent = ctx.t('erreurCalcul');
+}
+
 let anneeChargee = 0;
 async function calculer() {
   if (!ctx.regles || anneeChargee !== etat.annee) {
@@ -101,8 +109,10 @@ async function calculer() {
     ctx.analyseAutre = d.avecConjoint ? analyser(versDossier(d, d.cible === 'conjoint' ? 'personne' : 'conjoint'), ctx.regles, { impots: ctx.impots }) : null;
   } catch (erreur) {
     console.error(erreur);
+    signalerErreur(true);
     return;
   }
+  signalerErreur(false);
   MODULES[etat.vue].afficher(ctx);
 }
 

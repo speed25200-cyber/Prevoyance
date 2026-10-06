@@ -336,6 +336,10 @@ dialog.scan textarea:focus { outline: none; border-color: var(--accent); }
 .scan-ligne span { display: grid; gap: 2px; min-width: 0; }
 .scan-ligne small { color: var(--encre-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scan-ligne .montant input { width: 100%; border: 0; border-radius: 10px; background: var(--surface); color: inherit; padding: 10px 10px 10px 50px; font-weight: 600; min-height: 44px; }
+/* ---------- calcul en échec : un bandeau, tant que les chiffres ne sont pas à jour */
+#erreur-calcul { position: fixed; left: 16px; right: 16px; top: calc(76px + env(safe-area-inset-top, 0px)); z-index: 30; margin: 0 auto; max-width: 640px;
+  padding: 12px 16px; border-radius: 16px; background: #7a1f1f; color: #fff; font-size: 15px; font-weight: 500; box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .7); }
+@media print { #erreur-calcul { display: none; } }
 /* ---------- signature sur l'écran, logo de l'intermédiaire */
 .signature { display: grid; gap: 8px; }
 .signature-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 500; color: var(--encre-2); }
