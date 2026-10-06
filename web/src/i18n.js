@@ -4,6 +4,8 @@
  * Une clé absente dans une langue retombe sur le français, jamais sur une case vide.
  */
 
+import { VUES_T } from './i18n-vues.js';
+
 export const LANGUES = ['fr', 'de', 'it', 'en'];
 const REGION = { fr: 'fr-CH', de: 'de-CH', it: 'it-CH', en: 'en-CH' };
 
@@ -28,7 +30,7 @@ const T = {
     detail: 'D’où vient le revenu', alertes: 'Points d’attention', potentiels: 'Leviers', estime: 'estimé', reduit: 'réduit (surindemnisation)',
     s_avs: 'AVS', s_ai: 'Rente AI', s_aiEnfants: 'AI — rentes pour enfants', s_lpp: 'Caisse de pension', s_laa: 'Assurance-accidents',
     s_pilier3a: 'Pilier 3a', s_pilier3b: 'Pilier 3b', s_fortune: 'Fortune', s_privee: 'Assurance privée', s_avsConjoint: 'AVS — rente de conjoint',
-    s_avsOrphelins: 'AVS — rentes d’orphelin', s_salaire: 'Salaire', pilier1: '1er pilier', pilier2: '2e pilier', pilier3c: '3e pilier',
+    s_avsOrphelins: 'AVS — rentes d’orphelin', s_capitaux: 'Capitaux disponibles, en revenu', s_salaire: 'Salaire', pilier1: '1er pilier', pilier2: '2e pilier', pilier3c: '3e pilier',
     attente: 'Les deux premières années', att_ijm: 'Indemnités journalières maladie : {t} % pendant {j} jours',
     att_salaireEchelle: 'Sans assurance : salaire versé {s} semaines seulement, puis plus rien avant la rente',
     att_aucune: 'Aucun revenu de remplacement avant la rente AI', att_laaIndemnite: 'Indemnités journalières LAA : {t} % du gain assuré',
@@ -74,7 +76,7 @@ const T = {
     detail: 'Woher das Einkommen kommt', alertes: 'Wichtige Punkte', potentiels: 'Hebel', estime: 'geschätzt', reduit: 'gekürzt (Überentschädigung)',
     s_avs: 'AHV', s_ai: 'IV-Rente', s_aiEnfants: 'IV — Kinderrenten', s_lpp: 'Pensionskasse', s_laa: 'Unfallversicherung',
     s_pilier3a: 'Säule 3a', s_pilier3b: 'Säule 3b', s_fortune: 'Vermögen', s_privee: 'Private Versicherung', s_avsConjoint: 'AHV — Witwen-/Witwerrente',
-    s_avsOrphelins: 'AHV — Waisenrenten', s_salaire: 'Lohn', pilier1: '1. Säule', pilier2: '2. Säule', pilier3c: '3. Säule',
+    s_avsOrphelins: 'AHV — Waisenrenten', s_capitaux: 'Verfügbares Kapital, als Einkommen', s_salaire: 'Lohn', pilier1: '1. Säule', pilier2: '2. Säule', pilier3c: '3. Säule',
     attente: 'Die ersten zwei Jahre', att_ijm: 'Krankentaggeld: {t} % während {j} Tagen',
     att_salaireEchelle: 'Ohne Versicherung: Lohn nur während {s} Wochen, danach nichts bis zur Rente',
     att_aucune: 'Kein Ersatzeinkommen bis zur IV-Rente', att_laaIndemnite: 'UVG-Taggeld: {t} % des versicherten Verdienstes',
@@ -120,7 +122,7 @@ const T = {
     detail: 'Da dove viene il reddito', alertes: 'Punti d’attenzione', potentiels: 'Leve', estime: 'stimato', reduit: 'ridotto (sovraindennizzo)',
     s_avs: 'AVS', s_ai: 'Rendita AI', s_aiEnfants: 'AI — rendite per i figli', s_lpp: 'Cassa pensioni', s_laa: 'Assicurazione infortuni',
     s_pilier3a: 'Pilastro 3a', s_pilier3b: 'Pilastro 3b', s_fortune: 'Patrimonio', s_privee: 'Assicurazione privata', s_avsConjoint: 'AVS — rendita vedovile',
-    s_avsOrphelins: 'AVS — rendite per orfani', s_salaire: 'Salario', pilier1: '1° pilastro', pilier2: '2° pilastro', pilier3c: '3° pilastro',
+    s_avsOrphelins: 'AVS — rendite per orfani', s_capitaux: 'Capitali disponibili, in reddito', s_salaire: 'Salario', pilier1: '1° pilastro', pilier2: '2° pilastro', pilier3c: '3° pilastro',
     attente: 'I primi due anni', att_ijm: 'Indennità giornaliera malattia: {t} % per {j} giorni',
     att_salaireEchelle: 'Senza assicurazione: salario versato solo {s} settimane, poi nulla fino alla rendita',
     att_aucune: 'Nessun reddito sostitutivo fino alla rendita AI', att_laaIndemnite: 'Indennità giornaliera LAINF: {t} % del guadagno assicurato',
@@ -166,7 +168,7 @@ const T = {
     detail: 'Where the income comes from', alertes: 'Key points', potentiels: 'Levers', estime: 'estimated', reduit: 'reduced (overcompensation)',
     s_avs: 'AHV/AVS', s_ai: 'Disability pension (IV/AI)', s_aiEnfants: 'IV/AI — child pensions', s_lpp: 'Pension fund', s_laa: 'Accident insurance',
     s_pilier3a: 'Pillar 3a', s_pilier3b: 'Pillar 3b', s_fortune: 'Assets', s_privee: 'Private insurance', s_avsConjoint: 'AHV/AVS — widow(er)’s pension',
-    s_avsOrphelins: 'AHV/AVS — orphans’ pensions', s_salaire: 'Salary', pilier1: '1st pillar', pilier2: '2nd pillar', pilier3c: '3rd pillar',
+    s_avsOrphelins: 'AHV/AVS — orphans’ pensions', s_capitaux: 'Available capital, as income', s_salaire: 'Salary', pilier1: '1st pillar', pilier2: '2nd pillar', pilier3c: '3rd pillar',
     attente: 'The first two years', att_ijm: 'Daily sickness allowance: {t} % for {j} days',
     att_salaireEchelle: 'Uninsured: salary paid for {s} weeks only, then nothing until the pension starts',
     att_aucune: 'No replacement income before the disability pension', att_laaIndemnite: 'Accident daily allowance: {t} % of insured earnings',
@@ -196,9 +198,9 @@ const T = {
 
 /** Traducteur d'une langue : `t('cle', {n: 3})`. */
 export function traducteur(langue) {
-  const table = T[langue] ?? T.fr;
+  const table = { ...T.fr, ...VUES_T.fr, ...(T[langue] ?? {}), ...(VUES_T[langue] ?? {}) };
   return (cle, valeurs = {}) => {
-    let texte = table[cle] ?? T.fr[cle] ?? cle;
+    let texte = table[cle] ?? cle;
     for (const [k, v] of Object.entries(valeurs)) texte = texte.replaceAll(`{${k}}`, String(v));
     return texte;
   };

@@ -1,0 +1,175 @@
+// @ts-check
+/**
+ * Vue « Analyse » : la couverture globale, les cinq risques, la ligne de vie, le détail des sources, les leviers
+ * et les points d'attention. La structure est montée une fois ; chaque calcul ne fait que mettre les valeurs à jour.
+ */
+
+import { h, compter, couleurCouverture, COULEUR_PILIER } from '../ui.js';
+import { creerGraphique, COUCHES } from '../graphique.js';
+import { creerScene } from '../scene.js';
+import { etat, garder, dossier } from '../etat.js';
+import * as Formulaire from '../formulaire.js';
+
+export const RISQUES = ['retraite', 'invaliditeMaladie', 'invaliditeAccident', 'decesMaladie', 'decesAccident'];
+const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
+const MONTANTS = new Set(['montant', 'economie', 'plafond', 'excedent', 'seuil', 'perteMensuelle', 'ecart']);
+const VAR_COUCHE = { salaire: '--salaire', attente: '--attente', pilier1: '--p1', pilier2: '--p2', pilier3: '--p3' };
+
+/** @type {any} */ let graphique = null;
+/** @type {any} */ let scene = null;
+
+/** Approche la caméra d'un pilier (1 à 3) et allume son point ; `null` : vue d'ensemble. */
+function viser(n) {
+  scene?.viser(n === null ? null : n - 1);
+  for (const k of [1, 2, 3]) { r['repere' + k]?.classList.toggle('actif', k === n); r['puce' + k]?.classList.toggle('actif', k === n); }
+}
+/** @type {Record<string, HTMLElement>} */ let r = {};
+
+export function monter(ctx, racine) {
+  const { t } = ctx, d = dossier();
+  const ref = (cle, element) => (r[cle] = element);
+  const cibles = d.avecConjoint ? h('div', { class: 'segments cibles', role: 'group' }, ...['personne', 'conjoint'].map(c =>
+    h('button', { type: 'button', 'aria-pressed': String(d.cible === c), onclick: () => { d.cible = c; garder(); ctx.recalculer(true); } }, t(c === 'personne' ? 'client' : 'conjointCourt')))) : null;
+  const toile = h('canvas', {}), bulle = h('div', { class: 'bulle', hidden: true });
+  racine.replaceChildren(
+    h('div', { class: 'tete carte' },
+      h('div', { class: 'jauge' }, ref('jauge', h('div', { class: 'jauge-anneau' },
+        h('svg', { viewBox: '0 0 120 120', 'aria-hidden': 'true' }, h('circle', { class: 'piste', cx: 60, cy: 60, r: 52 }), ref('arc', h('circle', { class: 'arc', cx: 60, cy: 60, r: 52 }))),
+        h('div', { class: 'jauge-texte' }, ref('score', h('b', {}, '0')), h('span', {}, t('score')))))),
+      h('div', { class: 'resume' }, cibles, ref('resumeTitre', h('p', { class: 'surtitre' })),
+        ref('grand', h('p', { class: 'grand' }, ref('resumeMontant', h('span', {}, 'CHF 0')), h('small', {}, t('parMois')))), ref('resumeNote', h('p', { class: 'note' }))),
+      ref('sceneToile', h('canvas', { class: 'scene-toile', 'aria-hidden': 'true' })),
+      h('div', { class: 'scene-voile', 'aria-hidden': 'true' }),
+      ...[1, 2, 3].map(n => ref('repere' + n, h('i', { class: 'scene-point', 'aria-hidden': 'true' }))),
+      // ce que verse chaque pilier : toucher ou survoler approche la caméra de sa colonne
+      h('div', { class: 'scene-piliers' }, ...[1, 2, 3].map(n => ref('puce' + n, h('button', { type: 'button', class: 'scene-puce',
+        onpointerenter: () => viser(n), onpointerleave: () => viser(null), onfocus: () => viser(n), onblur: () => viser(null) },
+        h('small', {}, t(n === 3 ? 'pilier3c' : 'pilier' + n)), ref('montant' + n, h('b', {}, '–'))))))),
+    ref('risques', h('div', { class: 'risques', role: 'tablist' }, ...RISQUES.map((cle, i) => h('button', {
+      class: 'risque', type: 'button', role: 'tab', 'data-risque': cle, style: { '--i': i + 1 }, onclick: () => { etat.risque = cle; garder(); afficher(ctx); } },
+      h('h3', {}, t(cle)), h('b', {}, '–'), h('small', {}, ''), h('div', { class: 'barre-couv' }, h('i')))))),
+    h('div', { class: 'carte graphique' },
+      h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('ligneDeVie')), h('p', {}, `${t('revenuSelonAge')} · ${t('glisser')}`)), ref('legende', h('ul', { class: 'legende' }))),
+      h('div', { class: 'toile' }, toile, bulle)),
+    h('div', { class: 'deux' },
+      h('div', { class: 'carte' }, h('h2', {}, t('detail')), ref('detail', h('div'))),
+      h('div', { class: 'carte' }, h('h2', {}, t('potentiels')), ref('potentiels', h('div')))),
+    h('div', { class: 'carte' }, h('h2', {}, t('alertes')), ref('alertes', h('ul', { class: 'alertes' }))),
+    h('p', { class: 'avertissement' }, t('avertissement')));
+  graphique = creerGraphique(toile, bulle);
+  // la scène : trois colonnes photographiées, une caméra qui suit le pointeur et s'approche du pilier désigné
+  scene = creerScene(/** @type {HTMLCanvasElement} */ (r.sceneToile), [r.repere1, r.repere2, r.repere3]);
+  const tete = /** @type {HTMLElement} */ (racine.querySelector('.tete'));
+  tete.addEventListener('pointermove', e => { const b = tete.getBoundingClientRect(); scene.pointer((e.clientX - b.left) / b.width - 0.5, (e.clientY - b.top) / b.height - 0.5); });
+  tete.addEventListener('pointerleave', () => scene.pointer(0, 0));
+  // survoler une source dans le détail approche la caméra de son pilier
+  r.detail.addEventListener('pointerover', e => { const li = /** @type {HTMLElement} */ (e.target).closest?.('[data-pilier]'); viser(li ? +/** @type {any} */ (li).dataset.pilier : null); });
+  r.detail.addEventListener('pointerleave', () => viser(null));
+}
+
+function pointsDuGraphique(a, x) {
+  const chrono = a.chronologie, P = a.personne;
+  const parPilier = sources => { const v = {}; for (const s of sources) v['pilier' + s.pilier] = (v['pilier' + s.pilier] ?? 0) + s.montant; return v; };
+  if (x.cle === 'retraite') {
+    return chrono.map(p => ({ age: p.age, besoin: p.besoin, v: p.actif ? { salaire: p.salaire } : { pilier1: p.pilier1, pilier2: p.pilier2, pilier3: p.pilier3 } }));
+  }
+  if (x.cle.startsWith('invalidite')) {
+    const besoin = P.revenu * a.besoins.invalidite, rente = parPilier(x.sources);
+    return chrono.map(p => {
+      if (!p.actif) return { age: p.age, besoin: p.besoin, v: { pilier1: p.pilier1, pilier2: p.pilier2, pilier3: p.pilier3 } };
+      const depuis = p.age - P.age;
+      if (depuis >= 2) return { age: p.age, besoin, v: rente };
+      const part = Math.min(1, Math.max(0, (x.attente.jours - 365 * depuis) / 365));
+      const attente = x.attente.montant * part, reste = Math.max(0, p[x.cle] - attente), somme = x.total || 1;
+      return { age: p.age, besoin, v: { attente, pilier1: (rente.pilier1 ?? 0) / somme * reste, pilier2: (rente.pilier2 ?? 0) / somme * reste, pilier3: (rente.pilier3 ?? 0) / somme * reste } };
+    });
+  }
+  const v = parPilier(x.sources);
+  return Array.from({ length: Math.max(1, x.annees) }, (_, i) => ({ age: P.age + i, besoin: x.besoin, v }));
+}
+
+export function afficher(ctx) {
+  const { t, f, analyse: a } = ctx;
+  if (!a || !r.arc) return;
+  const x = a.risques[etat.risque];
+  r.arc.style.strokeDashoffset = String(326.73 * (1 - a.score / 100));
+  r.jauge.style.setProperty('--couleur', couleurCouverture(a.score / 100));
+  compter(r.score, a.score, v => String(Math.round(v)));
+  r.resumeTitre.textContent = `${t(x.cle)} — ${x.lacune > 0 ? t('lacune') : t('aucuneLacune')}`;
+  r.grand.classList.toggle('lacune', x.lacune > 0);
+  compter(r.resumeMontant, x.lacuneMensuelle, f.chf);
+  const morceaux = [`${t('besoin')} ${f.chf(x.besoin)} ${t('parAn')}`, `${t('couvert')} ${f.pourcent(Math.min(1, x.couverture))}`];
+  if (x.capital > 0) morceaux.push(`${t('capital')} ${f.chf(x.capital)} (${t('surLaDuree', { n: x.annees })})`);
+  if (x.cle === 'retraite' && x.epargneAnnuelle > 0) morceaux.push(t('epargne', { m: f.chf(x.epargneAnnuelle) }));
+  r.resumeNote.textContent = morceaux.join(' · ');
+  // ce que chaque pilier verse pour le risque choisi, posé sur sa colonne
+  for (const n of [1, 2, 3]) {
+    const verse = x.sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0);
+    compter(r['montant' + n], verse, f.chf);
+    r['puce' + n].classList.toggle('vide', verse < 1);
+  }
+
+  for (const bouton of /** @type {HTMLElement[]} */ ([...r.risques.children])) {
+    const y = a.risques[/** @type {string} */ (bouton.dataset.risque)];
+    bouton.setAttribute('aria-selected', String(y.cle === etat.risque));
+    const [, montant, note, barre] = /** @type {HTMLElement[]} */ ([...bouton.children]);
+    montant.classList.toggle('lacune', y.lacune > 0);
+    if (y.besoin === 0) { montant.textContent = '—'; /** @type {any} */ (montant)._v = 0; note.textContent = t('sansObjet'); }
+    else { compter(montant, y.lacuneMensuelle, v => (y.lacune > 0 ? '− ' : '') + f.chf(v)); note.textContent = y.lacune > 0 ? t('parMois') : t('aucuneLacune'); }
+    const trait = /** @type {HTMLElement} */ (barre.firstElementChild);
+    trait.style.transform = `scaleX(${y.besoin === 0 ? 0 : Math.min(1, y.couverture)})`;
+    trait.style.background = couleurCouverture(y.couverture);
+  }
+
+  const points = pointsDuGraphique(a, x);
+  const libelles = { salaire: t('s_salaire'), attente: t('attente'), pilier1: t('pilier1'), pilier2: t('pilier2'), pilier3: t('pilier3c'), besoin: t('besoin'), lacune: t('lacune') };
+  graphique.definir(points, { chf: f.chf, court: f.court, libelles, ans: t('ans'),
+    reperes: x.cle.startsWith('deces') ? [] : [{ age: a.personne.ageRetraite, libelle: `${t('retraite')} · ${a.personne.ageRetraite}`, glissable: true }],
+    surGlisser: (age, fin) => {
+      const d = dossier(), voulu = Math.min(70, Math.max(58, age));
+      if (voulu !== d.ageRetraite) { d.ageRetraite = voulu; ctx.apresChangement(); }
+      if (fin) Formulaire.construire();                         // le curseur du formulaire reprend la valeur
+    } });
+  r.legende.replaceChildren(...COUCHES.filter(c => points.some(p => (p.v[c] ?? 0) > 0.5)).map(c => h('li', { style: { '--c': `var(${VAR_COUCHE[c]})` } }, h('i'), libelles[c])),
+    h('li', {}, h('i', { class: 'trait' }), t('besoin')), h('li', { style: { '--c': 'var(--lacune)' } }, h('i'), t('lacune')));
+
+  r.detail.replaceChildren(...detailRisque(ctx, x));
+  requestAnimationFrame(() => { for (const i of /** @type {NodeListOf<HTMLElement>} */ (r.detail.querySelectorAll('.pile i'))) i.style.width = `${(+(i.dataset.part ?? 0) * 100).toFixed(2)}%`; });
+
+  r.potentiels.replaceChildren(...leviers(ctx, a));
+  const triees = [...a.alertes].sort((p, q) => GRAVITES.indexOf(p.gravite) - GRAVITES.indexOf(q.gravite));
+  r.alertes.replaceChildren(...triees.map(al => h('li', { style: { '--c': `var(--${al.gravite})` } }, h('span', {}, texteAlerte(ctx, al)))));
+}
+
+export function texteAlerte({ t, f }, al) {
+  const valeurs = Object.fromEntries(Object.entries(al.valeurs).map(([k, v]) => [k, MONTANTS.has(k) ? f.chf(/** @type {number} */ (v)) : v]));
+  return t('a_' + al.cle, valeurs);
+}
+
+/** Barre empilée, lignes par source, besoin, lacune et période d'attente d'un risque (aussi utilisé par le rapport). */
+export function detailRisque({ t, f }, x) {
+  const echelle = Math.max(x.besoin, x.total, 1);
+  const pile = h('div', { class: 'pile' }, ...x.sources.map(s => h('i', { style: { '--c': COULEUR_PILIER[s.pilier] }, 'data-part': s.montant / echelle })),
+    x.lacune > 0 ? h('i', { class: 'manque', 'data-part': x.lacune / echelle }) : null);
+  const lignes = h('ul', { class: 'lignes' }, ...x.sources.map(s => h('li', { 'data-pilier': s.pilier },
+    h('span', { class: 'nom' }, h('i', { style: { '--c': COULEUR_PILIER[s.pilier] } }), t('s_' + s.cle), s.estime ? h('em', {}, t('estime')) : null, s.reduit ? h('em', {}, t('reduit')) : null),
+    h('b', {}, f.chf(s.montant)))),
+    h('li', { class: 'total' }, h('span', {}, t('besoin')), h('b', {}, f.chf(x.besoin))),
+    x.lacune > 0 ? h('li', { class: 'manque' }, h('span', {}, `${t('lacune')} ${t('parAn')}`), h('b', {}, '− ' + f.chf(x.lacune))) : null);
+  const attente = x.attente ? h('div', { class: 'attente' }, h('b', {}, t('attente')),
+    t('att_' + x.attente.cle, { t: Math.round(x.attente.taux * 100), j: x.attente.jours, s: Math.round(x.attente.jours / 7) })) : null;
+  return [pile, lignes, attente].filter(Boolean);
+}
+
+export function leviers({ t, f }, a) {
+  const p = a.potentiels, out = [];
+  out.push(h('div', { class: 'levier' }, h('b', {}, t('p_3a')), h('p', {}, p.pilier3a.potentiel > 0
+    ? t('p_3a_d', { m: f.chf(p.pilier3a.potentiel), e: f.chf(p.pilier3a.economieImpot), c: f.chf(p.pilier3a.capitalSupplementaire) })
+    : t('p_3a_plein', { m: f.chf(p.pilier3a.plafond) }))));
+  if (p.rachatLPP.possible > 0) out.push(h('div', { class: 'levier' }, h('b', {}, t('p_lpp')),
+    h('p', {}, t('p_lpp_d', { m: f.chf(p.rachatLPP.possible), e: f.chf(p.rachatLPP.economieImpot), r: f.chf(p.rachatLPP.renteSupplementaire) }))));
+  if (p.avs.anneesManquantes > 0) out.push(h('div', { class: 'levier' }, h('b', {}, t('p_avs')),
+    h('p', {}, t('p_avs_d', { n: p.avs.anneesManquantes, m: f.chf(p.avs.perteMensuelle) }))));
+  out.push(h('p', { class: 'petit' }, p.canton ? t('tauxMarginalCanton', { t: Math.round(p.tauxMarginal * 100), c: p.canton }) : t('tauxMarginal', { t: Math.round(p.tauxMarginal * 100) })));
+  return out;
+}

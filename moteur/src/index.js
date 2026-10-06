@@ -13,9 +13,11 @@ export { analyser, estimerTauxMarginal } from './analyse.js';
 export * as AVS from './avs.js';
 export * as LPP from './lpp.js';
 export * as LAA from './laa.js';
+export * as Impots from './impots.js';
+export * as Scenarios from './scenarios.js';
 export * as outils from './util.js';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 export const ANNEES = [2026, 2027];
 
 /**
@@ -26,4 +28,17 @@ export async function regles(annee, base = new URL('../regles/', import.meta.url
   const reponse = await fetch(`${base}ch-${annee}.json`);
   if (!reponse.ok) throw new Error(`Règles ${annee} introuvables`);
   return reponse.json();
+}
+
+/**
+ * Données fiscales d'une année (donnees/impots-AAAA.json, relevées auprès de l'AFC). `null` si elles manquent.
+ * @param {number} annee @param {string} [base]
+ */
+export async function impots(annee, base = new URL('../donnees/', import.meta.url).href) {
+  try {
+    const reponse = await fetch(`${base}impots-${annee}.json`);
+    return reponse.ok ? await reponse.json() : null;
+  } catch {
+    return null;
+  }
 }

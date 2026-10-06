@@ -17,7 +17,7 @@
  *                   renteInvalidite?: number, renteConjoint?: number, renteEnfant?: number, capitalDeces?: number, rachatPossible?: number},
  *            laa?: {assure?: boolean}, ijm?: {assure?: boolean, taux?: number, jours?: number},
  *            pilier3?: Contrat3[], fortune?: number, tauxMarginal?: number}} Personne
- * @typedef {{dateAnalyse?: string, personne: Personne, conjoint?: Personne|null,
+ * @typedef {{dateAnalyse?: string, canton?: string, personne: Personne, conjoint?: Personne|null,
  *            etatCivil?: 'celibataire'|'marie'|'partenariat'|'concubin'|'divorce'|'veuf',
  *            enfants?: {dateNaissance: string, formationJusqua?: number}[],
  *            besoins?: {retraite?: number, invalidite?: number, deces?: number, capitalDeces?: number},
@@ -28,6 +28,7 @@
 import * as AVS from './avs.js';
 import { prestationsLPP } from './lpp.js';
 import * as LAA from './laa.js';
+import * as Impots from './impots.js';
 import { age as ageA, anneeNaissance, arrondi, borne, renteDepuisCapital, somme, valeurActuelleRente, valeurFuture } from './util.js';
 
 const HYPOTHESES = { ageRetraite: 65, rendement3a: 0.02, rendementFortune: 0.015, escompte: 0.015, croissanceSalaire: 0,
@@ -83,8 +84,10 @@ function risque(cle, besoin, sources, { annees = 0, escompte = 0, capitauxDispon
 
 /**
  * @param {Dossier} dossier @param {any} regles
+ * @param {{impots?: any}} [contexte] données fiscales de l'année (donnees/impots-AAAA.json) : avec elles et le canton du
+ *        dossier, les économies d'impôt sont calculées sur le barème réel au lieu d'une moyenne suisse
  */
-export function analyser(dossier, regles) {
+export function analyser(dossier, regles, contexte = {}) {
   const hyp = { ...HYPOTHESES, ...(dossier.hypotheses ?? {}) };
   const besoins = { ...BESOINS, ...(dossier.besoins ?? {}) };
   const quand = dossier.dateAnalyse ?? `${regles.annee}-01-01`;
@@ -185,32 +188,47 @@ export function analyser(dossier, regles) {
   const capitauxDeces = P.lpp.capitalDeces + somme(P.contrats.map(c => (c.capitalDeces ?? 0) + (c.forme === 'assurance' ? 0 : c.avoir ?? 0)))
     + (dossier.personne.fortune ?? 0);
   const lppSurvivants = (conjointAyantDroitLPP ? P.lpp.renteConjoint : 0) + P.lpp.renteEnfant * nombreEnfants;
+  // Les capitaux disponibles au décès (capital de la caisse, 3e pilier, assurances, fortune) servent d'abord le besoin en
+  // capital (hypothèque à rembourser…) ; le reste est converti en revenu sur la durée du besoin et compte comme une source.
+  const capitauxLibres = Math.max(0, capitauxDeces - besoins.capitalDeces);
+  const revenuCapitaux = aQuelquun ? renteDepuisCapital(capitauxLibres, anneesDeces, hyp.escompte) : 0;
   const sourcesDeces = [
     { cle: 'avsConjoint', pilier: 1, montant: survAVS.conjoint * 12 },
     { cle: 'avsOrphelins', pilier: 1, montant: survAVS.parEnfant * 12 * nombreEnfants },
     { cle: 'lpp', pilier: 2, montant: lppSurvivants, estime: P.lpp.estime },
+    { cle: 'capitaux', pilier: 3, montant: revenuCapitaux, capital: capitauxLibres },
   ];
-  const optionsDeces = { annees: anneesDeces, escompte: hyp.escompte, capitauxDisponibles: capitauxDeces, capitalBesoin: besoins.capitalDeces };
+  const optionsDeces = { annees: anneesDeces, escompte: hyp.escompte, capitalBesoin: Math.max(0, besoins.capitalDeces - capitauxDeces) };
   const decesMaladie = risque('decesMaladie', besoinDeces, sourcesDeces, optionsDeces);
+  decesMaladie.capitauxDisponibles = arrondi(capitauxDeces);
   const laaSurv = P.laaAssure ? LAA.rentesSurvivantsLAA(regles, { salaire: P.revenu, conjointAyantDroit: marie, nombreEnfants,
                                                                  rentesAVSAnnuelles: survAVS.total * 12 }).total : 0;
   const decesAccident = risque('decesAccident', besoinDeces, [
     sourcesDeces[0], sourcesDeces[1], { cle: 'laa', pilier: 2, montant: laaSurv },
     { cle: 'lpp', pilier: 2, montant: Math.min(lppSurvivants, Math.max(0, P.revenu * regles.lpp.surindemnisation - survAVS.total * 12 - laaSurv)),
       estime: P.lpp.estime },
+    sourcesDeces[3],
   ], optionsDeces);
+  decesAccident.capitauxDisponibles = arrondi(capitauxDeces);
 
   // ---------------------------------------------------------------- potentiels
-  const marginal = P.tauxMarginal ?? estimerTauxMarginal(P.revenu + (C && marie ? C.revenu : 0), marie);
+  const revenuImposable = P.revenu + (C && marie ? C.revenu : 0);
+  const fiscal = dossier.canton && contexte.impots ? Impots.impotRevenu(contexte.impots, dossier.canton, marie, revenuImposable) : null;
+  const marginal = P.tauxMarginal ?? fiscal?.marginal ?? estimerTauxMarginal(revenuImposable, marie);
+  // économie d'une déduction : sur le barème réel du canton quand il est connu, sinon au taux marginal
+  const economie = deduction => (fiscal && P.tauxMarginal === undefined
+    ? /** @type {number} */ (Impots.economieDeduction(contexte.impots, /** @type {string} */ (dossier.canton), marie, revenuImposable, deduction))
+    : arrondi(deduction * marginal, 10));
   const plafond3a = P.statut === 'sans' ? 0 : P.lpp.affilie ? regles.pilier3a.plafondAvecLPP
     : Math.min(regles.pilier3a.plafondSansLPP, arrondi(P.revenu * regles.pilier3a.tauxSansLPP));
   const verse3a = somme(P.contrats.filter(c => c.type === '3a').map(c => c.versementAnnuel ?? 0));
   const potentiel3a = Math.max(0, plafond3a - verse3a);
   const potentiels = {
-    tauxMarginal: marginal, tauxMarginalEstime: P.tauxMarginal === undefined,
-    pilier3a: { plafond: plafond3a, verse: verse3a, potentiel: potentiel3a, economieImpot: arrondi(potentiel3a * marginal, 10),
+    tauxMarginal: marginal, tauxMarginalEstime: P.tauxMarginal === undefined && !fiscal, canton: fiscal ? dossier.canton : null,
+    impotRevenu: fiscal?.impot ?? null,
+    pilier3a: { plafond: plafond3a, verse: verse3a, potentiel: potentiel3a, economieImpot: economie(potentiel3a),
                 capitalSupplementaire: arrondi(valeurFuture(0, potentiel3a, P.anneesRestantes, hyp.rendement3a), 100) },
-    rachatLPP: { possible: P.lpp.rachatPossible, economieImpot: arrondi(P.lpp.rachatPossible * marginal, 10),
+    rachatLPP: { possible: P.lpp.rachatPossible, economieImpot: economie(P.lpp.rachatPossible),
                  renteSupplementaire: arrondi(P.lpp.rachatPossible * regles.lpp.tauxConversion) },
     avs: { anneesManquantes: P.manquantes, perteMensuelle: arrondi(AVS.renteComplete(regles, P.ramd) - avsMensuelleBrute(regles, P)) },
   };
@@ -241,7 +259,7 @@ export function analyser(dossier, regles) {
   const score = arrondi(100 * somme(Object.entries(poids).map(([k, w]) => w * Math.min(1, risques[k].couverture))));
 
   return {
-    annee: regles.annee, dateAnalyse: quand, etatCivil,
+    annee: regles.annee, dateAnalyse: quand, etatCivil, marie, canton: dossier.canton ?? null,
     personne: { age: P.age, ageReference: P.ref, ageRetraite: P.ageRetraite, revenu: P.revenu, ramd: arrondi(P.ramd), ramdEstime: P.ramdEstime,
                 echelle: P.echelle, lpp: P.lpp, capital3a, capital3b },
     conjoint: C ? { age: C.age, revenu: C.revenu, avsMensuelle: avsConjointMensuelle, lppRente: C.lpp.renteVieillesse } : null,

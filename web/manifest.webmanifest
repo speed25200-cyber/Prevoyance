@@ -1,0 +1,24 @@
+{
+  "name": "Prévoyance — analyse des lacunes",
+  "short_name": "Prévoyance",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0c0f",
+  "theme_color": "#0b0c0f",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "images/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "images/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

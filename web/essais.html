@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Prévoyance — essais de l'interface</title>
+<style>body { font: 14px/1.5 system-ui, sans-serif; margin: 20px; } iframe { width: 1366px; height: 900px; border: 1px solid #ccc; } .ko { color: #c0392b; font-weight: 700; } .ok { color: #1e8e5a; }</style>
+<h1>Essais de l'interface</h1>
+<ul id="resultats"></ul>
+<iframe id="app" src="index.html#analyse"></iframe>
+<script type="module">
+  // Pilote l'application dans un cadre et vérifie les interactions principales. S'ouvre dans un navigateur, ou en
+  // arrière-plan : msedge --headless --virtual-time-budget=20000 --dump-dom …/web/essais.html
+  const liste = document.getElementById('resultats'), cadre = document.getElementById('app');
+  const attendre = ms => new Promise(r => setTimeout(r, ms));
+  // attend qu'une condition devienne vraie (l'interface se met à jour au rythme de l'écran)
+  const jusqua = async (condition, max = 5000) => { for (let i = 0; i < max / 100; i++) { try { if (condition()) return true; } catch { /* pas encore */ } await attendre(100); } return false; };
+  const noter = (nom, ok, detail = '') => { const li = document.createElement('li'); li.className = ok ? 'ok' : 'ko'; li.textContent = `${ok ? 'OK' : 'ECHEC'} — ${nom}${detail ? ' : ' + detail : ''}`; liste.append(li); };
+  await new Promise(r => cadre.addEventListener('load', r, { once: true }));
+  const w = cadre.contentWindow, d = cadre.contentDocument;
+  for (let i = 0; i < 60 && !w.__prevoyance?.ctx.analyse; i++) await attendre(100);
+  const p = w.__prevoyance;
+  try {
+    noter('analyse calculée', !!p?.ctx.analyse, `score ${p.ctx.analyse.score}`);
+    noter('impôts du canton chargés', p.ctx.analyse.potentiels.canton === 'VD');
+    await attendre(1200);
+    noter('montants des trois piliers affichés', [...d.querySelectorAll('.scene-puce b')].every(b => /CHF/.test(b.textContent)), [...d.querySelectorAll('.scene-puce b')].map(b => b.textContent).join(' | '));
+    // glisser le repère de la retraite sur la ligne de vie
+    const toile = d.querySelector('.toile canvas'), b = toile.getBoundingClientRect(), a = p.ctx.analyse.personne;
+    const X = age => b.left + 46 + (age - a.age) / (91 - a.age) * (b.width - 46 - 14);
+    const ev = (type, x) => toile.dispatchEvent(new w.PointerEvent(type, { clientX: x, clientY: b.top + 60, pointerId: 1, bubbles: true }));
+    ev('pointerdown', X(a.ageRetraite)); ev('pointermove', X(63));
+    noter('glisser le repère change l’âge de la retraite', await jusqua(() => p.ctx.analyse.personne.ageRetraite === 63), `analyse ${p.ctx.analyse.personne.ageRetraite}, dossier ${p.etat.dossiers[0].ageRetraite}, x ${Math.round(X(63))}, toile ${Math.round(b.left)}+${Math.round(b.width)}`);
+    ev('pointermove', X(67)); ev('pointerup', X(67));
+    noter('lâcher à 67 ans', await jusqua(() => p.ctx.analyse.personne.ageRetraite === 67), String(p.ctx.analyse.personne.ageRetraite));
+    // changer de risque
+    d.querySelector('[data-risque=invaliditeMaladie]').click();
+    noter('changement de risque', await jusqua(() => /maladie/i.test(d.querySelector('.surtitre').textContent)), d.querySelector('.surtitre').textContent);
+    // saisie : le revenu passe à 150 000
+    const revenu = d.querySelector('#saisie .montant input'); revenu.value = '150000'; revenu.dispatchEvent(new w.Event('input', { bubbles: true }));
+    noter('la saisie recalcule', await jusqua(() => p.ctx.analyse.personne.revenu === 150000), String(p.ctx.analyse.personne.revenu));
+    // les autres vues
+    for (const [vue, motif] of [['scenarios', /63|65|67/], ['plan', /\d/], ['rapport', /CHF/], ['donnees', /2027/]]) {
+      d.querySelector(`[data-vue=${vue}]`).click();
+      const marque = { scenarios: '#scenarios .carte', plan: '.plan-tete', rapport: '.page', donnees: '.donnees-table' }[vue];
+      const ok = await jusqua(() => d.body.dataset.vue === vue && d.querySelector('#vue ' + marque) && motif.test(d.getElementById('vue').innerText));
+      noter(`vue ${vue}`, ok, `${d.getElementById('vue').innerText.length} caractères, vue ${d.body.dataset.vue}, marque ${!!d.querySelector('#vue ' + marque)}, motif ${motif.test(d.getElementById('vue').innerText)}`);
+    }
+    d.querySelector('[data-vue=rapport]').click();
+    noter('rapport : au moins six pages', await jusqua(() => d.querySelectorAll('.page').length >= 6), String(d.querySelectorAll('.page').length));
+    // langues
+    for (const l of ['de', 'it', 'en', 'fr']) { d.querySelector(`[data-langue=${l}]`).click(); await jusqua(() => d.documentElement.lang === l && d.querySelectorAll('.page').length >= 6); }
+    noter('retour au français', d.documentElement.lang === 'fr');
+    const manquants = [...d.querySelectorAll('#vue *, #saisie *, .barre *')].filter(e => e.children.length === 0 && /^(a_|s_|sc_|pl_|rp_|dn_|v_|ct_|att_|p_|pr_)\w+$/.test(e.textContent.trim())).map(e => e.textContent.trim());
+    noter('aucun texte manquant', manquants.length === 0, manquants.slice(0, 8).join(', '));
+  } catch (erreur) {
+    noter('exception', false, erreur.stack);
+  }
+  document.title = `essais : ${liste.querySelectorAll('.ok').length} ok, ${liste.querySelectorAll('.ko').length} échecs`;
+  document.body.dataset.fini = 'oui';
+</script>
+</html>

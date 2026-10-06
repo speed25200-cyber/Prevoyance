@@ -21,7 +21,9 @@ export function creerGraphique(canvas, bulle) {
   /** @type {Map<number, {besoin: number, v: Record<string, number>}>} */
   let cible = new Map();
   let domaine = { a0: 25, a1: 90, max: 100000 }, vise = { ...domaine };
+  /** @type {any} */
   let options = { reperes: [], chf: x => String(x), court: x => String(x), libelles: {}, ans: 'ans' };
+  let glisse = /** @type {any} */ (null);                    // repère en cours de déplacement
   let largeur = 0, hauteur = 0, enCours = false, avant = 0, survol = /** @type {number|null} */ (null), couleurs = lireCouleurs();
   const marge = { g: 46, d: 14, h: 14, b: 30 };
 
@@ -119,7 +121,15 @@ export function creerGraphique(canvas, bulle) {
       ctx.strokeStyle = couleurs.encre2; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
       ctx.beginPath(); ctx.moveTo(x, marge.h); ctx.lineTo(x, hauteur - marge.b); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = couleurs.encre2; ctx.textAlign = x > largeur - 90 ? 'right' : 'left';
-      ctx.fillText(r.libelle, x + (x > largeur - 90 ? -6 : 6), marge.h + 6);
+      ctx.fillText(r.libelle, x + (x > largeur - 90 ? -(r.glissable ? 16 : 6) : (r.glissable ? 16 : 6)), marge.h + 6);
+      if (r.glissable) {                                        // poignée : on peut saisir le repère et le déplacer
+        ctx.restore(); ctx.save();
+        ctx.fillStyle = couleurs.encre; ctx.beginPath(); ctx.roundRect(x - 9, marge.h - 4, 18, 20, 7); ctx.fill();
+        ctx.strokeStyle = couleurs.surface; ctx.lineWidth = 1.4; ctx.beginPath();
+        for (const dx of [-3, 0, 3]) { ctx.moveTo(x + dx, marge.h + 2); ctx.lineTo(x + dx, marge.h + 10); }
+        ctx.stroke();
+        ctx.beginPath(); ctx.rect(marge.g, 0, largeur - marge.g - marge.d, hauteur - marge.b + 1); ctx.clip();
+      }
     }
     // survol
     if (survol !== null && courant.has(survol)) {
@@ -183,9 +193,28 @@ export function creerGraphique(canvas, bulle) {
     survol = null; bulle.hidden = true; lancer();
   }
 
-  canvas.addEventListener('pointermove', montrerBulle);
-  canvas.addEventListener('pointerdown', montrerBulle);
-  canvas.addEventListener('pointerleave', cacherBulle);
+  // saisir un repère déplaçable (l'âge de la retraite) et le faire glisser : le dossier suit, tout se recalcule
+  const repereSous = evenement => {
+    const x = evenement.clientX - canvas.getBoundingClientRect().left;
+    return options.reperes.find(r => r.glissable && Math.abs(X(r.age) - x) < 18) ?? null;
+  };
+  const ageSous = evenement => {
+    const x = evenement.clientX - canvas.getBoundingClientRect().left;
+    return Math.round(vise.a0 + (x - marge.g) / Math.max(1, largeur - marge.g - marge.d) * (vise.a1 - vise.a0));
+  };
+  canvas.addEventListener('pointerdown', evenement => {
+    glisse = repereSous(evenement);
+    if (glisse) { try { canvas.setPointerCapture(evenement.pointerId); } catch { /* pointeur synthétique */ } cacherBulle(); evenement.preventDefault(); } else montrerBulle(evenement);
+  });
+  canvas.addEventListener('pointermove', evenement => {
+    if (glisse) { options.surGlisser?.(ageSous(evenement), false); return; }
+    canvas.style.cursor = repereSous(evenement) ? 'ew-resize' : '';
+    montrerBulle(evenement);
+  });
+  const lacher = evenement => { if (!glisse) return; glisse = null; options.surGlisser?.(ageSous(evenement), true); };
+  canvas.addEventListener('pointerup', lacher);
+  canvas.addEventListener('pointercancel', lacher);
+  canvas.addEventListener('pointerleave', () => { if (!glisse) cacherBulle(); });
   new ResizeObserver(dimensionner).observe(canvas);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { couleurs = lireCouleurs(); lancer(); });
   dimensionner();
@@ -193,18 +222,20 @@ export function creerGraphique(canvas, bulle) {
   return {
     /**
      * @param {{age: number, besoin: number, v: Record<string, number>}[]} points
-     * @param {{reperes: {age: number, libelle: string}[], chf: (x: number) => string, court: (x: number) => string,
-     *          libelles: Record<string, string>, ans: string}} opts
+     * @param {{reperes: {age: number, libelle: string, glissable?: boolean}[], chf: (x: number) => string, court: (x: number) => string,
+     *          libelles: Record<string, string>, ans: string, surGlisser?: (age: number, fin: boolean) => void}} opts
      */
     definir(points, opts) {
       options = opts;
       cible = new Map(points.map(p => [p.age, { besoin: p.besoin, v: p.v }]));
       if (points.length) {
         const sommet = Math.max(...points.map(p => Math.max(p.besoin, COUCHES.reduce((s, c) => s + (p.v[c] ?? 0), 0))));
-        vise = { a0: points[0].age, a1: points[points.length - 1].age + 1, max: Math.max(1000, sommet * 1.12) };
+        const cibleDomaine = { a0: points[0].age, a1: points[points.length - 1].age + 1, max: Math.max(1000, sommet * 1.12) };
+        // pendant un glissement, l'échelle ne bouge pas : le repère reste sous le doigt
+        vise = glisse ? { ...vise, max: Math.max(vise.max, cibleDomaine.max) } : cibleDomaine;
         if (!courant.size) domaine = { ...vise, max: vise.max * 1.6 };   // première image : les colonnes montent
       }
-      cacherBulle();
+      if (!glisse) cacherBulle();
       lancer();
     },
   };

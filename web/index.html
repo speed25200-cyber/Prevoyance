@@ -4,20 +4,29 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f2ed" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Prévoyance">
 <meta name="robots" content="noindex">
 <title>Prévoyance — analyse des lacunes</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="images/icone-192.png">
+<link rel="apple-touch-icon" href="images/icone-180.png">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="vues.css">
 <script type="module" src="src/app.js"></script>
 </head>
 <body>
 <header class="barre">
   <div class="marque">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="17" width="6" height="12" rx="2"/><rect x="13" y="10" width="6" height="19" rx="2"/><rect x="23" y="3" width="6" height="26" rx="2"/></svg>
+    <img src="images/icone-192.png" alt="" width="34" height="34">
     <div><b data-t="titre">Prévoyance</b><span data-t="sousTitre">Analyse des lacunes</span></div>
   </div>
+  <nav class="onglets" id="onglets" role="tablist" aria-label="Vues"></nav>
   <div class="actions">
-    <button class="lien" id="exemple" type="button" data-t="exemple">Charger un exemple</button>
-    <button class="lien" id="reinitialiser" type="button" data-t="reinitialiser">Nouveau dossier</button>
+    <button class="lien" id="presentation" type="button" data-t="presentation">Présentation</button>
     <label class="choix-annee"><span data-t="regles">Règles</span><select id="annee" aria-label="Année des règles"></select></label>
     <div class="segments" id="langues" role="group" aria-label="Langue"></div>
   </div>
@@ -25,38 +34,7 @@
 
 <main class="scene">
   <aside class="saisie" id="saisie" aria-label="Dossier du client"></aside>
-
-  <section class="analyse" aria-live="polite">
-    <div class="tete carte">
-      <div class="jauge" id="jauge">
-        <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="piste" cx="60" cy="60" r="52"/><circle class="arc" cx="60" cy="60" r="52"/></svg>
-        <div class="jauge-texte"><b id="score">0</b><span data-t="score">Couverture globale</span></div>
-      </div>
-      <div class="resume">
-        <p class="surtitre" id="resume-titre"></p>
-        <p class="grand"><span id="resume-montant">CHF 0</span><small id="resume-unite"></small></p>
-        <p class="note" id="resume-note"></p>
-      </div>
-    </div>
-
-    <div class="risques" id="risques" role="tablist"></div>
-
-    <div class="carte graphique">
-      <div class="carte-tete">
-        <div><h2 data-t="ligneDeVie">Ligne de vie</h2><p data-t="revenuSelonAge">Revenu annuel selon l’âge</p></div>
-        <ul class="legende" id="legende"></ul>
-      </div>
-      <div class="toile"><canvas id="graphique"></canvas><div class="bulle" id="bulle" hidden></div></div>
-    </div>
-
-    <div class="deux">
-      <div class="carte"><h2 data-t="detail">D’où vient le revenu</h2><div id="detail"></div></div>
-      <div class="carte"><h2 data-t="potentiels">Leviers</h2><div id="potentiels"></div></div>
-    </div>
-
-    <div class="carte"><h2 data-t="alertes">Points d’attention</h2><ul class="alertes" id="alertes"></ul></div>
-    <p class="avertissement" data-t="avertissement"></p>
-  </section>
+  <section class="analyse" id="vue" aria-live="polite"></section>
 </main>
 </body>
 </html>

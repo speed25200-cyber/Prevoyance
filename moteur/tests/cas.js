@@ -5,10 +5,10 @@
  * (tests/run.mjs, intégration continue) et dans l'app iOS.
  */
 
-import { analyser, AVS, LPP, LAA } from '../src/index.js';
+import { analyser, AVS, LPP, LAA, Impots, Scenarios } from '../src/index.js';
 
-/** @param {(nom: string, obtenu: any, attendu: any, tolerance?: number) => void} egal @param {{r26: any, r27: any}} regles */
-export function cas(egal, { r26, r27 }) {
+/** @param {(nom: string, obtenu: any, attendu: any, tolerance?: number) => void} egal @param {{r26: any, r27: any, i26?: any}} regles */
+export function cas(egal, { r26, r27, i26 }) {
   // ---- AVS : échelle 44 (formule à deux segments, arrondie au franc)
   egal('AVS 2026 rente minimale (RAMD 15 120)', AVS.renteComplete(r26, 15120), 1260);
   egal('AVS 2026 charnière (RAMD 45 360)', AVS.renteComplete(r26, 45360), 1915);
@@ -103,4 +103,75 @@ export function cas(egal, { r26, r27 }) {
   egal('Cas C certificat LPP repris tel quel', c.risques.retraite.sources.find(s => s.cle === 'lpp').montant, 36000);
   egal('Cas C alerte plafonnement', c.alertes.some(x => x.cle === 'plafonnementCouple'), true);
   egal('Cas C rente de veuve AVS : 80 % de 2520', c.risques.decesMaladie.sources.find(s => s.cle === 'avsConjoint').montant, 2016 * 12);
+}
+
+/** Suite du jeu de cas : impôts par canton (données relevées auprès de l'AFC) et scénarios de conseil. */
+export function casScenarios(egal, { r26, i26 }) {
+  // ---- interpolation et grilles fiscales
+  egal('Interpolation au milieu', Impots.interpoler([0, 10], [0, 100], 5), 50);
+  egal('Interpolation prolongée', Impots.interpoler([0, 10, 20], [0, 100, 300], 30), 500);
+  if (i26) {
+    egal('Impôts : 26 cantons', Object.keys(i26.cantons).length, 26);
+    const fr = Impots.impotRevenu(i26, 'FR', false, 100000);
+    egal('Impôt FR, 100 000 seul = point de grille', fr.impot, i26.cantons.FR.revenu.seul[i26.revenus.indexOf(100000)][0]);
+    egal('Taux marginal FR plausible (15 à 45 %)', fr.marginal > 0.15 && fr.marginal < 0.45, true);
+    egal('Marié paie moins que seul (ZH, 120 000)', Impots.impotRevenu(i26, 'ZH', true, 120000).impot < Impots.impotRevenu(i26, 'ZH', false, 120000).impot, true);
+    egal('Impôt croissant avec le revenu (GE)', Impots.impotRevenu(i26, 'GE', false, 150000).impot > Impots.impotRevenu(i26, 'GE', false, 100000).impot, true);
+    egal('Canton inconnu', Impots.impotRevenu(i26, 'XX', false, 100000), null);
+    egal('Capital : point de grille VD 300 000', Impots.impotCapital(i26, 'VD', false, 300000), Math.round(i26.cantons.VD.capital.seul[i26.capitaux.indexOf(300000)] / 10) * 10);
+    egal('Capital nul', Impots.impotCapital(i26, 'VD', false, 0), 0);
+    const ech = Impots.retraitsEchelonnes(i26, 'BE', false, [100000, 100000, 100000]);
+    egal('Retraits échelonnés moins imposés qu’un retrait unique', ech.echelonne < ech.unique && ech.economie > 0, true);
+    const rachats = Impots.rachatEchelonne(i26, 'VD', false, 120000, 60000);
+    egal('Rachat échelonné : 5 variantes', rachats.length, 5);
+    egal('Rachat sur 3 ans au moins aussi avantageux qu’en une fois', rachats[2].economie >= rachats[0].economie, true);
+    egal('Économie d’une déduction nulle', Impots.economieDeduction(i26, 'VD', false, 100000, 0), 0);
+    // l'analyse reprend le barème du canton
+    const a = analyser({ dateAnalyse: '2026-01-01', canton: 'VD', personne: { dateNaissance: '1986-01-01', sexe: 'h', statut: 'salarie', revenu: 90000, lpp: { avoir: 100000 } } }, r26, { impots: i26 });
+    egal('Analyse : canton repris', a.potentiels.canton, 'VD');
+    egal('Analyse : économie 3a selon le barème', a.potentiels.pilier3a.economieImpot, Impots.economieDeduction(i26, 'VD', false, 90000, 7258));
+    const rc = Scenarios.renteOuCapital({ capital: 400000, tauxConversion: 0.06, autresRentes: 30000, ageRetraite: 65, canton: 'VD', marie: false }, i26);
+    egal('Rente ou capital : trois options', rc.options.length, 3);
+    egal('Tout en rente : aucun impôt sur le capital', rc.options[0].impotCapital, 0);
+    egal('Tout en capital : aucune rente', rc.options[2].rente, 0);
+    egal('Capital net = capital - impôt', rc.options[2].capitalNet, 400000 - rc.options[2].impotCapital);
+    egal('Seuil de rentabilité après la retraite', rc.seuilRentabilite > 65 && rc.seuilRentabilite < 100, true);
+  }
+  // ---- âge de départ
+  const dossier = { dateAnalyse: '2026-01-01', personne: { dateNaissance: '1976-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, avs: { ramd: 90720 }, lpp: { avoir: 300000 } } };
+  const ages = Scenarios.agesDeDepart(dossier, r26, [63, 64, 65, 66]);
+  egal('Départ à 65 ans : AVS 2520 x 13', ages[2].avs, 32760);
+  egal('Départ à 63 ans : AVS réduite de 13,6 %', ages[0].avs, Math.round(32760 * 0.864));
+  egal('Départ à 66 ans : AVS majorée de 5,2 %', ages[3].avs, Math.round(32760 * 1.052));
+  egal('Plus on part tard, plus la rente LPP est haute', ages[0].lpp < ages[1].lpp && ages[1].lpp < ages[2].lpp && ages[2].lpp < ages[3].lpp, true);
+  egal('Pont AVS avant 63 ans', Scenarios.agesDeDepart(dossier, r26, [61])[0].pontAVS, 2);
+  // ---- simulation de placement
+  const s1 = Scenarios.simulerPlacement({ capital: 10000, versement: 7000, annees: 20, rendement: 0.03, volatilite: 0.1 });
+  const s2 = Scenarios.simulerPlacement({ capital: 10000, versement: 7000, annees: 20, rendement: 0.03, volatilite: 0.1 });
+  egal('Simulation reproductible', s1[20].p50, s2[20].p50);
+  egal('Centiles ordonnés', s1[20].p10 < s1[20].p50 && s1[20].p50 < s1[20].p90, true);
+  egal('Total versé', s1[20].verse, 150000);
+  egal('Sans volatilité, la médiane suit l’intérêt composé', Scenarios.simulerPlacement({ capital: 100000, versement: 0, annees: 10, rendement: 0.02, volatilite: 0 })[10].p50, 121900);
+  // ---- hypothèque
+  const h = Scenarios.chargeHypothecaire({ valeur: 1000000, dette: 600000, revenu: 90000 });
+  egal('Hypothèque : charge théorique 5 % + 1 %', h.charge, 40000);
+  egal('Hypothèque : non tenable à 44 %', h.tenable, false);
+  egal('Hypothèque : dette maximale', h.detteMax, 400000);
+  egal('Hypothèque : amortissement nécessaire', h.amortissement, 200000);
+  egal('Hypothèque tenable', Scenarios.chargeHypothecaire({ valeur: 800000, dette: 300000, revenu: 90000 }).tenable, true);
+  // ---- plan de mesures
+  const famille = { dateAnalyse: '2026-01-01', etatCivil: 'marie',
+    personne: { dateNaissance: '1988-01-01', sexe: 'h', statut: 'salarie', revenu: 110000, lpp: { avoir: 90000, rachatPossible: 40000 }, ijm: { assure: true } },
+    conjoint: { dateNaissance: '1990-01-01', sexe: 'f', statut: 'salarie', revenu: 40000 }, enfants: [{ dateNaissance: '2021-05-01' }] };
+  const plan = Scenarios.proposerPlan(famille, r26);
+  egal('Plan : la couverture progresse', plan.apres.score >= plan.avant.score, true);
+  egal('Plan : plus de lacune d’invalidité', plan.apres.risques.invaliditeMaladie.lacune, 0);
+  egal('Plan : plus de lacune au décès', plan.apres.risques.decesMaladie.lacune, 0);
+  egal('Plan : la lacune de retraite recule', plan.apres.risques.retraite.lacune < plan.avant.risques.retraite.lacune, true);
+  egal('Plan : 3a dans la limite du plafond', (plan.mesures.versement3a ?? 0) <= 7258, true);
+  egal('Mesures : le dossier d’origine n’est pas modifié', famille.personne.lpp.avoir, 90000);
+  // ---- décès : les capitaux disponibles comptent comme un revenu
+  const seul = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', personne: { dateNaissance: '1980-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, fortune: 200000 },
+    conjoint: { dateNaissance: '1980-01-01', sexe: 'f', statut: 'sans', revenu: 0 } }, r26);
+  egal('Décès : la fortune devient une source', seul.risques.decesMaladie.sources.some(s => s.cle === 'capitaux' && s.montant > 0), true);
 }
