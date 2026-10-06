@@ -153,6 +153,17 @@
       'heure-scene': '#fff', voile: voile('rgba(250,243,247,X)'), 'titre-police': `700 34px ${SANS}`, 'nombre-police': `700 50px ${SANS}`, nombre: '#5b3fd6', panneau: 'rgba(255,255,255,.85)', 'panneau-bord': '1px solid #fff', 'panneau-ombre': '0 20px 40px -24px rgba(91,63,214,.4)', rayon: '26px', 'rayon-bouton': '26px', 'rayon-barre': '0',
       cta: 'linear-gradient(120deg,#5b3fd6,#e0567a 70%,#f6a26b)', 'cta-encre': '#fff', 'cta-ombre': '0 14px 28px -12px rgba(224,86,122,.6)', second: '#fff', 'second-bord': '1px solid #eadff0', barre: '#fff', actif: '#241a3a', 'actif-encre': '#fff' }],
   });
+  Object.assign(UNIVERS, {
+    j: ['Alpin — Nuit', 'La même scène sous les étoiles : la version sombre d’Alpin, pour le mode nuit de l’appareil.', { menu: 'etapes', scene: 'variante-j.png', planche: '#d5dae2', legende: '#101a26', police: SANS, fond: 'linear-gradient(180deg, #0b1522, #0e1b2c)', 'fond-uni': '#0c1726', encre: '#eef3f8', discret: '#8c9bae', filet: 'rgba(190,210,235,.16)', accent: '#e23a44',
+      'heure-scene': '#fff', voile: voile('rgba(11,21,34,X)', .86), 'titre-police': `600 34px ${SANS}`, 'titre-espace': '-.035em', 'nombre-police': `300 54px ${SANS}`, panneau: 'rgba(190,210,235,.07)', 'panneau-bord': '1px solid rgba(190,210,235,.16)', rayon: '14px', 'rayon-bouton': '12px', 'rayon-barre': '18px',
+      cta: '#eef3f8', 'cta-encre': '#0b1522', second: 'rgba(190,210,235,.07)', 'second-bord': '1px solid rgba(190,210,235,.24)', barre: '#111f31', actif: '#e23a44', 'actif-encre': '#fff' }],
+    k: ['Mélèze', 'Automne en Engadine : mélèzes dorés, ardoise, bois argenté et verre ambré. Chaleureux et suisse.', { menu: 'barre', scene: 'variante-k.png', planche: '#e6e0d2', legende: '#22201a', police: SANS, fond: '#f5f1e8', encre: '#22201a', discret: '#7c766a', filet: '#e2dccd', accent: '#c98a1b',
+      'heure-scene': '#fff', voile: voile('rgba(245,241,232,X)'), 'titre-police': `600 34px ${SANS}`, 'titre-espace': '-.035em', 'nombre-police': `300 54px ${SANS}`, panneau: '#fffdf8', 'panneau-bord': '1px solid #e2dccd', rayon: '16px', 'rayon-bouton': '14px', 'rayon-barre': '22px',
+      cta: '#1f3d33', 'cta-encre': '#f5f1e8', second: '#fffdf8', 'second-bord': '1px solid #d4ccb9', barre: '#fffdf8', actif: '#c98a1b', 'actif-encre': '#fff' }],
+    l: ['Glacier', 'Au cœur de la glace : turquoise, marbre blanc et acier. Pur, lumineux, précis.', { menu: 'socle', scene: 'variante-l.png', planche: '#d9e6ea', legende: '#0f2a33', police: SANS, fond: 'linear-gradient(175deg, #f2fafb, #e6f4f6)', 'fond-uni': '#eef8f9', encre: '#0f2a33', discret: '#5f8089', filet: '#d2e6ea', accent: '#0aa3b5',
+      'heure-scene': '#0f2a33', voile: voile('rgba(240,249,250,X)'), 'titre-police': `600 34px ${SANS}`, 'titre-espace': '-.035em', 'nombre-police': `300 54px ${SANS}`, nombre: '#0b7f8e', panneau: 'rgba(255,255,255,.86)', 'panneau-bord': '1px solid #fff', 'panneau-ombre': '0 18px 36px -24px rgba(10,120,135,.5)', rayon: '22px', 'rayon-bouton': '20px', 'rayon-barre': '0',
+      cta: 'linear-gradient(180deg,#12b8cb,#078797)', 'cta-encre': '#fff', 'cta-ombre': '0 14px 26px -12px rgba(10,150,170,.7)', second: '#fff', 'second-bord': '1px solid #d2e6ea', barre: '#fff', actif: '#0f2a33', 'actif-encre': '#fff' }],
+  });
   const parametres = new URLSearchParams(location.search);
   const v = parametres.get('v') ?? 'nuit', [nom, phrase, jetons] = UNIVERS[v] ?? UNIVERS.nuit;
   // disposition du menu : celle de l'univers, ou celle demandée (m=barre|etapes|tuiles|socle)
