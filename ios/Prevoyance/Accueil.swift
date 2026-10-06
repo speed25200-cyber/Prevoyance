@@ -16,8 +16,11 @@ struct Accueil: View {
     @ObservedObject var navigation: Navigation
     @Environment(\.colorScheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var calme
-    @State private var souffle = false
     @State private var arrive = false
+    @StateObject private var inclinaison = Inclinaison()
+    /// Première apparition depuis le lancement de l'app : le film d'émergence est joué, le texte attend qu'il s'installe.
+    @State private var premiere = Accueil.jamaisVu
+    private static var jamaisVu = true
 
     var body: some View {
         ZStack {
@@ -35,7 +38,8 @@ struct Accueil: View {
                             .minimumScaleFactor(0.7)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.top, 220)
+                    .padding(.top, 300)
+                    .offset(x: inclinaison.x * 8, y: inclinaison.y * 6)
                     .opacity(arrive ? 1 : 0)
                     .offset(y: arrive ? 0 : 18)
 
@@ -98,30 +102,40 @@ struct Accueil: View {
                 .frame(maxWidth: .infinity)
             }
         }
+        // l'accueil est une scène de nuit, quel que soit le thème de l'appareil
+        .environment(\.colorScheme, .dark)
         .onAppear {
-            withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { arrive = true }
-            if !calme { withAnimation(.easeInOut(duration: 16).repeatForever(autoreverses: true)) { souffle = true } }
+            let attente = premiere && !calme ? 3.4 : 0.05
+            Accueil.jamaisVu = false
+            withAnimation(.spring(response: 0.9, dampingFraction: 0.86).delay(attente)) { arrive = true }
+            inclinaison.demarrer()
         }
+        .onDisappear { inclinaison.arreter() }
     }
 
-    /// Le fond : la scène des trois piliers, sous un voile qui laisse lire le texte.
+    /// Le fond : le film des trois piliers (émergence à la première ouverture, puis boucle), sur son image fixe, sous
+    /// un voile qui laisse lire le texte. Il se décale légèrement avec l'inclinaison de l'appareil.
     private var fond: some View {
-        let sombre = theme == .dark
-        let base = sombre ? Color(red: 0.016, green: 0.035, blue: 0.075) : Color(red: 0.92, green: 0.94, blue: 0.97)
+        let nuit = Color(red: 0.008, green: 0.02, blue: 0.045)
         return ZStack {
-            base
-            if let image = Accueil.scene(sombre: sombre) {
-                GeometryReader { cadre in
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: cadre.size.width, height: min(cadre.size.height * 0.62, 620), alignment: .trailing)
-                        .scaleEffect(souffle ? 1.08 : 1, anchor: .trailing)
-                        .clipped()
-                        .mask(LinearGradient(colors: [.black, .black, .clear], startPoint: .top, endPoint: .bottom))
+            nuit
+            GeometryReader { cadre in
+                ZStack {
+                    if let image = Accueil.affiche() {
+                        Image(uiImage: image).resizable().scaledToFill()
+                    }
+                    if !calme {
+                        FilmAccueil(avecIntro: premiere)
+                    }
                 }
+                .frame(width: cadre.size.width, height: cadre.size.height)
+                .scaleEffect(1.06)
+                .offset(x: inclinaison.x * -22, y: inclinaison.y * -16)
+                .clipped()
             }
-            LinearGradient(colors: [base.opacity(0.1), base.opacity(0.55), base], startPoint: .top, endPoint: .center)
+            LinearGradient(stops: [.init(color: nuit.opacity(0), location: 0), .init(color: nuit.opacity(0.05), location: 0.42),
+                                   .init(color: nuit.opacity(0.78), location: 0.66), .init(color: nuit.opacity(0.96), location: 1)],
+                           startPoint: .top, endPoint: .bottom)
         }
         .ignoresSafeArea()
     }
@@ -148,6 +162,14 @@ struct Accueil: View {
         .padding(.horizontal, 18)
         .frame(height: 78)
         .verreArrondi(rayon: 26)
+    }
+
+    /// L'image fixe du film (visible avant que la vidéo démarre, et seule en mouvement réduit).
+    private static var imageAffiche: UIImage?
+    private static func affiche() -> UIImage? {
+        if let imageAffiche { return imageAffiche }
+        imageAffiche = FilmAccueil.fichier("accueil.jpg").flatMap { UIImage(contentsOfFile: $0.path) }
+        return imageAffiche
     }
 
     /// L'image de la scène, prise dans les écrans embarqués (une seule lecture par thème).

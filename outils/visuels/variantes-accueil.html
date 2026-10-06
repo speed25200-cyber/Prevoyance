@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Prévoyance — quatre univers pour l'accueil</title>
+<!-- L'écran d'accueil de l'app dans quatre univers, chacun avec sa scène générée (Higgsfield) et son habillage.
+     Planche rendue en image par Edge : recherches/prevoyance-variantes-accueil.png. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 2200px; height: 1300px; background: #dfe0e4; font-family: -apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif; display: flex; gap: 46px; justify-content: center; align-items: center; }
+  figure { display: grid; gap: 22px; justify-items: center; }
+  figcaption { text-align: center; color: #15171c; }
+  figcaption b { display: block; font-size: 26px; letter-spacing: -.02em; }
+  figcaption span { font-size: 16px; color: #5d636d; }
+  .tel { width: 430px; height: 932px; border-radius: 62px; padding: 14px; background: #0c0c0e; box-shadow: 0 50px 90px -40px rgba(0, 0, 0, .6); }
+  .ecran { position: relative; width: 100%; height: 100%; border-radius: 50px; overflow: hidden; background-size: cover; background-position: center top; }
+  .ile { position: absolute; left: 50%; top: 14px; width: 118px; height: 34px; margin-left: -59px; border-radius: 20px; background: #000; z-index: 3; }
+  .voile { position: absolute; inset: 0; }
+  .bas { position: absolute; left: 26px; right: 26px; bottom: 40px; z-index: 2; }
+  .sur { font-size: 12px; font-weight: 600; letter-spacing: .34em; text-transform: uppercase; }
+  h1 { font-size: 40px; line-height: 1.04; letter-spacing: -.03em; margin: 12px 0 26px; }
+  .dossier { display: flex; align-items: center; gap: 14px; height: 78px; padding: 0 18px; }
+  .dossier svg { width: 48px; height: 48px; flex: none; transform: rotate(-90deg); }
+  .dossier div { flex: 1; } .dossier div b { display: block; font-size: 18px; } .dossier div span { font-size: 14px; }
+  .dossier i { font-style: normal; font-size: 18px; opacity: .5; }
+  .boutons { display: flex; gap: 12px; margin-top: 14px; }
+  .boutons span { height: 56px; display: grid; place-items: center; font-size: 17px; font-weight: 600; }
+  .boutons span:first-child { flex: 1; }
+  .boutons span:last-child { padding: 0 24px; font-weight: 500; }
+
+  /* nuit (actuel) */
+  .n .ecran { background-image: url(accueil-sombre.png); color: #f4f7fb; }
+  .n .voile { background: linear-gradient(180deg, rgba(2, 5, 11, 0) 40%, rgba(2, 5, 11, .8) 64%, rgba(2, 5, 11, .97)); }
+  .n .sur { color: rgba(244, 247, 251, .6); } .n h1 { font-weight: 700; }
+  .n .dossier { border-radius: 26px; background: linear-gradient(135deg, rgba(255, 255, 255, .16), rgba(255, 255, 255, .05)); border: 1px solid rgba(255, 255, 255, .18); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
+  .n .dossier span { color: rgba(244, 247, 251, .6); }
+  .n .boutons span:first-child { border-radius: 28px; background: linear-gradient(180deg, #5a9bff, #1557d6); box-shadow: 0 14px 28px -12px rgba(31, 100, 232, .8), inset 0 1px 0 rgba(255, 255, 255, .5); }
+  .n .boutons span:last-child { border-radius: 28px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .18); }
+
+  /* A éditorial */
+  .a .ecran { background-image: url(variante-a.png); color: #16130f; font-family: "New York", "Iowan Old Style", Georgia, serif; }
+  .a .voile { background: linear-gradient(180deg, rgba(246, 243, 236, 0) 42%, rgba(246, 243, 236, .9) 62%, #f6f3ec 74%); }
+  .a .sur { color: #8b8377; font-family: -apple-system, "Segoe UI", sans-serif; } .a h1 { font-weight: 400; font-size: 44px; }
+  .a .dossier { border-top: 1px solid #16130f; border-bottom: 1px solid #d9d3c6; padding: 0; font-family: -apple-system, "Segoe UI", sans-serif; }
+  .a .dossier span { color: #8b8377; }
+  .a .boutons span { font-family: -apple-system, "Segoe UI", sans-serif; }
+  .a .boutons span:first-child { border-radius: 4px; background: #16130f; color: #f6f3ec; }
+  .a .boutons span:last-child { border-radius: 4px; border: 1px solid #16130f; }
+
+  /* B instrument */
+  .b .ecran { background-image: url(variante-b.png); color: #f4f4f5; }
+  .b .voile { background: linear-gradient(180deg, rgba(0, 0, 0, 0) 44%, rgba(0, 0, 0, .86) 64%, #000 80%); }
+  .b .sur { color: #d4ff3a; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .2em; } .b h1 { font-weight: 600; letter-spacing: -.04em; }
+  .b .dossier { border-radius: 18px; background: #111113; border: 1px solid #27272a; }
+  .b .dossier b { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 16px !important; letter-spacing: -.02em; }
+  .b .dossier span { color: #71717a; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px !important; }
+  .b .boutons span:first-child { border-radius: 18px; background: #d4ff3a; color: #000; font-weight: 700; }
+  .b .boutons span:last-child { border-radius: 18px; background: #111113; border: 1px solid #27272a; }
+
+  /* C chaleureux */
+  .c .ecran { background-image: url(variante-c.png); color: #1f2a24; font-family: "SF Pro Rounded", ui-rounded, -apple-system, "Segoe UI", sans-serif; }
+  .c .voile { background: linear-gradient(180deg, rgba(243, 237, 226, 0) 44%, rgba(243, 237, 226, .92) 62%, #f3ede2 74%); }
+  .c .sur { color: #17402f; letter-spacing: .18em; } .c h1 { font-weight: 700; }
+  .c .dossier { border-radius: 28px; background: #fffaf1; box-shadow: 0 14px 30px -18px rgba(31, 42, 36, .4); }
+  .c .dossier span { color: #6b7469; }
+  .c .boutons span:first-child { border-radius: 28px; background: #17402f; color: #f3ede2; }
+  .c .boutons span:last-child { border-radius: 28px; background: #f6c453; }
+</style>
+<body>
+<figure class="n"><div class="tel"><div class="ecran"><div class="ile"></div><div class="voile"></div><div class="bas">
+  <p class="sur">Prévoyance</p><h1>Les lacunes des trois piliers, en clair.</h1>
+  <div class="dossier"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="4"/><circle cx="24" cy="24" r="20" fill="none" stroke="#2f7cf6" stroke-width="4" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="10"/></svg><div><b>Famille Rochat</b><span>6 octobre 2026 · score 92</span></div><i>›</i></div>
+  <div class="boutons"><span>+ Nouveau dossier</span><span>Exemple</span></div></div></div></div>
+  <figcaption><b>Nuit — l'actuel</b><span>Verre et eau noire. Film des piliers qui émergent.</span></figcaption></figure>
+
+<figure class="a"><div class="tel"><div class="ecran"><div class="ile"></div><div class="voile"></div><div class="bas">
+  <p class="sur">Prévoyance</p><h1>Les lacunes des trois piliers, en clair.</h1>
+  <div class="dossier"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="#d9d3c6" stroke-width="3"/><circle cx="24" cy="24" r="20" fill="none" stroke="#c2410c" stroke-width="3" stroke-dasharray="126" stroke-dashoffset="10"/></svg><div><b>Famille Rochat</b><span>6 octobre 2026 · score 92</span></div><i>›</i></div>
+  <div class="boutons"><span>Nouveau dossier</span><span>Exemple</span></div></div></div></div>
+  <figcaption><b>A — Éditorial</b><span>Galerie au matin, travertin et bronze. Banque privée.</span></figcaption></figure>
+
+<figure class="b"><div class="tel"><div class="ecran"><div class="ile"></div><div class="voile"></div><div class="bas">
+  <p class="sur">Prévoyance_</p><h1>Les lacunes des trois piliers, en clair.</h1>
+  <div class="dossier"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="#27272a" stroke-width="5"/><circle cx="24" cy="24" r="20" fill="none" stroke="#d4ff3a" stroke-width="5" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="10"/></svg><div><b>ROCHAT</b><span>06.10.2026 · SCORE 92</span></div><i>›</i></div>
+  <div class="boutons"><span>+ Nouveau dossier</span><span>Exemple</span></div></div></div></div>
+  <figcaption><b>B — Instrument</b><span>Noir studio, carbone et lumière vive. Outil de précision.</span></figcaption></figure>
+
+<figure class="c"><div class="tel"><div class="ecran"><div class="ile"></div><div class="voile"></div><div class="bas">
+  <p class="sur">Prévoyance</p><h1>Les lacunes des trois piliers, en clair.</h1>
+  <div class="dossier"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="#e7dfcf" stroke-width="5"/><circle cx="24" cy="24" r="20" fill="none" stroke="#17402f" stroke-width="5" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="10"/></svg><div><b>Famille Rochat</b><span>6 octobre 2026 · score 92</span></div><i>›</i></div>
+  <div class="boutons"><span>Nouveau dossier</span><span>Exemple</span></div></div></div></div>
+  <figcaption><b>C — Chaleureux</b><span>Sable et soleil, céramique et bois. Rassurant.</span></figcaption></figure>
+</body>
+</html>
