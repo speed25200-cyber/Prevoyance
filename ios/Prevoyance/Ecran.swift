@@ -23,6 +23,8 @@ struct Ecran: UIViewRepresentable {
         let script = "window.print = () => window.webkit.messageHandlers.imprimer.postMessage(document.title);"
         reglages.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         reglages.userContentController.add(context.coordinator, name: "imprimer")
+        // Scan d'un certificat de prévoyance : appareil photo, lecture et compréhension sur l'appareil (Scan.swift).
+        reglages.userContentController.add(context.coordinator, name: "scanner")
 
         let vue = WKWebView(frame: .zero, configuration: reglages)
         vue.isOpaque = false
@@ -35,6 +37,7 @@ struct Ecran: UIViewRepresentable {
         vue.isInspectable = true
         #endif
         context.coordinator.vue = vue
+        context.coordinator.scan = ScanCertificat(vue: vue)
         vue.load(URLRequest(url: Adresse.accueil))
         return vue
     }
@@ -46,8 +49,10 @@ struct Ecran: UIViewRepresentable {
 @MainActor
 final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     weak var vue: WKWebView?
+    var scan: ScanCertificat?
 
     func userContentController(_ controleur: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "scanner" { scan?.ouvrir(); return }
         guard message.name == "imprimer", let vue else { return }
         let impression = UIPrintInteractionController.shared
         let infos = UIPrintInfo(dictionary: nil)

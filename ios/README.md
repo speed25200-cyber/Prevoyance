@@ -9,6 +9,7 @@ des mises à jour des données (vue « Données ») va sur Internet.
 | `project.yml` | Le projet Xcode, généré par XcodeGen. Le `.xcodeproj` n'est pas versionné. |
 | `Prevoyance/PrevoyanceApp.swift` | Le point d'entrée. |
 | `Prevoyance/Ecran.swift` | La vue web plein écran, le service des fichiers embarqués (schéma `prevoyance://`), l'impression native du rapport. |
+| `Prevoyance/Scan.swift` | Le scan d'un certificat de prévoyance : scanner de documents d'iOS, reconnaissance de texte (Vision), puis modèle de langage de l'appareil (Apple Intelligence, iOS 26) quand il existe. Tout reste sur l'appareil. |
 | `Prevoyance/Assets.xcassets` | L'icône et la couleur de lancement (clair et sombre). |
 | `../codemagic.yaml` | La construction : contrôle sans signature, puis TestFlight. |
 

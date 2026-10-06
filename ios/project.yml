@@ -21,7 +21,7 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     # iPhone et iPad (app universelle).
     TARGETED_DEVICE_FAMILY: "1,2"
-    MARKETING_VERSION: "0.4.0"
+    MARKETING_VERSION: "0.5.0"
     CURRENT_PROJECT_VERSION: "1"
     VERSIONING_SYSTEM: apple-generic
     CODE_SIGN_STYLE: Automatic
@@ -65,3 +65,5 @@ targets:
         UIRequiresFullScreen: false
         # ProMotion : animations et défilement à 120 Hz sur les iPhone Pro (l'iPad Pro l'est d'office).
         CADisableMinimumFrameDurationOnPhone: true
+        # Scan des certificats de prévoyance : la photo est lue sur l'appareil, rien n'est envoyé.
+        NSCameraUsageDescription: "L'appareil photo sert à scanner un certificat de prévoyance. Le document est lu sur cet appareil et n'est envoyé nulle part."

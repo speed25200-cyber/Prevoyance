@@ -348,3 +348,25 @@ svg .zone { fill: color-mix(in srgb, var(--accent) 14%, transparent); } svg .med
 /* les champs ne déclenchent pas le zoom automatique de l'iPhone (texte d'au moins 16 px) */
 input, select, textarea { font-size: max(16px, 1em); }
 html { overscroll-behavior-y: none; }
+
+/* ---------- scan d'un certificat : feuille de vérification */
+.scan-bouton { display: inline-flex; align-items: center; gap: 9px; justify-self: start; }
+.scan-icone { width: 18px; height: 14px; border: 2px solid currentColor; border-radius: 4px; position: relative; }
+.scan-icone::after { content: ""; position: absolute; left: -4px; right: -4px; top: 50%; height: 2px; margin-top: -1px; background: currentColor; border-radius: 2px; }
+dialog.scan { border: 0; border-radius: 24px; padding: 22px; width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow: auto;
+  background: var(--surface); color: var(--encre); display: grid; gap: 14px; }
+dialog.scan:not([open]) { display: none; }
+dialog.scan::backdrop { background: rgba(4, 8, 16, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+dialog.scan h2 { font-size: 24px; }
+dialog.scan textarea { width: 100%; border: 1.5px solid transparent; border-radius: 12px; background: var(--creux); color: inherit; padding: 12px 14px; font: inherit;
+  font-size: 16px; line-height: 1.4; resize: vertical; }
+dialog.scan textarea:focus { outline: none; border-color: var(--accent); }
+.scan-resultats { display: grid; gap: 8px; }
+.scan-ligne { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(120px, 170px); gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px;
+  background: var(--creux); }
+.scan-ligne input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
+.scan-ligne span { display: grid; gap: 2px; min-width: 0; }
+.scan-ligne small { color: var(--encre-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-ligne .montant input { width: 100%; border: 0; border-radius: 10px; background: var(--surface); color: inherit; padding: 10px 10px 10px 50px; font-weight: 600; min-height: 44px; }
+.scan-actions { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+@media (max-width: 640px) { .scan-ligne { grid-template-columns: auto minmax(0, 1fr); } .scan-ligne .montant { grid-column: 1 / -1; } }

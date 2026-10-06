@@ -21,7 +21,12 @@ on construit le plan avec le client, on lui remet un rapport PDF.
 | **Rapport** | Le document du client, en pages A4 : couverture, synthèse, retraite, invalidité, décès, plan, hypothèses et sources. « Enregistrer en PDF » par l'impression du navigateur. |
 | **Données** | Les montants officiels appliqués (2026 et 2027), les valeurs encore à confirmer, les impôts des 26 cantons avec la date du relevé, les sources, et la vérification des mises à jour. |
 
-S'y ajoutent : un portefeuille de dossiers (créer, dupliquer, exporter, importer), l'analyse de chacun des deux
+S'y ajoute le **scan du certificat de prévoyance** (2e pilier) : le texte est lu sur l'appareil, les valeurs reconnues
+(avoir, rentes, capital décès, rachat, salaire) sont proposées et le conseiller les vérifie avant de les reprendre.
+Dans l'app iPhone / iPad : appareil photo, reconnaissance de texte et modèle de langage de l'appareil. Dans un
+navigateur : texte collé, ou « Scanner du texte » de Safari. Rien n'est envoyé.
+
+S'y ajoutent aussi : un portefeuille de dossiers (créer, dupliquer, exporter, importer), l'analyse de chacun des deux
 membres d'un couple, un mode présentation plein écran, le clair et le sombre selon l'appareil.
 
 ## Structure
@@ -90,7 +95,7 @@ proposent la mise à jour dans la vue « Données ». Les règles d'une nouvelle
 python -m http.server 8790                       # depuis la racine du dépôt
 ```
 
-- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (133 cas).
+- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (145 cas).
 - Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (23 essais : parcours, quatre langues complètes, largeur de téléphone).
 - Vitesse : une analyse complète prend environ 0,06 ms sur un PC de bureau (mesure dans un navigateur ouvert).
 

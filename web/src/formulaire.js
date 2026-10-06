@@ -6,6 +6,7 @@
  */
 
 import { h, $ } from './ui.js';
+import * as Scan from './scan.js';
 import { etat, garder, dossier, nouveauDossier, supprimerDossier, dupliquerDossier, dossierVide, dossierExemple, CANTONS, aujourdhui } from './etat.js';
 
 /** @type {{t: (c: string, v?: any) => string, f: any, apresChangement: () => void, reconstruire: () => void}} */
@@ -92,6 +93,8 @@ function champsPersonne(prefixe) {
     lpp: [
       ...(independant ? [bascule(c('lppAffilie'), 'affilie', false, { structure: true })] : []),
       ...(!independant || p.lppAffilie ? [
+        h('button', { type: 'button', class: 'pastille scan-bouton', onclick: () => Scan.ouvrir(ctx, (cle, valeur) => { ecrire(c(cle), valeur); construire(); }) },
+          h('span', { class: 'scan-icone', 'aria-hidden': 'true' }), ctx.t('sc_bouton')),
         champMontant(c('lppAvoir'), 'avoir', { facultatif: true }),
         h('div', { class: 'rangee' }, champMontant(c('lppRenteVieillesse'), 'renteVieillesse', { facultatif: true }),
           champMontant(c('lppRenteInvalidite'), 'renteInvalidite', { facultatif: true })),

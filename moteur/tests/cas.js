@@ -5,7 +5,7 @@
  * (tests/run.mjs, intégration continue) et dans l'app iOS.
  */
 
-import { analyser, AVS, LPP, LAA, Impots, Scenarios } from '../src/index.js';
+import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat } from '../src/index.js';
 
 /** @param {(nom: string, obtenu: any, attendu: any, tolerance?: number) => void} egal @param {{r26: any, r27: any, i26?: any}} regles */
 export function cas(egal, { r26, r27, i26 }) {
@@ -214,4 +214,26 @@ export function casScenarios(egal, { r26, i26, c26 }) {
   const seul = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', personne: { dateNaissance: '1980-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, fortune: 200000 },
     conjoint: { dateNaissance: '1980-01-01', sexe: 'f', statut: 'sans', revenu: 0 } }, r26);
   egal('Décès : la fortune devient une source', seul.risques.decesMaladie.sources.some(s => s.cle === 'capitaux' && s.montant > 0), true);
+
+  // ---- lecture d'un certificat de prévoyance (textes fictifs, tels que les rend un scan)
+  egal('Montants : formats suisses', Certificat.montants("CHF 148'000.00 et 1 234.50 ou 62’000.–"), [148000, 1234.5, 62000]);
+  egal('Montants : ni pour-cent, ni date, ni numéro AVS', Certificat.montants('Taux 6.8 % au 31.12.2026, AVS 756.1234.5678.97'), []);
+  const fr = Certificat.extraire(["Caisse de pension Exemple — Certificat de prévoyance au 01.01.2026", "Assuré : Exemple Marie   N° AVS 756.1234.5678.97",
+    "Salaire annuel annoncé                 104'000.00", "Avoir de vieillesse au 01.01.2026      148'250.35", "Rente de vieillesse annuelle à 65 ans   2'795.00   33'540.00",
+    "Taux de conversion 6.00 %", "Rente d'invalidité annuelle             41'600.00", "Rente de conjoint", "24'960.00", "Capital décès                          50'000.00",
+    "Rachat maximal possible                62'000.00"].join('\n')).champs;
+  egal('Certificat FR : avoir de vieillesse', fr.lppAvoir.valeur, 148250);
+  egal('Certificat FR : rente annuelle, pas la mensuelle', fr.lppRenteVieillesse.valeur, 33540);
+  egal('Certificat FR : rente d’invalidité', fr.lppRenteInvalidite.valeur, 41600);
+  egal('Certificat FR : montant sur la ligne suivante', fr.lppRenteConjoint.valeur, 24960);
+  egal('Certificat FR : capital décès, rachat, salaire', [fr.lppCapitalDeces.valeur, fr.lppRachat.valeur, fr.revenu.valeur], [50000, 62000, 104000]);
+  egal('Certificat FR : la ligne lue est conservée', fr.lppAvoir.ligne.includes('Avoir de vieillesse'), true);
+  const de = Certificat.extraire("Vorsorgeausweis per 01.01.2026\nGemeldeter Jahreslohn CHF 96'000.00\nAltersguthaben CHF 210'400.00\nAltersrente mit 65 CHF 38'120.00\n"
+    + "Invalidenrente CHF 38'400.00\nEhegattenrente CHF 23'040.00\nTodesfallkapital CHF 0.00\nMaximale Einkaufssumme CHF 18'500.00").champs;
+  egal('Certificat DE', [de.lppAvoir.valeur, de.lppRenteVieillesse.valeur, de.lppRenteInvalidite.valeur, de.lppRenteConjoint.valeur, de.lppRachat.valeur, de.revenu.valeur],
+    [210400, 38120, 38400, 23040, 18500, 96000]);
+  egal('Certificat IT', Certificat.extraire("Avere di vecchiaia 88'000.00\nRendita annua di vecchiaia 19'300.00").champs.lppRenteVieillesse.valeur, 19300);
+  egal('Texte sans rapport : rien de proposé', Object.keys(Certificat.extraire('Facture n° 2026-118\nTotal 1 250.00').champs), []);
+  egal('Champs d’un modèle de langage : contrôlés et bornés', Certificat.normaliser({ lppAvoir: 148250.4, lppRenteVieillesse: 12, lppRachat: null, autre: 5 }),
+    { lppAvoir: { valeur: 148250, ligne: '' } });
 }
