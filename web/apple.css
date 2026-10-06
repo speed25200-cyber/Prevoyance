@@ -98,11 +98,13 @@ body.presentation .scene { max-width: 1280px; }
 .avertissement { font-size: 13px; padding-top: 6px; }
 
 /* ---------- dossier : des groupes clairs, de grands champs */
-.saisie { position: static; max-height: none; overflow: visible; display: block; padding: 0; columns: 2 400px; column-gap: 18px; }
-.ecran-titre { column-span: all; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 4px 4px 20px; }
+/* grille et non colonnes CSS : Safari sur iPhone superposait le titre et la première carte avec « column-span » */
+.saisie { position: static; max-height: none; overflow: visible; padding: 0; display: grid; gap: 18px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); }
+.ecran-titre { grid-column: 1 / -1; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 4px 4px 2px; }
 .ecran-titre h1 { margin: 0; font: 700 clamp(30px, 3.4vw, 40px)/1.05 var(--titre); letter-spacing: -.02em; }
 .ecran-titre p { color: var(--encre-2); font-size: 16px; margin-top: 6px; max-width: 46ch; }
-.bloc { break-inside: avoid; margin: 0 0 18px; background: var(--surface); box-shadow: none; border-radius: var(--rayon); padding: 4px 20px 6px; overflow: visible; }
+.bloc { margin: 0; background: var(--surface); box-shadow: none; border-radius: var(--rayon); padding: 4px 20px 6px; overflow: visible; }
 .bloc > summary { padding: 16px 0 12px; font: 700 22px/1.2 var(--titre); }
 .bloc > summary::after { width: 9px; height: 9px; border-width: 2px; border-color: var(--encre-3); }
 .champs { padding: 0 0 16px; gap: 16px; }
@@ -144,7 +146,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; background: #
 .pastille { border: 0; background: var(--creux); padding: 10px 16px; font-size: 15px; font-weight: 600; color: var(--accent); }
 .pastille.danger { color: var(--lacune); }
 .bouton { background: var(--accent); color: var(--sur-accent); border-radius: 14px; padding: 15px 24px; font: 600 17px/1.2 var(--police); min-height: 50px; }
-.voir-analyse { column-span: all; display: block; width: 100%; max-width: 420px; margin: 10px auto 0; }
+.voir-analyse { grid-column: 1 / -1; display: block; width: 100%; max-width: 420px; margin: 4px auto 0; }
 
 /* ---------- tête de l'analyse */
 .tete { border-radius: 26px; padding: clamp(22px, 2.8vw, 36px); min-height: clamp(300px, 30vw, 400px); }
@@ -309,3 +311,40 @@ svg .zone { fill: color-mix(in srgb, var(--accent) 14%, transparent); } svg .med
 .grand.lacune span::before { width: .2em; height: .2em; margin-right: .22em; vertical-align: .22em; }
 .jauge .arc { stroke: var(--accent) !important; }
 @media (max-width: 640px) { .risque { padding: 14px 12px; } .risque b { font-size: 19px; } }
+
+/* ---------- iPhone : en-tête compact sur une ligne, rien qui bloque le défilement */
+@media (max-width: 640px) {
+  .barre { flex-wrap: nowrap; align-items: center; gap: 10px; padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 6px; }
+  .marque { gap: 9px; min-width: 0; }
+  .marque img { width: 32px; height: 32px; border-radius: 8px; }
+  .marque b { font-size: 17px; }
+  .marque span { display: none; }
+  .actions { flex-wrap: nowrap; gap: 8px; margin-left: auto; }
+  #presentation, .choix-annee > span { display: none; }
+  .choix-annee select { padding: 6px 10px; font-size: 16px; }
+  .segments button { padding: 6px 8px; font-size: 13px; }
+  .scene { padding: 10px 14px calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .ecran-titre h1 { font-size: 28px; }
+  .ecran-titre p { font-size: 15px; }
+  .bloc { padding: 2px 16px 4px; border-radius: 20px; }
+  .carte { padding: 16px; border-radius: 20px; }
+  .rangee { grid-template-columns: minmax(0, 1fr); }
+  .tete { min-height: 0; padding: 18px 16px 96px; border-radius: 22px; }
+  .tete .jauge { width: 96px; }
+  .scene-piliers { left: 10px; right: 10px; bottom: 10px; gap: 5px; }
+  .scene-puce { padding: 8px 9px; }
+  .scene-puce small { font-size: 10.5px; }
+  .toile { height: 300px; }
+  .legende { font-size: 13px; gap: 6px 14px; }
+  .lignes li { font-size: 16px; }
+  .plan-tete, .donnees-tete, .carte-tete { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .avant-apres b { font-size: 40px; }
+  .chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tenues { grid-template-columns: minmax(0, 1fr); }
+  .cantons-barres { gap: 1px; } .cantons-barres small { font-size: 8px; }
+  .r-tableau { font-size: 14px; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .page { padding: 7mm; }
+}
+/* les champs ne déclenchent pas le zoom automatique de l'iPhone (texte d'au moins 16 px) */
+input, select, textarea { font-size: max(16px, 1em); }
+html { overscroll-behavior-y: none; }

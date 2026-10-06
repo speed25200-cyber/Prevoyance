@@ -231,7 +231,7 @@ svg .verse { fill: none; stroke: var(--encre-3); stroke-width: 1.4; stroke-dasha
 body.presentation .saisie { display: none; }
 body.presentation .scene { grid-template-columns: minmax(0, 1fr); max-width: 1280px; }
 body.presentation .choix-annee { display: none; }
-.toile canvas { touch-action: none; }
+.toile canvas { touch-action: pan-y; }
 
 /* ---------- rapport : corps de texte plus généreux (lisible une fois imprimé) */
 .page { font-size: 15px; gap: 14px; }
