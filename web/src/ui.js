@@ -42,7 +42,8 @@ export function compter(element, valeur, mise) {
   requestAnimationFrame(pas);
 }
 
-export const couleurCouverture = c => (c >= 0.995 ? 'var(--p3)' : c >= 0.75 ? 'var(--attention)' : 'var(--lacune)');
+/** Couleur d'une barre de couverture : une seule teinte, le chiffre dit le reste (pas de rouge ni de vert sur l'écran). */
+export const couleurCouverture = () => 'var(--accent)';
 export const COULEUR_PILIER = { 1: 'var(--p1)', 2: 'var(--p2)', 3: 'var(--p3)' };
 
 /**

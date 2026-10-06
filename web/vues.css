@@ -66,9 +66,9 @@
 .chiffre small { color: var(--encre-2); font-size: 12px; }
 .chiffre b { font: 400 clamp(18px, 1.8vw, 24px)/1.1 var(--titre); letter-spacing: -.02em; }
 .chiffre span { color: var(--encre-3); font-size: 12px; }
-.chiffre.plus b { color: var(--p3); } .chiffre.moins b { color: var(--lacune); }
+.chiffre.plus b { color: var(--ok); } .chiffre.moins b { color: var(--lacune); }
 .remarque { margin-top: 12px; padding: 11px 14px; border-radius: 14px; background: color-mix(in srgb, var(--attention) 14%, transparent); font-size: 14px; }
-.remarque.ok { background: color-mix(in srgb, var(--p3) 14%, transparent); }
+.remarque.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); }
 
 /* ---------- graphiques SVG */
 svg.colonnes, svg.couloir { width: 100%; height: auto; display: block; overflow: visible; margin-top: 6px; }
@@ -83,8 +83,8 @@ svg .colonne[role="button"]:hover rect { opacity: 1; }
 svg .colonne.actif .axe.fort { fill: var(--encre); font-weight: 600; }
 svg .manque { fill: color-mix(in srgb, var(--lacune) 28%, transparent); stroke: var(--lacune); stroke-width: 1; stroke-dasharray: 3 3; }
 svg .besoin { stroke: var(--encre); stroke-width: 1.6; stroke-dasharray: 5 4; }
-svg .zone { fill: color-mix(in srgb, var(--p3) 22%, transparent); }
-svg .mediane { fill: none; stroke: var(--p3); stroke-width: 2.4; stroke-linejoin: round; }
+svg .zone { fill: color-mix(in srgb, var(--ok) 22%, transparent); }
+svg .mediane { fill: none; stroke: var(--ok); stroke-width: 2.4; stroke-linejoin: round; }
 svg .verse { fill: none; stroke: var(--encre-3); stroke-width: 1.4; stroke-dasharray: 4 4; }
 @media (prefers-reduced-motion: no-preference) {
   svg .colonne { animation: monte .8s var(--aise) both; animation-delay: calc(var(--i, 0) * 35ms); transform-origin: 50% 100%; transform-box: fill-box; }
@@ -97,7 +97,7 @@ svg .verse { fill: none; stroke: var(--encre-3); stroke-width: 1.4; stroke-dasha
 /* ---------- rente ou capital */
 .options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
 .option { border: 1px solid var(--filet); border-radius: 18px; padding: 16px; display: grid; gap: 4px; align-content: start; }
-.option.meilleure { border-color: var(--p3); box-shadow: 0 0 0 3px color-mix(in srgb, var(--p3) 16%, transparent); }
+.option.meilleure { border-color: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 16%, transparent); }
 .option h3 { margin: 0; font: 600 13px/1.2 var(--police); color: var(--encre-2); }
 .option > b { font: 400 clamp(20px, 2vw, 28px)/1.1 var(--titre); letter-spacing: -.02em; }
 .option > small { color: var(--encre-3); font-size: 12px; }
@@ -107,17 +107,17 @@ svg .verse { fill: none; stroke: var(--encre-3); stroke-width: 1.4; stroke-dasha
 .mini-barres { display: flex; align-items: flex-end; gap: 10px; height: 120px; margin-top: 12px; }
 .mini-barres div { flex: 1; display: grid; grid-template-rows: 1fr auto auto; justify-items: center; gap: 3px; height: 100%; }
 .mini-barres i { width: 100%; max-width: 46px; align-self: end; background: var(--creux); border-radius: 8px 8px 3px 3px; transition: height .8s var(--aise); }
-.mini-barres .actif i { background: var(--p3); }
+.mini-barres .actif i { background: var(--ok); }
 .mini-barres b { font-size: 12px; } .mini-barres small { color: var(--encre-3); font-size: 11px; }
 
 /* ---------- hypothèque */
 .tenues { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .tenue { background: var(--creux); border-radius: 14px; padding: 14px; display: grid; gap: 4px; }
 .tenue small { color: var(--encre-2); font-size: 12px; }
-.tenue b { font: 400 26px/1 var(--titre); color: var(--p3); }
+.tenue b { font: 400 26px/1 var(--titre); color: var(--ok); }
 .tenue.depasse b { color: var(--lacune); }
 .tenue-barre { position: relative; height: 6px; border-radius: 999px; background: var(--surface); margin-top: 6px; }
-.tenue-barre i { display: block; height: 100%; border-radius: inherit; background: var(--p3); transition: width .9s var(--aise); }
+.tenue-barre i { display: block; height: 100%; border-radius: inherit; background: var(--ok); transition: width .9s var(--aise); }
 .tenue.depasse .tenue-barre i { background: var(--lacune); }
 .tenue-barre em { position: absolute; left: 55.55%; top: -4px; bottom: -4px; width: 2px; background: var(--encre); border-radius: 2px; }
 
@@ -128,11 +128,11 @@ svg .verse { fill: none; stroke: var(--encre-3); stroke-width: 1.4; stroke-dasha
 .avant-apres div { display: grid; justify-items: center; }
 .avant-apres small { color: var(--encre-2); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
 .avant-apres b { font: 400 clamp(34px, 4vw, 56px)/1 var(--titre); letter-spacing: -.03em; color: var(--encre-3); }
-.avant-apres .apres b { color: var(--p3); transition: color .5s; }
+.avant-apres .apres b { color: var(--ok); transition: color .5s; }
 .fleche { font-size: 26px; color: var(--encre-3); }
 .effets { display: grid; gap: 14px; margin-top: 12px; }
 .effet-tete { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; font-size: 14px; }
-.effet-tete b.lacune { color: var(--lacune); } .effet-tete b.ok { color: var(--p3); }
+.effet-tete b.lacune { color: var(--lacune); } .effet-tete b.ok { color: var(--ok); }
 .effet-barres { position: relative; height: 10px; border-radius: 999px; background: var(--creux); margin: 6px 0 4px; overflow: hidden; }
 .effet-barres i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit; transition: width .9s var(--aise), background .5s; }
 .effet-barres .avant { background: var(--encre-3); opacity: .45; z-index: 1; height: 4px; top: 3px; }
@@ -146,7 +146,7 @@ svg .verse { fill: none; stroke: var(--encre-3); stroke-width: 1.4; stroke-dasha
 .r-tableau th, .r-tableau td { text-align: right; padding: 9px 8px; border-top: 1px solid var(--filet); font-weight: 500; }
 .r-tableau th:first-child { text-align: left; color: var(--encre-2); }
 .r-tableau thead th { border-top: 0; color: var(--encre-3); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-.r-tableau td.lacune { color: var(--lacune); font-weight: 600; } .r-tableau td.ok { color: var(--p3); font-weight: 600; }
+.r-tableau td.lacune { color: var(--lacune); font-weight: 600; } .r-tableau td.ok { color: var(--ok); font-weight: 600; }
 .r-tableau td.change { color: var(--p1); font-weight: 600; } .r-tableau td.meme { color: var(--encre-3); }
 .r-tableau tr.fort th, .r-tableau tr.fort td { font-weight: 600; border-top: 2px solid var(--encre); }
 .cantons { margin-top: 18px; }
@@ -261,7 +261,7 @@ body.presentation .choix-annee { display: none; }
 
 /* ---------- le ménage à la retraite */
 .menage-total { font: 400 clamp(18px, 1.8vw, 24px)/1.1 var(--titre); letter-spacing: -.02em; }
-.menage-total.lacune { color: var(--lacune); } .menage-total.ok { color: var(--p3); }
+.menage-total.lacune { color: var(--lacune); } .menage-total.ok { color: var(--ok); }
 .pile.large { height: 18px; }
 .pile i.second { opacity: .62; }
 .pile i.separateur { flex: 0 0 3px; width: 3px; background: var(--surface); }

@@ -6,20 +6,21 @@
    - Police du système (SF Pro sur les appareils Apple), Inter ailleurs. Le rapport imprimé garde sa serif. */
 
 :root {
-  --fond: #f2f1ee; --surface: #ffffff; --creux: #efeeeb; --encre: #1c1c1e; --encre-2: #6e6e73; --encre-3: #a1a1a8;
-  --filet: rgba(60, 60, 67, .14); --ombre: none;
-  --p1: #0a7aff; --p2: #5e5ce6; --p3: #28a745; --salaire: #d1d1d6; --attente: #ff9500; --lacune: #ff3b30;
-  --critique: #ff3b30; --attention: #ff9500; --opportunite: #28a745; --info: #6e6e73; --accent: #0a7aff;
+  /* palette « bleu nuit » : trois bleus pour les trois piliers, l'orange pour la lacune, le vert pour ce qui est couvert */
+  --fond: #f1f3f6; --surface: #ffffff; --creux: #e8ecf1; --encre: #101828; --encre-2: #5d6b7e; --encre-3: #98a3b3;
+  --filet: rgba(16, 24, 40, .12); --ombre: none;
+  --p1: #17335c; --p2: #3f6fb0; --p3: #9dbfe6; --salaire: #d5dbe4; --attente: #c98a12; --lacune: #d9542b; --ok: #1f8a5b;
+  --critique: #d9542b; --attention: #c98a12; --opportunite: #1f8a5b; --info: #5d6b7e; --accent: #17335c; --sur-accent: #ffffff;
   --rayon: 22px;
   --police: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, "Segoe UI", sans-serif;
   --titre: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --fond: #000000; --surface: #1c1c1e; --creux: #2c2c2e; --encre: #ffffff; --encre-2: #98989f; --encre-3: #636366;
-    --filet: rgba(120, 120, 128, .32);
-    --p1: #0a84ff; --p2: #7d7aff; --p3: #30d158; --salaire: #3a3a3c; --attente: #ff9f0a; --lacune: #ff453a;
-    --critique: #ff453a; --attention: #ff9f0a; --opportunite: #30d158; --info: #98989f; --accent: #0a84ff;
+    --fond: #070b12; --surface: #111826; --creux: #1b2536; --encre: #f2f5fa; --encre-2: #93a1b5; --encre-3: #5c6b80;
+    --filet: rgba(147, 161, 181, .2);
+    --p1: #6fa3ea; --p2: #3f6fb0; --p3: #c4daf5; --salaire: #243044; --attente: #f0b54a; --lacune: #ff7a52; --ok: #45c08a;
+    --critique: #ff7a52; --attention: #f0b54a; --opportunite: #45c08a; --info: #93a1b5; --accent: #6fa3ea; --sur-accent: #07101e;
   }
 }
 
@@ -45,8 +46,8 @@ body[data-panneau="analyse"] .saisie, body[data-panneau="dossier"] .analyse { di
 .onglets button .icone { display: grid; place-items: center; width: 26px; height: 26px; color: var(--accent); flex: none; }
 .onglets button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .onglets button:hover { background: var(--creux); }
-.onglets button[aria-selected="true"] { background: var(--accent); color: #fff; box-shadow: none; font-weight: 600; }
-.onglets button[aria-selected="true"] .icone { color: #fff; }
+.onglets button[aria-selected="true"] { background: var(--accent); color: var(--sur-accent); box-shadow: none; font-weight: 600; }
+.onglets button[aria-selected="true"] .icone { color: var(--sur-accent); }
 .lien { font-size: 16px; color: var(--accent); font-weight: 500; padding: 10px 12px; text-align: left; }
 .lien:hover { color: var(--accent); opacity: .7; }
 .choix-annee { font-size: 15px; justify-content: space-between; padding: 0 12px; }
@@ -54,7 +55,7 @@ select { border: 0; background-color: var(--creux); border-radius: 10px; padding
 .segments { padding: 2px; border-radius: 10px; background: var(--creux); }
 .segments button { flex: 1; padding: 7px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; }
 .segments button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
-@media (prefers-color-scheme: dark) { .segments button[aria-pressed="true"] { background: #636366; color: #fff; } }
+@media (prefers-color-scheme: dark) { .segments button[aria-pressed="true"] { background: #2f3d55; color: #fff; } }
 
 @media (min-width: 1000px) {
   body { display: grid; grid-template-columns: 264px minmax(0, 1fr); align-items: start; }
@@ -120,7 +121,7 @@ body.presentation .scene { max-width: 1280px; }
 .bascule { font-size: 17px; font-weight: 500; padding: 6px 0; min-height: 44px; }
 .bascule input { width: 51px; height: 31px; }
 .bascule input::after { left: 2px; top: 2px; width: 27px; height: 27px; }
-.bascule input:checked { background: #34c759; }
+.bascule input:checked { background: var(--ok); }
 .bascule input:checked::after { transform: translateX(20px); }
 .curseur { gap: 8px; }
 .curseur output { font-weight: 600; font-size: 17px; }
@@ -142,7 +143,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; background: #
 .pastilles { gap: 8px; }
 .pastille { border: 0; background: var(--creux); padding: 10px 16px; font-size: 15px; font-weight: 600; color: var(--accent); }
 .pastille.danger { color: var(--lacune); }
-.bouton { background: var(--accent); color: #fff; border-radius: 14px; padding: 15px 24px; font: 600 17px/1.2 var(--police); min-height: 50px; }
+.bouton { background: var(--accent); color: var(--sur-accent); border-radius: 14px; padding: 15px 24px; font: 600 17px/1.2 var(--police); min-height: 50px; }
 .voir-analyse { column-span: all; display: block; width: 100%; max-width: 420px; margin: 10px auto 0; }
 
 /* ---------- tête de l'analyse */
@@ -150,8 +151,9 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; background: #
 .tete .grand, .grand { font: 700 clamp(46px, 6vw, 84px)/1 var(--titre); letter-spacing: -.03em; margin: 8px 0 12px; }
 .grand small { font: 500 clamp(17px, 1.7vw, 22px)/1.2 var(--police); letter-spacing: -.01em; color: var(--encre-2); }
 .grand > span { white-space: nowrap; }
-.tete .grand { flex-wrap: nowrap; white-space: nowrap; }
-.tete .resume { max-width: min(620px, 60%); }
+.tete .grand { flex-wrap: wrap; row-gap: 2px; font-size: clamp(44px, 5.2vw, 72px); }
+.tete .resume { max-width: min(480px, 46%); }
+.tete .note { text-wrap: balance; }
 .petit-grand, .tete .petit-grand { font-size: clamp(28px, 3.4vw, 44px); line-height: 1.08; }
 .jauge { width: clamp(118px, 12vw, 156px); }
 .jauge circle { stroke-width: 10; }
@@ -199,7 +201,7 @@ input[type="range"]::-moz-range-thumb { width: 28px; height: 28px; background: #
 .chiffre span { font-size: 13px; }
 .options { gap: 12px; }
 .option { border: 2px solid transparent; background: var(--creux); border-radius: 18px; padding: 18px; gap: 4px; }
-.option.meilleure { border-color: var(--p3); box-shadow: none; background: color-mix(in srgb, var(--p3) 9%, var(--surface)); }
+.option.meilleure { border-color: var(--ok); box-shadow: none; background: color-mix(in srgb, var(--ok) 9%, var(--surface)); }
 .option h3 { font: 600 15px/1.2 var(--police); }
 .option > b { font: 700 clamp(24px, 2.4vw, 32px)/1.1 var(--titre); letter-spacing: -.02em; white-space: nowrap; }
 .option > small { font-size: 13px; }
@@ -225,8 +227,8 @@ svg .axe { font: 500 13px var(--police); }
 .rapport-outils p { font-size: 15px; }
 
 /* ---------- rapport : le document du client garde sa typographie de papier */
-.page { --fond: #ffffff; --surface: #ffffff; --creux: #f1ede5; --encre: #1b1915; --encre-2: #6a6358; --encre-3: #a1998b; --filet: rgba(27, 25, 21, .18);
-  --p1: #b3a188; --p2: #8a5b37; --p3: #4f8177; --salaire: #d9d2c4; --lacune: #b4432b; --attention: #b98a2e; --critique: #b4432b; --opportunite: #4f8177; --info: #6a6358;
+.page { --fond: #ffffff; --surface: #ffffff; --creux: #eef1f5; --encre: #101828; --encre-2: #5d6b7e; --encre-3: #98a3b3; --filet: rgba(16, 24, 40, .16);
+  --p1: #17335c; --p2: #3f6fb0; --p3: #9dbfe6; --salaire: #d5dbe4; --lacune: #d9542b; --ok: #1f8a5b; --attention: #c98a12; --critique: #d9542b; --opportunite: #1f8a5b; --info: #5d6b7e;
   --titre: "Fraunces", "Iowan Old Style", "Times New Roman", serif; --police: "Inter", -apple-system, "Helvetica Neue", Arial, sans-serif;
   font-family: var(--police); letter-spacing: 0; border-radius: 4px; }
 .page header { border-bottom: 1px solid var(--encre); padding-bottom: 12px; align-items: baseline; }
@@ -280,11 +282,31 @@ svg .axe { font: 500 13px var(--police); }
   transform: translate3d(var(--fx, 0px), var(--fy, 0px), 0) scale(var(--fz, 1.08)); will-change: transform; }
 .fond video { opacity: 0; transition: opacity 1.6s var(--aise); }
 .fond.pret video { opacity: 1; }
-.fond i { position: absolute; inset: 0; background: color-mix(in srgb, var(--fond) 62%, transparent); }
-@media (prefers-color-scheme: dark) { .fond i { background: color-mix(in srgb, var(--fond) 50%, transparent); } }
+.fond i { position: absolute; inset: 0; background: color-mix(in srgb, var(--fond) 80%, transparent); }
+.fond img, .fond video { filter: saturate(.35); }
+@media (prefers-color-scheme: dark) { .fond i { background: color-mix(in srgb, var(--fond) 62%, transparent); } }
 .carte, .bloc, .risque { background: color-mix(in srgb, var(--surface) 88%, transparent); }
 @media (min-width: 1000px) {
   .barre { background: color-mix(in srgb, var(--surface) 62%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(28px); backdrop-filter: saturate(1.6) blur(28px); }
 }
 @media (max-width: 999.98px) { .barre { background: none; } }
 @media print { .fond { display: none !important; } }
+
+/* ---------- pas de texte en couleur : les chiffres et les mots restent à l'encre ; la couleur ne sert qu'aux petits
+   repères (un point devant une lacune, les barres des piliers, les hachures de ce qui manque) */
+.grand.lacune span, .risque b.lacune, .lignes .manque b, .chiffre.plus b, .chiffre.moins b, .effet-tete b.lacune, .effet-tete b.ok,
+.r-tableau td.lacune, .r-tableau td.ok, .r-tableau td.change, .menage-total.lacune, .menage-total.ok, .tenue b, .tenue.depasse b,
+.avant-apres .apres b, .option.meilleure > b { color: var(--encre); }
+.grand.lacune span::before, .risque b.lacune::before, .menage-total.lacune::before, .effet-tete b.lacune::before, .tenue.depasse b::before {
+  content: ""; display: inline-block; width: .34em; height: .34em; border-radius: 50%; background: var(--lacune); margin-right: .28em; vertical-align: .16em; }
+.effet-tete b.ok::before, .menage-total.ok::before { content: ""; display: inline-block; width: .5em; height: .5em; border-radius: 50%; background: var(--ok);
+  margin-right: .4em; vertical-align: .05em; }
+.barre-couv i, .effet-barres i:not(.avant), .tenue-barre i, .tenue.depasse .tenue-barre i, .mini-barres .actif i { background: var(--accent) !important; }
+.option.meilleure { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.remarque, .remarque.ok, .attente { background: var(--creux); }
+.pastille.danger { color: var(--encre-2); }
+.bascule input:checked { background: var(--accent); }
+svg .zone { fill: color-mix(in srgb, var(--accent) 14%, transparent); } svg .mediane { stroke: var(--accent); }
+.grand.lacune span::before { width: .2em; height: .2em; margin-right: .22em; vertical-align: .22em; }
+.jauge .arc { stroke: var(--accent) !important; }
+@media (max-width: 640px) { .risque { padding: 14px 12px; } .risque b { font-size: 19px; } }
