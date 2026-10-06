@@ -365,6 +365,28 @@ export function casScenarios(egal, { r26, r27, i26, c26 }) {
     const seul = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', personne: base }, r26).risques.decesMaladie;
     egal('Marié sans conjoint saisi : la lacune de décès a une durée et un capital', [seul.annees > 0, seul.lacune > 0 ? seul.capital > 0 : true], [true, true]);
   }
+  {
+    // retrait pour le logement (LPP art. 30c) et couple à deux salaires
+    const e = Scenarios.retraitLogement({ avoir: 200000, age: 45, montant: 80000 }, r26);
+    egal('Logement, 45 ans : tout l’avoir est disponible ; 80 000 retirés coûtent 80 000 x 1,0125^20 d’avoir et 6,8 % de rente',
+      [e.possible, e.maximum, e.montant, e.avoirRetraiteEnMoins, e.renteEnMoins], [true, 200000, 80000, Math.round(80000 * Math.pow(1.0125, 20)), Math.round(Math.round(80000 * Math.pow(1.0125, 20)) * 0.068)]);
+    egal('Logement, 55 ans : la moitié de l’avoir, ou l’avoir à 50 ans s’il est plus grand', [Scenarios.retraitLogement({ avoir: 300000, age: 55 }, r26).maximum,
+      Scenarios.retraitLogement({ avoir: 300000, age: 55, avoirA50: 220000 }, r26).maximum], [150000, 220000]);
+    egal('Logement : minimum de 20 000 et délai de trois ans avant la retraite', [Scenarios.retraitLogement({ avoir: 15000, age: 40 }, r26).raison,
+      Scenarios.retraitLogement({ avoir: 300000, age: 63 }, r26).raison, Scenarios.retraitLogement({ avoir: 100000, age: 40, montant: 5000 }, r26).montant], ['sousMinimum', 'tropTard', 20000]);
+    const fiscal = Scenarios.retraitLogement({ avoir: 200000, age: 45, montant: 100000, canton: 'VD', marie: false }, r26, i26);
+    egal('Logement : impôt du retrait selon le barème du canton (100 000 à Lausanne)', [fiscal.impot, fiscal.net], [Impots.impotCapital(i26, 'VD', false, 100000), 100000 - Impots.impotCapital(i26, 'VD', false, 100000)]);
+    if (i26.cantons.VD.revenu.marieDeux50) {
+      const un = Impots.impotRevenu(i26, 'VD', true, 100000).impot, vd = i26.cantons.VD.revenu;
+      egal('Couple à deux salaires égaux (VD, 100 000) : l’impôt relevé pour 50/50', Impots.impotRevenu(i26, 'VD', true, 100000, 0, 0.5).impot, vd.marieDeux50[8]);
+      egal('Couple, second salaire de 20 % : l’impôt relevé pour 80/20', Impots.impotRevenu(i26, 'VD', true, 100000, 0, 0.2).impot, vd.marieDeux20[8]);
+      egal('Couple, second salaire de 10 % : à mi-chemin entre un salaire et 80/20', Impots.impotRevenu(i26, 'VD', true, 100000, 0, 0.1).impot, Math.round((un + vd.marieDeux20[8]) / 2), 1);
+      egal('Couple à un seul salaire : inchangé', Impots.impotRevenu(i26, 'VD', true, 100000, 0, 0).impot, vd.marie[8][0]);
+      const couple = c => analyser({ dateAnalyse: '2026-01-01', canton: 'VD', etatCivil: 'marie', personne: { dateNaissance: '1986-01-01', sexe: 'h', statut: 'salarie', revenu: 60000 },
+        conjoint: { dateNaissance: '1988-01-01', sexe: 'f', statut: c > 0 ? 'salarie' : 'sans', revenu: c } }, r26, { impots: i26 }).potentiels.impotRevenu;
+      egal('Analyse : un couple 60 000 + 40 000 paie moins d’impôt que le barème à un salaire de 100 000', couple(40000) < Impots.impotRevenu(i26, 'VD', true, 100000).impot, true);
+    }
+  }
   egal('AVS plafond couple, échelles 44 et 30 (RAVS art. 53bis : 2 x 44 + 30, sur 3)', AVS.plafonnerCouple(r26, 2520, 1718, 44, 30), [2009, 1370]);
   egal('Économie d’impôt estimée d’un rachat de 200 000 sur 100 000 de revenu : bornée par les paliers', Analyse.economieEstimee(100000, 200000), 17600);
   egal('Économie d’impôt estimée d’une petite déduction : taux du palier', Analyse.economieEstimee(100000, 7258), 2030);

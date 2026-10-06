@@ -4,7 +4,8 @@
  *
  * Les chiffres ne sont pas modélisés mais relevés auprès du calculateur officiel de l'Administration fédérale des
  * contributions (outils/donnees/maj_impots.py -> donnees/impots-AAAA.json) : pour le chef-lieu de chaque canton,
- * une personne seule et un couple marié, sans enfant ou avec un à trois enfants à charge, sur une grille de revenus
+ * une personne seule et un couple marié (un salaire, ou deux salaires à 80/20 et 50/50), sans enfant ou avec un à
+ * trois enfants à charge, sur une grille de revenus
  * bruts et de capitaux. Le moteur interpole. Cela donne l'ordre de grandeur juste pour un conseil ; la commune
  * exacte et la confession déplacent le résultat de quelques pour cent.
  */
@@ -36,6 +37,22 @@ const grille = (donnees, canton, marie, nature, enfants = 0) => {
   return grilles[base];
 };
 
+/**
+ * Couple marié à deux salaires : rapport entre son impôt et celui d'un couple à un seul salaire de même revenu total.
+ * Relevé au chef-lieu pour un second salaire de 20 % et de 50 % du total (grilles `marieDeux20`, `marieDeux50`) ;
+ * entre 0, 20 et 50 %, on interpole. 1 quand les grilles manquent ou qu'il n'y a qu'un salaire.
+ * @param {any} donnees @param {string} canton @param {number} brut revenu total du couple @param {number} part du plus petit salaire (0 à 0,5)
+ */
+export function facteurDeuxRevenus(donnees, canton, brut, part) {
+  const c = donnees?.cantons?.[canton], g = c?.revenuChefLieu ?? c?.revenu;
+  if (!g?.marieDeux20 || !g?.marieDeux50 || !g?.marie || !(part > 0)) return 1;
+  const un = interpoler(donnees.revenus, g.marie.map(p => p[0]), brut);
+  if (un <= 0) return 1;
+  const p = Math.min(0.5, part), a20 = interpoler(donnees.revenus, g.marieDeux20, brut), a50 = interpoler(donnees.revenus, g.marieDeux50, brut);
+  const deux = p <= 0.2 ? un + (a20 - un) * p / 0.2 : a20 + (a50 - a20) * (p - 0.2) / 0.3;
+  return Math.min(1.5, Math.max(0, deux / un));
+}
+
 /** Les données portent-elles l'impôt avec enfants à charge pour ce canton ? */
 export const avecEnfants = (donnees, canton) => !!donnees?.cantons?.[canton]?.revenu?.marie1;
 
@@ -43,14 +60,16 @@ export const avecEnfants = (donnees, canton) => !!donnees?.cantons?.[canton]?.re
  * Impôt annuel sur le revenu (Confédération, canton, commune) pour un revenu brut de salarié.
  * @param {any} donnees impots-AAAA.json @param {string} canton @param {boolean} marie @param {number} brut
  * @param {number} [enfants] enfants à charge (0 par défaut)
+ * @param {number} [partSecond] couple à deux salaires : part du plus petit dans le total (0 = un seul salaire)
  * @returns {{impot: number, marginal: number}|null} `null` si le canton n'est pas dans les données
  */
-export function impotRevenu(donnees, canton, marie, brut, enfants = 0) {
+export function impotRevenu(donnees, canton, marie, brut, enfants = 0, partSecond = 0) {
   const g = grille(donnees, canton, marie, 'revenu', enfants);
   if (!g) return null;
-  const impot = Math.max(0, interpoler(donnees.revenus, g.map(p => p[0]), brut));
+  const sur = b => Math.max(0, interpoler(donnees.revenus, g.map(p => p[0]), b)) * (marie ? facteurDeuxRevenus(donnees, canton, b, partSecond) : 1);
+  const impot = sur(brut);
   const pas = Math.max(1000, brut * 0.01);
-  const marginal = Math.max(0, (interpoler(donnees.revenus, g.map(p => p[0]), brut + pas) - impot) / pas / PART_IMPOSABLE);
+  const marginal = Math.max(0, (sur(brut + pas) - impot) / pas / PART_IMPOSABLE);
   return { impot: arrondi(impot), marginal: Math.min(0.5, marginal) };
 }
 
@@ -59,11 +78,12 @@ export function impotRevenu(donnees, canton, marie, brut, enfants = 0) {
  * diminué de la déduction, la déduction étant ramenée à son équivalent brut.
  * @returns {number|null}
  */
-export function economieDeduction(donnees, canton, marie, brut, deduction, enfants = 0) {
+export function economieDeduction(donnees, canton, marie, brut, deduction, enfants = 0, partSecond = 0) {
   const g = grille(donnees, canton, marie, 'revenu', enfants);
   if (!g || deduction <= 0) return g ? 0 : null;
   const impots = g.map(p => p[0]);
-  const avant = interpoler(donnees.revenus, impots, brut), apres = interpoler(donnees.revenus, impots, Math.max(0, brut - deduction / PART_IMPOSABLE));
+  const sur = b => interpoler(donnees.revenus, impots, b) * (marie ? facteurDeuxRevenus(donnees, canton, b, partSecond) : 1);
+  const avant = sur(brut), apres = sur(Math.max(0, brut - deduction / PART_IMPOSABLE));
   return arrondi(Math.max(0, avant - apres), 10);
 }
 
@@ -138,6 +158,8 @@ export function localiser(donnees, lieux, canton, { commune: numero = null, conf
   if (!lieu && eglise === 0) return donnees;
   const revenu = {};
   for (const [cle, points] of Object.entries(base.revenu)) {
+    // grilles des couples à deux salaires : des rapports au chef-lieu, lus tels quels (voir facteurDeuxRevenus)
+    if (typeof (/** @type {any[]} */ (points))[0] === 'number') { revenu[cle] = points; continue; }
     const federal = lieux.federal[cle] ?? lieux.federal[cle.replace(/[0-9]$/, '')];
     revenu[cle] = /** @type {number[][]} */ (points).map(([impot, marginal], i) => {
       const f = Math.min(impot, federal?.[i] ?? 0);
@@ -153,5 +175,5 @@ export function localiser(donnees, lieux, canton, { commune: numero = null, conf
       capital[cle] = /** @type {number[]} */ (montants).map((impot, i) => { const f = Math.min(impot, federal?.[i] ?? 0); return Math.round(f + (impot - f) * kc * (1 + egliseCapital)); });
     }
   }
-  return { ...donnees, cantons: { ...donnees.cantons, [canton]: { ...base, revenu, capital, lieu: lieu?.n ?? base.lieu, localise: { commune: lieu?.b ?? null, confession, facteur: k, eglise } } } };
+  return { ...donnees, cantons: { ...donnees.cantons, [canton]: { ...base, revenu, revenuChefLieu: base.revenuChefLieu ?? base.revenu, capital, lieu: lieu?.n ?? base.lieu, localise: { commune: lieu?.b ?? null, confession, facteur: k, eglise } } } };
 }

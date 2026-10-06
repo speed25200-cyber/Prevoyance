@@ -298,11 +298,13 @@ export function analyser(dossier, regles, contexte = {}) {
 
   // ---------------------------------------------------------------- potentiels
   const revenuImposable = P.revenu + (C && marie ? C.revenu : 0);
-  const fiscal = dossier.canton && contexte.impots ? Impots.impotRevenu(contexte.impots, dossier.canton, marie, revenuImposable, nombreEnfants) : null;
+  // couple à deux salaires : l'impôt est plus bas qu'avec un seul salaire du même total (déductions pour double revenu)
+  const partSecond = C && marie && P.revenu > 0 && C.revenu > 0 ? Math.min(P.revenu, C.revenu) / revenuImposable : 0;
+  const fiscal = dossier.canton && contexte.impots ? Impots.impotRevenu(contexte.impots, dossier.canton, marie, revenuImposable, nombreEnfants, partSecond) : null;
   const marginal = P.tauxMarginal ?? fiscal?.marginal ?? estimerTauxMarginal(revenuImposable, marie);
   // économie d'une déduction : sur le barème réel du canton quand il est connu, sinon au taux marginal
   const economie = deduction => (fiscal && P.tauxMarginal === undefined
-    ? /** @type {number} */ (Impots.economieDeduction(contexte.impots, /** @type {string} */ (dossier.canton), marie, revenuImposable, deduction, nombreEnfants))
+    ? /** @type {number} */ (Impots.economieDeduction(contexte.impots, /** @type {string} */ (dossier.canton), marie, revenuImposable, deduction, nombreEnfants, partSecond))
     : P.tauxMarginal !== undefined ? arrondi(Math.min(deduction, revenuImposable) * marginal, 10)
       : economieEstimee(revenuImposable, deduction, marie));
   const plafond3a = P.statut === 'sans' ? 0 : P.lpp.affilie ? regles.pilier3a.plafondAvecLPP

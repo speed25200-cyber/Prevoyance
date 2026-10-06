@@ -61,6 +61,26 @@ export function afficher(ctx) {
     }
   }
 
+  // ---- retrait du 2e pilier pour le logement
+  if (P.lpp.affilie && P.lpp.avoirActuel > 0) {
+    const cadre = { avoir: P.lpp.avoirActuel, age: P.age, ageRetraite: Math.max(P.ageRetraite, P.ageReference.ans), canton: canton ?? undefined, marie, tauxConversion: P.lpp.tauxConversion };
+    const plafond = Scenarios.retraitLogement(cadre, regles, impots);
+    if (!plafond.possible) blocs.push(carte(t('sc_logement'), t(plafond.raison === 'tropTard' ? 'sc_logTropTard' : 'sc_logSousMinimum', { m: f.chf(plafond.minimum) })));
+    else {
+      const retrait = Scenarios.retraitLogement({ ...cadre, montant: d.retraitLogement ?? Math.min(plafond.maximum, 50000) }, regles, impots);
+      const pas = 5000, curseur = h('input', { type: 'range', min: plafond.minimum, max: Math.max(plafond.minimum, Math.floor(plafond.maximum / pas) * pas), step: pas, value: retrait.montant,
+        'aria-label': t('sc_logMontant'), onchange: e => { d.retraitLogement = +e.target.value; garder(); ctx.recalculer(true); } });
+      curseur.style.setProperty('--part', `${plafond.maximum > plafond.minimum ? (retrait.montant - plafond.minimum) / (plafond.maximum - plafond.minimum) * 100 : 100}%`);
+      blocs.push(carte(t('sc_logement'), t('sc_logement_d', { m: f.chf(plafond.maximum) }),
+        h('label', { class: 'champ' }, h('span', {}, t('sc_logMontant'), h('i', {}, f.chf(retrait.montant))), curseur),
+        h('div', { class: 'chiffres' },
+          chiffre(t('sc_logNet'), f.chf(retrait.net), impots && canton ? t('sc_logImpot', { i: f.chf(retrait.impot) }) : t('sc_logSansImpot')),
+          chiffre(t('sc_logRente'), '− ' + f.chf(retrait.renteEnMoins), t('parAn'), 'moins'),
+          chiffre(t('sc_logAvoir'), '− ' + f.chf(retrait.avoirRetraiteEnMoins), t('sc_logAvoir_d', { a: cadre.ageRetraite }), 'moins')),
+        h('p', { class: 'petit' }, t('sc_logNote'))));
+    }
+  }
+
   // ---- retraits échelonnés et rachats échelonnés
   if (impots && canton) {
     const lignes = [];

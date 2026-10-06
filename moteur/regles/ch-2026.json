@@ -45,6 +45,7 @@
     "salaireCoordonneMax": 64260,
     "tauxInteretMinimal": 0.0125,
     "tauxConversion": 0.068,
+    "logement": { "minimum": 20000, "ageLimiteTotal": 50, "delaiAvantRetraite": 3, "source": "LPP art. 30c ; OEPL art. 5" },
     "bonifications": [[25, 34, 0.07], [35, 44, 0.1], [45, 54, 0.15], [55, 65, 0.18]],
     "survivants": { "conjoint": 0.6, "orphelin": 0.2, "enfantInvalide": 0.2 },
     "surindemnisation": 0.9

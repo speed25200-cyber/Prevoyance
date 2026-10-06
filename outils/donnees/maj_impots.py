@@ -10,7 +10,8 @@ Le moteur interpole entre les points. Le fichier porte la date du relevé : l'ap
 Usage : python outils/donnees/maj_impots.py [année] [cantons…] [--enfants]
         année en cours et tous les cantons par défaut ;
         avec des cantons, seuls ceux-là sont relevés et fusionnés dans le fichier existant ;
-        avec --enfants, seules les grilles avec enfants qui manquent sont ajoutées au fichier existant.
+        avec --enfants, seules les grilles avec enfants qui manquent sont ajoutées au fichier existant ;
+        avec --deux-revenus, seules les grilles des couples à deux salaires (80/20 et 50/50) sont ajoutées.
 Le relevé complet fait environ 4000 requêtes, espacées, et dure une vingtaine de minutes. Le fichier est écrit
 après chaque canton : un relevé interrompu se reprend avec --enfants.
 """
@@ -73,6 +74,16 @@ def lieu(annee: int, canton: str) -> dict:
     raise RuntimeError(f'Lieu introuvable : {canton} {ville}')
 
 
+def deux_revenus(annee: int, lieu_id: int, total: int, part: float) -> int:
+    """Couple marié, deux salaires : `part` du total gagnée par le second conjoint. Impôt total (sans enfant)."""
+    second = round(total * part)
+    r = appel('API_calculateDetailedTaxes', {
+        'SimKey': None, 'TaxYear': annee, 'TaxLocationID': lieu_id, 'Relationship': 2, 'Confession1': SANS_CONFESSION, 'Children': [],
+        'Age1': 45, 'RevenueType1': 1, 'Revenue1': total - second, 'Fortune': 0, 'Language': 2,
+        'Confession2': SANS_CONFESSION, 'Age2': 45, 'RevenueType2': 1, 'Revenue2': second, 'Budget': []})
+    return round(r['TotalNetTax'])
+
+
 def revenu(annee: int, lieu_id: int, etat: int, brut: int, enfants: int = 0) -> list:
     r = appel('API_calculateDetailedTaxes', {
         'SimKey': None, 'TaxYear': annee, 'TaxLocationID': lieu_id, 'Relationship': etat, 'Confession1': SANS_CONFESSION,
@@ -98,6 +109,8 @@ def ecrire(cible: Path, sortie: dict) -> None:
 def main() -> None:
     arguments = [a for a in sys.argv[1:] if not a.startswith('--')]
     seulement_enfants = '--enfants' in sys.argv
+    seulement_deux = '--deux-revenus' in sys.argv
+    seulement_enfants = seulement_enfants or seulement_deux
     annee = int(arguments[0]) if arguments else datetime.date.today().year
     sortie = {
         'annee': annee, 'releveLe': datetime.date.today().isoformat(),
@@ -114,6 +127,17 @@ def main() -> None:
             donnees = sortie['cantons'][canton]
         else:
             donnees = {'lieu': CHEFS_LIEUX[canton][0], 'npa': l['ZipCode'], 'commune': l.get('BfsName') or l['City'], 'revenu': {}, 'capital': {}}
+        if seulement_deux:
+            # couple à deux salaires : le second gagne 20 % ou 50 % du total (entre les deux, le moteur interpole)
+            for cle, part in (('marieDeux20', 0.2), ('marieDeux50', 0.5)):
+                if cle not in donnees['revenu']:
+                    donnees['revenu'][cle] = [deux_revenus(annee, l['TaxLocationID'], r, part) for r in REVENUS]
+            sortie['cantons'][canton] = donnees
+            i = REVENUS.index(100000)
+            print(canton, 'marié 100000, un salaire :', donnees['revenu']['marie'][i][0], '| 80/20 :', donnees['revenu']['marieDeux20'][i],
+                  '| 50/50 :', donnees['revenu']['marieDeux50'][i], flush=True)
+            ecrire(cible, sortie)
+            continue
         for nom, etat in ETATS.items():
             if not seulement_enfants:
                 donnees['revenu'][nom] = [revenu(annee, l['TaxLocationID'], etat, r) for r in REVENUS]

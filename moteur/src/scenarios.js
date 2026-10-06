@@ -7,7 +7,7 @@
 import { analyser } from './analyse.js';
 import * as AVS from './avs.js';
 import * as Impots from './impots.js';
-import { anneeNaissance, arrondi, renteDepuisCapital, valeurFuture } from './util.js';
+import { anneeNaissance, arrondi, borne, renteDepuisCapital, valeurFuture } from './util.js';
 
 /**
  * Revenu de retraite selon l'âge de départ (anticipation ou ajournement).
@@ -114,6 +114,31 @@ export function chargeHypothecaire({ valeur, dette, revenu, tauxTheorique = 0.05
   const detteMax = Math.max(0, (revenu * plafond - valeur * entretien) / tauxTheorique);
   return { charge: arrondi(charge), ratio, tenable: ratio <= plafond + 1e-9, detteMax: arrondi(detteMax, 1000),
            amortissement: arrondi(Math.max(0, dette - detteMax), 1000), avance: valeur > 0 ? dette / valeur : 0 };
+}
+
+/**
+ * Retrait anticipé du 2e pilier pour le logement (encouragement à la propriété, LPP art. 30c, OEPL art. 5).
+ * - Montant minimal : 20 000 francs ; au plus tard trois ans avant le droit aux prestations de vieillesse.
+ * - Jusqu'à 50 ans : tout l'avoir. Après 50 ans : le plus grand de l'avoir à 50 ans et de la moitié de l'avoir actuel.
+ * - Le retrait est imposé une fois, à part (barème des prestations en capital). Il réduit l'avoir de retraite (avec
+ *   les intérêts qu'il aurait portés) et donc la rente ; beaucoup de caisses réduisent aussi les prestations de risque.
+ * - Un retrait remboursé rend l'impôt payé (sans intérêts) ; tant qu'il n'est pas remboursé, aucun rachat n'est déductible.
+ * @param {{avoir: number, age: number, montant?: number, avoirA50?: number, ageRetraite?: number, interet?: number, tauxConversion?: number,
+ *          canton?: string, marie?: boolean}} p `avoirA50` : avoir à 50 ans s'il est connu (certificat) ; sinon seule la moitié de l'avoir actuel est retenue
+ * @param {any} regles @param {any} [donneesImpots]
+ */
+export function retraitLogement(p, regles, donneesImpots = null) {
+  const l = regles.lpp.logement ?? { minimum: 20000, ageLimiteTotal: 50, delaiAvantRetraite: 3 };
+  const ageRetraite = p.ageRetraite ?? regles.lpp.ageReference ?? 65, annees = Math.max(0, ageRetraite - p.age);
+  const maximum = p.age <= l.ageLimiteTotal ? p.avoir : Math.max(Math.min(p.avoirA50 ?? 0, p.avoir), p.avoir / 2);
+  const possible = annees >= l.delaiAvantRetraite && maximum >= l.minimum;
+  const montant = possible ? borne(p.montant ?? maximum, l.minimum, maximum) : 0;
+  const impot = montant > 0 && donneesImpots && p.canton ? Impots.impotCapital(donneesImpots, p.canton, !!p.marie, montant) ?? 0 : 0;
+  const interet = p.interet ?? regles.lpp.tauxInteretMinimal;
+  const avoirEnMoins = arrondi(montant * Math.pow(1 + interet, annees));
+  return { possible, minimum: l.minimum, maximum: arrondi(maximum), montant: arrondi(montant), impot, net: arrondi(montant - impot),
+           avoirRetraiteEnMoins: avoirEnMoins, renteEnMoins: arrondi(avoirEnMoins * (p.tauxConversion ?? regles.lpp.tauxConversion)),
+           raison: possible ? null : annees < l.delaiAvantRetraite ? 'tropTard' : 'sousMinimum' };
 }
 
 /**
