@@ -155,6 +155,8 @@ function portefeuille() {
       importer));
 }
 
+let premiere = true;
+
 export function construire() {
   const { t } = ctx, d = dossier();
   const ouverts = Object.fromEntries([...document.querySelectorAll('#saisie .bloc[data-bloc]')].map(b => [/** @type {HTMLElement} */ (b).dataset.bloc, /** @type {HTMLDetailsElement} */ (b).open]));
@@ -189,6 +191,22 @@ export function construire() {
     bloc('sv_securite', ouvert('sv_securite', false), ...EcranVerrou.champs(ctx, construire)),
   ];
   blocs.forEach((b, i) => b.style.setProperty('--i', String(i)));
+  // téléphone : une seule rubrique ouverte à la fois (les autres se referment), la première au départ
+  if (matchMedia('(max-width: 640px)').matches) {
+    const rubriques = blocs.filter(b => b.dataset.bloc);
+    const gardee = premiere ? rubriques[0] : rubriques.find(b => /** @type {HTMLDetailsElement} */ (b).open) ?? null;
+    let pret = false;
+    setTimeout(() => { pret = true; }, 400);                     // les rubriques créées ouvertes signalent leur état : on l'ignore
+    for (const b of rubriques) {
+      /** @type {HTMLDetailsElement} */ (b).open = b === gardee;
+      b.addEventListener('toggle', () => {
+        if (!pret || !/** @type {HTMLDetailsElement} */ (b).open) return;
+        for (const autre of rubriques) if (autre !== b) /** @type {HTMLDetailsElement} */ (autre).open = false;
+        requestAnimationFrame(() => b.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+      });
+    }
+    premiere = false;
+  }
   $('saisie').replaceChildren(
     h('div', { class: 'ecran-titre' }, h('div', {}, h('h1', {}, t('dossier')), h('p', {}, t('dossierAide')))),
     ...blocs,

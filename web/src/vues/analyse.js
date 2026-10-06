@@ -59,11 +59,18 @@ export function monter(ctx, racine) {
       h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('ligneDeVie')), h('p', {}, `${t('revenuSelonAge')} · ${t('glisser')}`)), ref('legende', h('ul', { class: 'legende' }))),
       h('div', { class: 'toile' }, toile, bulle)),
     h('div', { class: 'deux' },
-      h('div', { class: 'carte' }, h('h2', {}, t('detail')), ref('detail', h('div'))),
-      h('div', { class: 'carte' }, h('h2', {}, t('potentiels')), ref('potentiels', h('div')))),
+      h('div', { class: 'carte pliable' }, h('h2', {}, t('detail')), ref('detail', h('div'))),
+      h('div', { class: 'carte pliable' }, h('h2', {}, t('potentiels')), ref('potentiels', h('div')))),
     ref('menage', h('div', { class: 'carte', hidden: true })),
     h('div', { class: 'carte' }, h('h2', {}, t('alertes')), ref('alertes', h('ul', { class: 'alertes' }))),
     h('p', { class: 'avertissement' }, t('avertissement')));
+  // téléphone : le détail et les leviers sont repliés ; on les ouvre en touchant leur titre
+  const etroit = matchMedia('(max-width: 640px)');
+  for (const carte of racine.querySelectorAll('.pliable')) {
+    const titre = /** @type {HTMLElement} */ (carte.querySelector('h2'));
+    carte.classList.toggle('plie', etroit.matches);
+    titre.addEventListener('click', () => { if (etroit.matches) carte.classList.toggle('plie'); });
+  }
   graphique = creerGraphique(toile, bulle);
   // la scène : trois colonnes photographiées, une caméra qui suit le pointeur et s'approche du pilier désigné
   scene = creerScene(/** @type {HTMLCanvasElement} */ (r.sceneToile), [r.repere1, r.repere2, r.repere3]);

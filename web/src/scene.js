@@ -6,6 +6,8 @@
  * d'une colonne quand on désigne un pilier, léger déplacement avec le pointeur. Chaque mouvement est amorti et suit
  * la fréquence de l'écran. Quand elle existe, une boucle filmée de la même scène (la lumière passe lentement sur
  * les colonnes) remplace l'image fixe : elle ne tourne que si la carte est visible, et jamais en mouvement réduit.
+ * Sur un écran tactile (iPhone, iPad), pas de film : recopier une vidéo dans un canvas à chaque image y fait
+ * scintiller la scène ; l'image fixe est animée par la feuille de style (lent zoom), sans rien redessiner.
  * Trois points restent posés sur les colonnes. La version claire ou sombre suit le thème de l'appareil.
  */
 
@@ -22,6 +24,7 @@ const RAPPORT = 3840 / 1648;
 export function creerScene(canvas, reperes) {
   const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
   const sombreMedia = matchMedia('(prefers-color-scheme: dark)'), calme = matchMedia('(prefers-reduced-motion: reduce)');
+  const tactile = matchMedia('(pointer: coarse)');
   let theme = sombreMedia.matches ? 'sombre' : 'clair';
   let image = new Image(), prete = false;
   /** @type {HTMLVideoElement|null} */ let film = null;
@@ -29,6 +32,7 @@ export function creerScene(canvas, reperes) {
   // caméra : centre visé (fraction de l'image) et zoom ; `c` est l'état courant, `v` la cible
   const c = { x: 0.5, y: 0.5, z: 1 }, v = { x: 0.5, y: 0.5, z: 1 }, pointeur = { x: 0, y: 0 };
   let largeur = 0, hauteur = 0, enCours = false, avant = 0, vise = /** @type {number|null} */ (null);
+  let vierge = true;                                           // le canvas vient d'être (re)créé : rien n'y est encore dessiné
 
   function charger() {
     prete = false; filmPret = false;
@@ -38,7 +42,7 @@ export function creerScene(canvas, reperes) {
     image.src = `images/colonnes-${theme}${Math.max(canvas.clientWidth, 1) * (devicePixelRatio || 1) > 1500 ? '' : '-m'}.webp`;
     film?.pause();
     film = null;
-    if (calme.matches) return;
+    if (calme.matches || tactile.matches) return;
     // la boucle filmée arrive après l'image ; si elle manque ou ne peut pas être lue, l'image reste
     const f = document.createElement('video');
     f.muted = true; f.loop = true; f.playsInline = true; f.preload = 'auto'; f.crossOrigin = 'anonymous';
@@ -51,11 +55,17 @@ export function creerScene(canvas, reperes) {
 
   function dimensionner() {
     const dpr = Math.min(devicePixelRatio || 1, 3);
-    largeur = canvas.clientWidth; hauteur = canvas.clientHeight;
-    canvas.width = Math.round(largeur * dpr); canvas.height = Math.round(hauteur * dpr);
+    const l = canvas.clientWidth, ht = canvas.clientHeight, pl = Math.round(l * dpr), ph = Math.round(ht * dpr);
+    // même taille : on ne touche à rien (changer la taille d'un canvas l'efface)
+    if (pl === canvas.width && ph === canvas.height && l === largeur && ht === hauteur) return;
+    largeur = l; hauteur = ht;
+    canvas.width = pl; canvas.height = ph; vierge = true;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingQuality = 'high';
     cadrer();
+    // dessin immédiat, avant l'affichage : sinon l'écran montre une image vide le temps d'un rafraîchissement
+    c.x = vise === null ? v.x : c.x; c.y = vise === null ? v.y : c.y;
+    dessiner();
     lancer();
   }
 
@@ -66,7 +76,7 @@ export function creerScene(canvas, reperes) {
       const ecran = largeur / Math.max(1, hauteur);
       v.z = 1;
       // cadre étroit (moitié d'écran, téléphone) : les trois colonnes au centre ; cadre large : colonnes à droite, texte à gauche
-      v.x = ecran >= RAPPORT ? 0.5 : ecran < 1.5 ? Math.min(1 - ecran / RAPPORT / 2, col[1].x)
+      v.x = ecran >= RAPPORT ? 0.5 : (ecran < 1.5 || largeur < 700) ? Math.min(1 - ecran / RAPPORT / 2, col[1].x)
         : Math.min(1 - ecran / RAPPORT / 2, Math.max(0.5, col[1].x - 0.22 * ecran / RAPPORT));
       v.y = 0.5;
     } else {
@@ -76,8 +86,11 @@ export function creerScene(canvas, reperes) {
 
   function dessiner() {
     if (!largeur || !(prete || filmPret)) return;
-    const source = filmPret && film ? film : image;
-    const sl = filmPret && film ? film.videoWidth : image.naturalWidth, sh0 = filmPret && film ? film.videoHeight : image.naturalHeight;
+    // le film n'est recopié que s'il a une image prête ; au moment où la boucle repart, on garde l'image déjà affichée
+    const filmDispo = !!(filmPret && film && film.readyState >= 2 && !film.seeking && film.videoWidth);
+    if (filmPret && film && !filmDispo && !(vierge && prete)) return;
+    const source = filmDispo && film ? film : image;
+    const sl = filmDispo && film ? film.videoWidth : image.naturalWidth, sh0 = filmDispo && film ? film.videoHeight : image.naturalHeight;
     if (!sl || !sh0) return;
     // rectangle source : l'image « couvre » la carte au zoom 1, puis la caméra s'approche
     const ecran = largeur / hauteur, rapport = sl / sh0;
@@ -85,8 +98,8 @@ export function creerScene(canvas, reperes) {
     sw /= c.z; sh /= c.z;
     const cx = Math.min(1 - sw / 2, Math.max(sw / 2, c.x + pointeur.x * 0.012)), cy = Math.min(1 - sh / 2, Math.max(sh / 2, c.y + pointeur.y * 0.012));
     const sx = cx - sw / 2, sy = cy - sh / 2;
-    ctx.clearRect(0, 0, largeur, hauteur);
-    try { ctx.drawImage(source, sx * sl, sy * sh0, sw * sl, sh * sh0, 0, 0, largeur, hauteur); } catch { /* image pas encore décodée */ }
+    // pas d'effacement : l'image couvre tout le cadre, et un cadre vidé puis non redessiné ferait un éclair
+    try { ctx.drawImage(source, sx * sl, sy * sh0, sw * sl, sh * sh0, 0, 0, largeur, hauteur); vierge = false; } catch { /* image pas encore décodée */ }
     COLONNES[theme].forEach((col, i) => {
       const x = (col.x - sx) / sw * largeur, y = (col.y - sy) / sh * hauteur;
       reperes[i].style.transform = `translate3d(${x.toFixed(1)}px, ${(y + hauteur * 0.05).toFixed(1)}px, 0)`;
