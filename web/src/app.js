@@ -45,7 +45,7 @@ function marquer() {
   placerBulle();
   // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
   appNative()?.postMessage({ actif, visible: true, dossiers: resumeDossiers(),
-    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('exemple'), accueil: ctx.t('accueil') },
+    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil') },
     langue: etat.langue, langues: LANGUES, annee: etat.annee, annees: ANNEES, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
 }
 const appNative = () => /** @type {any} */ (window).webkit?.messageHandlers?.onglet ?? null;

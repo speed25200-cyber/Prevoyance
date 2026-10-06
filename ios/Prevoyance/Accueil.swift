@@ -81,7 +81,9 @@ struct Accueil: View {
                             Text(navigation.textes["exemple"] ?? "")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundStyle(Color.primary)
-                                .padding(.horizontal, 24)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                                .padding(.horizontal, 20)
                                 .frame(height: 56)
                                 .verreArrondi(rayon: 28)
                         }
