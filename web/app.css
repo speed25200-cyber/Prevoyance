@@ -33,7 +33,8 @@ button { cursor: pointer; }
 
 /* ---------- barre du haut */
 .barre { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 12px clamp(16px, 2.4vw, 32px); background: color-mix(in srgb, var(--fond) 82%, transparent);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) calc(clamp(16px, 2.4vw, 32px) + env(safe-area-inset-right, 0px)) 12px calc(clamp(16px, 2.4vw, 32px) + env(safe-area-inset-left, 0px));
+  background: color-mix(in srgb, var(--fond) 82%, transparent);
   -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px); border-bottom: 1px solid var(--filet); }
 .marque { display: flex; align-items: center; gap: 12px; }
 .marque svg { width: 30px; height: 30px; fill: var(--encre); }

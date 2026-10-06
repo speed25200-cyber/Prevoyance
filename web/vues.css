@@ -265,3 +265,8 @@ body.presentation .choix-annee { display: none; }
 .pile.large { height: 18px; }
 .pile i.second { opacity: .62; }
 .pile i.separateur { flex: 0 0 3px; width: 3px; background: var(--surface); }
+
+/* ---------- plan : budget et primes */
+.budget { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--filet); }
+.budget h3 { margin: 0 0 2px; font: 600 14px/1.2 var(--titre); }
+.petit.sans-marge { margin-top: 0; }

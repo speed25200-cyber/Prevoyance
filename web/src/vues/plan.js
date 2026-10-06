@@ -5,6 +5,7 @@
  */
 
 import { h, compter, couleurCouverture } from '../ui.js';
+import { etat } from '../etat.js';
 import { analyser, Scenarios, Impots } from '../../../moteur/src/index.js';
 import { dossier, garder } from '../etat.js';
 import { curseur } from '../formulaire.js';
@@ -28,6 +29,12 @@ export function monter(ctx, racine) {
   const glisse = (cle, libelle, max, pas, mise = f.chf) => curseur(cle, libelle, 0, Math.max(pas, max), pas, mise,
     { lecture: () => Math.min(max, mesures[cle] ?? 0), ecriture: (_, v) => regler(cle, v) });
   const bascule = (cle, libelle) => h('label', { class: 'bascule' }, t(libelle), h('input', { type: 'checkbox', checked: !!mesures[cle], onchange: e => regler(cle, e.target.checked) }));
+  // primes annuelles des offres reçues : saisies par le conseiller, elles complètent le budget du plan
+  const primes = () => (d.primes ??= {})[d.cible] ??= {};
+  const prime = (cle, libelle) => h('label', { class: 'champ' }, h('span', {}, t(libelle)), h('div', { class: 'montant' },
+    h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', value: primes()[cle] ? f.nombre(primes()[cle]) : '',
+      oninput: e => { const brut = e.target.value.replace(/[^\d]/g, ''); primes()[cle] = brut === '' ? 0 : +brut; garder(); afficher(ctx); },
+      onblur: e => { e.target.value = primes()[cle] ? f.nombre(primes()[cle]) : ''; } })));
   const ref = (cle, e) => (r[cle] = e);
   racine.replaceChildren(
     h('div', { class: 'carte plan-tete' },
@@ -45,7 +52,11 @@ export function monter(ctx, racine) {
           h('p', { class: 'intertitre' }, t('pl_retraite')),
           glisse('versement3a', 'pl_3a', pot.pilier3a.potentiel, 100),
           ...(pot.rachatLPP.possible > 0 ? [glisse('rachatLPP', 'pl_rachat', pot.rachatLPP.possible, 1000)] : []),
-          glisse('epargneLibre', 'pl_epargne', 36000, 600))),
+          glisse('epargneLibre', 'pl_epargne', 36000, 600),
+          h('p', { class: 'intertitre' }, t('pl_primesTitre')),
+          h('p', { class: 'petit sans-marge' }, t('pl_primesAide')),
+          h('div', { class: 'rangee' }, prime('renteInvalidite', 'pl_primeInvalidite'), prime('capitalDeces', 'pl_primeDeces')),
+          h('div', { class: 'rangee' }, prime('ijm', 'pl_primeIjm'), prime('laa', 'pl_primeLaa')))),
       h('div', { class: 'carte' }, h('h2', {}, t('pl_effet')), ref('effets', h('div', { class: 'effets' })), ref('fiscal', h('div')))),
     h('p', { class: 'avertissement' }, t('pl_note')));
   afficher(ctx);
@@ -79,5 +90,25 @@ export function afficher(ctx) {
   r.fiscal.replaceChildren(h('div', { class: 'chiffres' },
     h('div', { class: 'chiffre plus' }, h('small', {}, t('pl_eco3a')), h('b', {}, f.chf(eco3a)), h('span', {}, t('parAn'))),
     h('div', { class: 'chiffre plus' }, h('small', {}, t('pl_ecoRachat')), h('b', {}, f.chf(ecoRachat)), h('span', {}, t('pl_uneFois')))),
+    budget(ctx, mesures, eco3a),
     h('p', { class: 'petit' }, t('pl_primes')));
+}
+
+/** Budget annuel et mensuel du plan : épargne, primes des offres saisies, moins l'économie d'impôt récurrente. */
+export function budgetPlan(mesures, eco3a) {
+  const d = dossier(), p = d.primes?.[d.cible] ?? {};
+  const epargne = (mesures.versement3a ?? 0) + (mesures.epargneLibre ?? 0);
+  const primes = (mesures.renteInvalidite ? p.renteInvalidite ?? 0 : 0) + (mesures.capitalDeces ? p.capitalDeces ?? 0 : 0) + (mesures.ijm ? p.ijm ?? 0 : 0) + (mesures.laa ? p.laa ?? 0 : 0);
+  const attendues = [mesures.renteInvalidite && !p.renteInvalidite, mesures.capitalDeces && !p.capitalDeces, mesures.ijm && !p.ijm, mesures.laa && !p.laa].filter(Boolean).length;
+  return { epargne, primes, economie: eco3a, net: epargne + primes - eco3a, attendues };
+}
+
+function budget({ t, f }, mesures, eco3a) {
+  const b = budgetPlan(mesures, eco3a);
+  return h('div', { class: 'budget' }, h('h3', {}, t('pl_budget')),
+    h('ul', { class: 'lignes' },
+      h('li', {}, h('span', {}, t('pl_budgetEpargne')), h('b', {}, f.chf(b.epargne))),
+      h('li', {}, h('span', {}, t('pl_budgetPrimes'), b.attendues ? h('em', {}, t('pl_offresAttendues', { n: b.attendues })) : null), h('b', {}, f.chf(b.primes))),
+      h('li', {}, h('span', {}, t('pl_budgetEconomie')), h('b', {}, '− ' + f.chf(b.economie))),
+      h('li', { class: 'total' }, h('span', {}, t('pl_budgetNet')), h('b', {}, `${f.chf(b.net)} · ${f.chf(b.net / 12)} ${t('parMois')}`))));
 }

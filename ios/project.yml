@@ -1,0 +1,67 @@
+# Projet Xcode généré par XcodeGen (https://github.com/yonaskolb/XcodeGen).
+#   brew install xcodegen && cd ios && xcodegen generate && open Prevoyance.xcodeproj
+# Le fichier .xcodeproj n'est pas versionné : ce fichier fait foi.
+#
+# L'app embarque les dossiers web/ et moteur/ du dépôt tels quels : un seul moteur de calcul,
+# les mêmes écrans, les mêmes règles et les mêmes données que la version web.
+name: Prevoyance
+
+options:
+  # Identifiant à confirmer : il doit être celui de la fiche créée dans App Store Connect.
+  bundleIdPrefix: ch.prevoyance
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: fr
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    # iPhone et iPad (app universelle).
+    TARGETED_DEVICE_FAMILY: "1,2"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "1"
+    VERSIONING_SYSTEM: apple-generic
+    CODE_SIGN_STYLE: Automatic
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+targets:
+  Prevoyance:
+    type: application
+    platform: iOS
+    sources:
+      - path: Prevoyance
+      # Références de dossier : copiés dans l'app avec leur arborescence.
+      - path: ../web
+        type: folder
+        buildPhase: resources
+      - path: ../moteur
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ch.prevoyance.app
+    info:
+      path: Prevoyance/Info.plist
+      properties:
+        CFBundleDisplayName: Prévoyance
+        CFBundleDevelopmentRegion: fr
+        CFBundleLocalizations: [fr, de, it, en]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.finance
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: FondLancement
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiresFullScreen: false
+        # ProMotion : animations et défilement à 120 Hz sur les iPhone Pro (l'iPad Pro l'est d'office).
+        CADisableMinimumFrameDurationOnPhone: true

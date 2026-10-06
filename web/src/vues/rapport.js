@@ -9,7 +9,8 @@ import { h, colonnes, couleurCouverture } from '../ui.js';
 import { Scenarios, VERSION } from '../../../moteur/src/index.js';
 import { etat, garder, dossier } from '../etat.js';
 import { RISQUES, detailRisque, texteAlerte } from './analyse.js';
-import { planCourant } from './plan.js';
+import { planCourant, budgetPlan } from './plan.js';
+import { Impots } from '../../../moteur/src/index.js';
 
 const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
 
@@ -109,6 +110,14 @@ export function afficher(ctx) {
         h('th', {}, t(c)), h('td', { class: x.lacune > 0 ? 'lacune' : 'ok' }, x.lacune > 0 ? `− ${f.chf(x.lacuneMensuelle)} ${t('parMois')}` : '✓'),
         h('td', { class: y.lacune > 0 ? 'lacune' : 'ok' }, y.lacune > 0 ? `− ${f.chf(y.lacuneMensuelle)} ${t('parMois')}` : '✓')); }),
         h('tr', { class: 'fort' }, h('th', {}, t('score')), h('td', {}, String(plan.avant.score)), h('td', {}, String(plan.apres.score))))),
+    (() => {
+      const brut = a.personne.revenu + (a.conjoint && a.marie ? a.conjoint.revenu : 0);
+      const eco3a = impots && a.canton ? Impots.economieDeduction(impots, a.canton, a.marie, brut, m.versement3a ?? 0) ?? 0 : Math.round((m.versement3a ?? 0) * a.potentiels.tauxMarginal);
+      const b = budgetPlan(m, eco3a);
+      return h('div', {}, h('h3', {}, t('pl_budget')), h('table', { class: 'r-fiche large' },
+        ligne(t('pl_budgetEpargne'), `${f.chf(b.epargne)} ${t('parAn')}`), ligne(t('pl_budgetPrimes'), b.attendues ? `${f.chf(b.primes)} ${t('parAn')} (${t('pl_offresAttendues', { n: b.attendues })})` : `${f.chf(b.primes)} ${t('parAn')}`),
+        ligne(t('pl_budgetEconomie'), `− ${f.chf(b.economie)} ${t('parAn')}`), ligne(t('pl_budgetNet'), `${f.chf(b.net)} ${t('parAn')} · ${f.chf(b.net / 12)} ${t('parMois')}`)));
+    })(),
     h('p', { class: 'petit' }, t('pl_primes')), pied(avecDeces ? 6 : 5));
 
   // ---- 7. hypothèses et sources

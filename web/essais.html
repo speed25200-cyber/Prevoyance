@@ -51,6 +51,30 @@
     noter('retour au français', d.documentElement.lang === 'fr');
     const manquants = [...d.querySelectorAll('#vue *, #saisie *, .barre *')].filter(e => e.children.length === 0 && /^(a_|s_|sc_|pl_|rp_|dn_|v_|ct_|att_|p_|pr_)\w+$/.test(e.textContent.trim())).map(e => e.textContent.trim());
     noter('aucun texte manquant', manquants.length === 0, manquants.slice(0, 8).join(', '));
+    // traductions : chaque langue doit porter exactement les clés du français
+    const i18n = await import('./src/i18n.js'), fr = i18n.clesDe('fr');
+    for (const l of ['de', 'it', 'en']) {
+      const cles = i18n.clesDe(l), absentes = [...fr].filter(c => !cles.has(c)), enTrop = [...cles].filter(c => !fr.has(c));
+      noter(`traduction ${l} complète (${cles.size} textes)`, absentes.length === 0 && enTrop.length === 0, [...absentes, ...enTrop].slice(0, 10).join(', '));
+    }
+    // vitesse du moteur : une analyse complète doit rester très en dessous d'une image à 120 Hz (8,3 ms)
+    const moteur = await import('../moteur/src/index.js'), TOURS = 3000, debut = Date.now();
+    let temoin = null;
+    for (let i = 0; i < TOURS; i++) temoin = moteur.analyser(p.ctx.dossierMoteur, p.ctx.regles, { impots: p.ctx.impots });
+    const duree = Date.now() - debut, parAnalyse = duree / TOURS;
+    noter('analyse recalculée à l’identique', temoin.score === p.ctx.analyse.score, `score ${temoin.score}`);
+    // en arrière-plan (temps virtuel) l'horloge est figée : la vitesse ne se mesure que dans un navigateur ouvert
+    if (duree > 0) noter('analyse complète en moins de 4 ms', parAnalyse < 4, `${parAnalyse.toFixed(3)} ms (${TOURS} analyses en ${duree} ms)`);
+    // largeur de téléphone : rien ne dépasse de l'écran
+    cadre.style.width = '390px'; cadre.style.height = '844px';
+    d.querySelector('[data-vue=analyse]').click(); await jusqua(() => d.body.dataset.vue === 'analyse' && d.querySelector('.scene-puce'));
+    await attendre(600);
+    noter('téléphone (390 px) : aucun débordement horizontal', d.documentElement.scrollWidth <= 392, `${d.documentElement.scrollWidth} px`);
+    noter('téléphone : bascule Dossier / Analyse visible', w.getComputedStyle(d.getElementById('panneaux')).display !== 'none');
+    for (const vue of ['scenarios', 'plan', 'donnees']) {
+      d.querySelector(`[data-vue=${vue}]`).click(); await jusqua(() => d.body.dataset.vue === vue); await attendre(700);
+      noter(`téléphone : vue ${vue} sans débordement`, d.documentElement.scrollWidth <= 392, `${d.documentElement.scrollWidth} px`);
+    }
   } catch (erreur) {
     noter('exception', false, erreur.stack);
   }

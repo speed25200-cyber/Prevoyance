@@ -1,0 +1,78 @@
+# Codemagic — application iPad / iPhone « Prévoyance » (dossier ios/).
+# Notice : ios/README.md.
+#
+#   ios-controle    construit l'app pour le simulateur, sans signature : vérifie que le projet compile.
+#   ios-testflight  signe, produit l'IPA et l'envoie sur TestFlight.
+#
+# Aucun secret dans ce fichier. « ios-testflight » demande, côté Codemagic, l'intégration App Store Connect
+# et un identifiant d'app (bundle ID) identique à celui de ios/project.yml.
+
+definitions:
+  projet: &projet
+    name: Générer le projet Xcode
+    working_directory: ios
+    script: |
+      set -e
+      xcodebuild -version
+      brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+      xcodegen generate
+
+workflows:
+  ios-controle:
+    name: Prévoyance iOS — contrôle
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    scripts:
+      - *projet
+      - name: Construire pour le simulateur
+        working_directory: ios
+        script: |
+          set -o pipefail
+          xcodebuild build \
+            -project Prevoyance.xcodeproj \
+            -scheme Prevoyance \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO | xcpretty
+      - name: Vérifier que le moteur et les écrans sont dans l'app
+        working_directory: ios
+        script: |
+          set -e
+          APP="build/dd/Build/Products/Debug-iphonesimulator/Prevoyance.app"
+          test -f "$APP/web/index.html"
+          test -f "$APP/moteur/src/index.js"
+          test -f "$APP/moteur/regles/ch-2026.json"
+          test -f "$APP/moteur/manifeste.json"
+          echo "Contenu embarqué : OK"
+
+  ios-testflight:
+    name: Prévoyance iOS — TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    integrations:
+      app_store_connect: Dev
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: ch.prevoyance.app
+    scripts:
+      - *projet
+      - name: Signature
+        working_directory: ios
+        script: xcode-project use-profiles
+      - name: Numéro de build
+        working_directory: ios
+        script: agvtool new-version -all $(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0) + 1))
+      - name: IPA
+        working_directory: ios
+        script: xcode-project build-ipa --project Prevoyance.xcodeproj --scheme Prevoyance
+    artifacts:
+      - ios/build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

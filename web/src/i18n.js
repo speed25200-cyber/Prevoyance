@@ -217,3 +217,8 @@ export function formats(langue) {
     pourcent: x => `${Math.round(x * 100)} %`,
   };
 }
+
+/** Clés présentes dans une langue, sans repli sur le français : sert au contrôle de complétude des traductions. */
+export function clesDe(langue) {
+  return new Set([...Object.keys(T[langue] ?? {}), ...Object.keys(VUES_T[langue] ?? {})]);
+}
