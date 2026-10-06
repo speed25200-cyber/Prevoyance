@@ -23,6 +23,7 @@ struct OutilsEcran: ToolbarContent {
             } label: {
                 Image(systemName: "house")
             }
+            .tint(Color.primary)
             .accessibilityLabel(Text(navigation.textes["accueil"] ?? "Accueil"))
         }
         ToolbarItem(placement: .principal) {
@@ -54,6 +55,7 @@ struct MenuOutils: View {
         } label: {
             Text("\(String(navigation.annee)) · \(navigation.langue.uppercased())")
                 .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.primary)
         }
     }
 }
@@ -89,11 +91,11 @@ struct DossierNatif: View {
             .scrollContentBackground(.hidden)
             .background(FondApp())
             .navigationTitle(navigation.noms["dossier"] ?? "")
-            .toolbar { OutilsEcran(navigation: navigation) }
+            .toolbar { if largeur != .regular { OutilsEcran(navigation: navigation) } }
             .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 84) }
         } detail: {
             if let rubrique = navigation.rubriques.first(where: { $0.id == choisie }) {
-                RubriqueNative(navigation: navigation, rubrique: rubrique)
+                RubriqueNative(navigation: navigation, rubrique: rubrique, outils: largeur == .regular)
                     .id("\(rubrique.id)-\(navigation.versionSchema)")
             } else {
                 FondApp()
@@ -112,6 +114,8 @@ struct DossierNatif: View {
 struct RubriqueNative: View {
     @ObservedObject var navigation: Navigation
     let rubrique: Rubrique
+    /// Écran large : le parcours et les réglages sont dans la barre de cette colonne.
+    var outils = false
 
     var body: some View {
         Form {
@@ -124,6 +128,7 @@ struct RubriqueNative: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(rubrique.titre)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar { if outils { OutilsEcran(navigation: navigation) } }
         .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 84) }
     }
 }
@@ -201,6 +206,7 @@ struct ChampNatif: View {
             Picker(champ.libelle, selection: $texte) {
                 ForEach(champ.options) { option in Text(option.l).tag(option.v) }
             }
+            .tint(Color.secondary)
             .onChange(of: texte) { _, nouveau in navigation.ecrire(champ.id, texte: nouveau) }
         case "date":
             DatePicker(champ.libelle, selection: $date, in: ...Date(), displayedComponents: .date)
