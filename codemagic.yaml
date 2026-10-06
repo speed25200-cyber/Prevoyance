@@ -71,6 +71,8 @@ workflows:
     scripts:
       - *essais
       - *projet
+      - name: Autotest de l'app dans les simulateurs iPhone et iPad
+        script: bash ios/autotest.sh
       - name: Signature
         working_directory: ios
         script: xcode-project use-profiles
@@ -112,3 +114,4 @@ workflows:
           exit 1
     artifacts:
       - ios/build/ios/ipa/*.ipa
+      - ios/build/captures/*.png

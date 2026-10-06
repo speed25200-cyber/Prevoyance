@@ -1,0 +1,61 @@
+// @ts-check
+/**
+ * Autotest de l'application dans son enveloppe iPhone / iPad.
+ *
+ * L'app le lance quand elle est démarrée avec PREVOYANCE_AUTOTEST=1 (simulateur de l'intégration continue, voir
+ * ios/autotest.sh) : il vérifie, dans la vraie vue web d'iOS, ce qu'un navigateur d'ordinateur ne peut pas prouver —
+ * les ponts vers l'app, le chiffrement des dossiers, les six vues, l'absence d'erreur et de débordement.
+ * Il ne touche pas aux dossiers enregistrés (stockage d'essai pour le coffre).
+ */
+
+/** @param {string} [finale] vue laissée à l'écran à la fin (pour la capture) */
+export async function executer(finale = 'analyse') {
+  /** @type {{nom: string, ok: boolean, detail: string}[]} */ const resultats = [];
+  const noter = (nom, ok, detail = '') => resultats.push({ nom, ok: !!ok, detail: String(detail).slice(0, 110) });
+  const attendre = ms => new Promise(f => setTimeout(f, ms));
+  const w = /** @type {any} */ (window), p = w.__prevoyance;
+  try {
+    noter('contexte', true, `subtle=${!!globalThis.crypto?.subtle} sur=${isSecureContext} ${innerWidth}x${innerHeight} dpr=${devicePixelRatio} tactile=${matchMedia('(pointer: coarse)').matches}`);
+    noter('page prête et dossier analysé', typeof p?.ctx?.analyse?.score === 'number', `score ${p?.ctx?.analyse?.score}`);
+    noter('la page sait qu’elle est dans l’app', document.documentElement.classList.contains('natif'));
+    noter('menu de la page retiré (barre native)', getComputedStyle(/** @type {HTMLElement} */ (document.getElementById('onglets'))).display === 'none');
+    const ponts = w.webkit?.messageHandlers ?? {};
+    for (const nom of ['onglet', 'scanner', 'imprimer', 'coffre']) noter(`pont « ${nom} »`, !!ponts[nom]);
+
+    // chiffrement des dossiers, de bout en bout, par le chemin réellement utilisé ici (Web Crypto ou l'app)
+    const Verrou = await import('./verrou.js');
+    const boite = new Map(), faux = { getItem: k => boite.get(k) ?? null, setItem: (k, v) => boite.set(k, v), removeItem: k => boite.delete(k) };
+    noter('chiffrement disponible', Verrou.disponible());
+    const secret = { dossiers: [{ nom: 'Dupont Marie', personne: { revenu: 91000 }, image: 'x'.repeat(120000) }] };
+    await Verrou.creer('code-essai-42', secret, /** @type {any} */ (faux), 20000);
+    const brut = [...boite.values()].join(' ');
+    noter('coffre : rien de lisible', brut.length > 1000 && !brut.includes('Dupont') && !brut.includes('91000'), `${brut.length} caractères`);
+    Verrou.fermer();
+    noter('coffre : un mauvais code n’ouvre pas', await Verrou.ouvrir('code-essai-43', /** @type {any} */ (faux)) === null);
+    const rendu = await Verrou.ouvrir('code-essai-42', /** @type {any} */ (faux));
+    noter('coffre : le bon code rend le dossier (120 000 caractères)', rendu?.dossiers?.[0]?.nom === 'Dupont Marie' && rendu.dossiers[0].image.length === 120000);
+    Verrou.fermer();
+
+    // les six écrans : chacun s'affiche seul, avec du contenu, sans dépasser la largeur
+    const affiche = id => getComputedStyle(/** @type {HTMLElement} */ (document.getElementById(id))).display !== 'none';
+    for (const vue of ['dossier', 'analyse', 'scenarios', 'plan', 'rapport', 'donnees']) {
+      p.aller(vue);
+      await attendre(900);
+      const dossier = vue === 'dossier', largeur = document.documentElement.scrollWidth;
+      const bon = dossier ? affiche('saisie') && !affiche('vue') : affiche('vue') && !affiche('saisie') && document.body.dataset.vue === vue;
+      const contenu = /** @type {HTMLElement} */ (document.getElementById(dossier ? 'saisie' : 'vue')).innerText.trim().length;
+      noter(`écran ${vue}`, bon && contenu > 80 && largeur <= innerWidth + 1, `${contenu} caractères, largeur ${largeur}/${innerWidth}`);
+    }
+    // l'analyse : la scène des piliers est dessinée, et aucun texte du résumé ne la recouvre
+    p.aller('analyse');
+    await attendre(900);
+    const toile = /** @type {HTMLCanvasElement|null} */ (document.querySelector('.scene-toile'));
+    noter('scène des piliers présente', !!toile && toile.width > 100 && toile.height > 50, toile ? `${toile.width}x${toile.height}` : 'absente');
+    noter('aucune erreur JavaScript', (w.__erreurs ?? []).length === 0, (w.__erreurs ?? []).join(' | '));
+    if (finale !== 'analyse') { p.aller(finale); await attendre(900); }
+    scrollTo(0, 0);
+  } catch (erreur) {
+    noter('exception', false, /** @type {Error} */ (erreur).message);
+  }
+  return { echecs: resultats.filter(r => !r.ok).length, total: resultats.length, resultats };
+}

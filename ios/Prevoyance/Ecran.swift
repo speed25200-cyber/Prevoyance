@@ -54,6 +54,9 @@ final class Navigation: ObservableObject {
     let vue: WKWebView
     private let pont: Pont
     private let coffre: Coffre
+    /// Autotest (simulateur de l'intégration continue) : demandé par la variable PREVOYANCE_AUTOTEST=1.
+    private let autotest = ProcessInfo.processInfo.environment["PREVOYANCE_AUTOTEST"] == "1"
+    private var autotestLance = false
 
     init() {
         let pont = Pont()
@@ -66,6 +69,9 @@ final class Navigation: ObservableObject {
         let script = """
             window.print = () => window.webkit.messageHandlers.imprimer.postMessage(document.title);
             document.documentElement.classList.add('natif');
+            window.__erreurs = [];
+            addEventListener('error', e => window.__erreurs.push(String(e.message)));
+            addEventListener('unhandledrejection', e => window.__erreurs.push('rejet : ' + String(e.reason && e.reason.message || e.reason)));
             """
         reglages.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         reglages.userContentController.add(pont, name: "imprimer")
@@ -103,6 +109,21 @@ final class Navigation: ObservableObject {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.aller && window.__prevoyance.aller('\(cible)')")
     }
 
+    /// Autotest : la page exécute web/src/autotest.js dans cette vue web ; le résultat, complété par l'état de la barre
+    /// native, est écrit dans les documents de l'app, où le script ios/autotest.sh le lit.
+    private func lancerAutotest() async {
+        try? await Task.sleep(nanoseconds: 2_500_000_000)
+        let finale = ProcessInfo.processInfo.environment["PREVOYANCE_VUE"] ?? "analyse"
+        let corps = "const m = await import('prevoyance://app/web/src/autotest.js'); return JSON.stringify(await m.executer(finale));"
+        var page = "{\"echecs\":1,\"total\":1,\"resultats\":[{\"nom\":\"script d'autotest\",\"ok\":false,\"detail\":\"non exécuté\"}]}"
+        if let retour = try? await vue.callAsyncJavaScript(corps, arguments: ["finale": finale], in: nil, contentWorld: .page) as? String {
+            page = retour
+        }
+        let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count)}"
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        try? "{\"page\":\(page),\"app\":\(app)}".write(to: documents.appendingPathComponent("autotest.json"), atomically: true, encoding: .utf8)
+    }
+
     /// Message de la page : `actif` (vue ouverte), `noms` (libellés traduits), `visible` (montrer la barre).
     func recevoir(_ corps: Any) {
         guard let message = corps as? [String: Any] else { return }
@@ -112,6 +133,10 @@ final class Navigation: ObservableObject {
         }
         if let visible = message["visible"] as? Bool, visible != barreVisible {
             withAnimation(.easeOut(duration: 0.25)) { barreVisible = visible }
+        }
+        if autotest, barreVisible, !autotestLance {
+            autotestLance = true
+            Task { await lancerAutotest() }
         }
     }
 }
