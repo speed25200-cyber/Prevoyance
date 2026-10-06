@@ -19,7 +19,7 @@ export * as Certificat from './certificat.js';
 export * as Conseil from './conseil.js';
 export * as outils from './util.js';
 
-export const VERSION = '0.9.0';
+export const VERSION = '0.9.1';
 export const ANNEES = [2026, 2027];
 
 /**

@@ -32,17 +32,26 @@ struct OutilsEcran: ToolbarContent {
             .accessibilityLabel(Text(navigation.textes["accueil"] ?? "Accueil"))
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Picker("", selection: Binding(get: { navigation.annee }, set: { navigation.regler(annee: $0) })) {
-                    ForEach(navigation.annees, id: \.self) { an in Text(String(an)).tag(an) }
-                }
-                Picker("", selection: Binding(get: { navigation.langue }, set: { navigation.regler(langue: $0) })) {
-                    ForEach(navigation.langues, id: \.self) { code in Text(code.uppercased()).tag(code) }
-                }
-            } label: {
-                Text("\(String(navigation.annee)) · \(navigation.langue.uppercased())")
-                    .font(.system(size: 15, weight: .semibold))
+            MenuOutils(navigation: navigation)
+        }
+    }
+}
+
+/// Le menu de l'année et de la langue dans la barre du système (il suit les changements venus de la page).
+struct MenuOutils: View {
+    @ObservedObject var navigation: Navigation
+
+    var body: some View {
+        Menu {
+            Picker("", selection: Binding(get: { navigation.annee }, set: { navigation.regler(annee: $0) })) {
+                ForEach(navigation.annees, id: \.self) { an in Text(String(an)).tag(an) }
             }
+            Picker("", selection: Binding(get: { navigation.langue }, set: { navigation.regler(langue: $0) })) {
+                ForEach(navigation.langues, id: \.self) { code in Text(code.uppercased()).tag(code) }
+            }
+        } label: {
+            Text("\(String(navigation.annee)) · \(navigation.langue.uppercased())")
+                .font(.system(size: 15, weight: .semibold))
         }
     }
 }
