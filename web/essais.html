@@ -92,6 +92,20 @@
     noter('analyse recalculée à l’identique', temoin.score === p.ctx.analyse.score, `score ${temoin.score}`);
     // en arrière-plan (temps virtuel) l'horloge est figée : la vitesse ne se mesure que dans un navigateur ouvert
     if (duree > 0) noter('analyse complète en moins de 4 ms', parAnalyse < 4, `${parAnalyse.toFixed(3)} ms (${TOURS} analyses en ${duree} ms)`);
+    // largeur de tablette : le dossier (liste + rubrique) ne s'affiche que sur son onglet, jamais par-dessus une vue
+    cadre.style.width = '1180px'; cadre.style.height = '820px';
+    const affiche = id => w.getComputedStyle(d.getElementById(id)).display !== 'none';
+    for (const vue of ['analyse', 'scenarios', 'plan', 'rapport', 'donnees']) {
+      d.querySelector(`#onglets [data-vue=${vue}]`).click(); await jusqua(() => d.body.dataset.vue === vue); await attendre(300);
+      noter(`tablette : la vue ${vue} s’affiche seule, sans le dossier`, affiche('vue') && !affiche('saisie'));
+    }
+    d.querySelector('#onglets [data-vue=dossier]').click(); await attendre(300);
+    const visibles = () => [...d.querySelectorAll('#saisie .bloc[data-bloc]')].filter(b => w.getComputedStyle(b).display !== 'none');
+    noter('tablette : le dossier montre la liste des rubriques et une seule rubrique', affiche('saisie') && !affiche('vue')
+      && w.getComputedStyle(d.querySelector('.rubriques')).display !== 'none' && visibles().length === 1, `${visibles().length} rubrique(s)`);
+    d.querySelector('.rubriques [data-rubrique=lpp]').click(); await attendre(200);
+    noter('tablette : choisir une rubrique dans la liste l’affiche', visibles().length === 1 && visibles()[0].dataset.bloc === 'lpp');
+    noter('tablette (1180 px) : aucun débordement horizontal', d.documentElement.scrollWidth <= 1182, `${d.documentElement.scrollWidth} px`);
     // largeur de téléphone : rien ne dépasse de l'écran
     cadre.style.width = '390px'; cadre.style.height = '844px';
     d.querySelector('#onglets [data-vue=analyse]').click(); await jusqua(() => d.body.dataset.vue === 'analyse' && d.querySelector('.scene-puce'));

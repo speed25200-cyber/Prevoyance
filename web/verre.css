@@ -194,7 +194,7 @@
   /* ---------- dossier sur tablette et ordinateur : la liste des rubriques à gauche, la rubrique choisie à droite */
   .rubriques { display: none; }
   @media (min-width: 760px) {
-    .saisie { display: grid !important; grid-template-columns: minmax(240px, 310px) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; gap: 16px 22px; align-items: start; }
+    body[data-panneau="dossier"] .saisie { display: grid; grid-template-columns: minmax(240px, 310px) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; gap: 16px 22px; align-items: start; }
     .saisie .ecran-titre { grid-column: 1 / -1; grid-row: 1; }
     .saisie .portefeuille { grid-column: 1; grid-row: 2; }
     .rubriques { grid-column: 1; grid-row: 3; position: sticky; top: 84px; display: grid; gap: 2px; padding: 8px; border-radius: 26px; background: var(--verre); border: 1px solid var(--verre-bord);
