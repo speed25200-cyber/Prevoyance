@@ -69,6 +69,9 @@ export async function monter(ctx, racine) {
   blocs.push(h('div', { class: 'carte' }, h('h2', {}, t('rp_sources')),
     h('ul', { class: 'r-sources' }, ...Object.entries(r1.sources).map(([k, s]) => h('li', {}, h('b', {}, k.toUpperCase() + ' — '), String(s))),
       ...Object.entries(r2.sources).filter(([k]) => ['avs', 'lpp', 'pilier3a'].includes(k)).map(([k, s]) => h('li', {}, h('b', {}, `${k.toUpperCase()} ${r2.annee} — `), String(s))))));
+  // confidentialité et limites : ce qu'un courtier ou une compagnie doit pouvoir lire avant d'utiliser l'outil avec un client
+  blocs.push(h('div', { class: 'carte apropos' }, h('h2', {}, t('ap_titre')),
+    h('ul', { class: 'r-sources' }, ...['ap_appareil', 'ap_reseau', 'ap_verrou', 'ap_effacer', 'ap_limites', 'ap_controle'].map(cle => h('li', {}, t(cle, { v: VERSION, d: manifeste?.version ?? '—' }))))));
   blocs.forEach((b, i) => b.style.setProperty('--i', String(i)));
   racine.replaceChildren(h('div', { class: 'pile-cartes' }, ...blocs));
 }

@@ -5,7 +5,7 @@ Un outil de conseiller, pensé pour le rendez-vous client : on saisit la situati
 on construit le plan avec le client, on lui remet un rapport PDF.
 
 - **Public** : conseillers et courtiers, face au client. Particuliers, salariés, indépendants, couples.
-- **Plateformes** : application web installable (iPad, iPhone, ordinateur ; fonctionne hors ligne) et application native iPad / iPhone (`ios/`, pas encore compilée : voir `ios/README.md`).
+- **Plateformes** : application web installable (iPad, iPhone, ordinateur ; fonctionne hors ligne) et application native iPad / iPhone (`ios/`, construite et envoyée sur TestFlight par Codemagic : voir `ios/README.md`), avec barre d'onglets native.
 - **Langues** : français, allemand, italien, anglais.
 
 > Aucune donnée de client réelle ne doit entrer dans ce dépôt : il est public. Les exemples sont fictifs.
@@ -20,6 +20,14 @@ on construit le plan avec le client, on lui remet un rapport PDF.
 | **Plan** | Les mesures proposées par le moteur (rente d'incapacité, capital décès, perte de gain, 3a, rachat, épargne), réglables, avec l'effet avant / après sur chaque lacune, l'économie d'impôt, et le budget du plan : épargne, primes des offres saisies par le conseiller, effort net par an et par mois. |
 | **Rapport** | Le document du client, en pages A4 : couverture, synthèse, retraite, invalidité, décès, plan, hypothèses et sources. « Enregistrer en PDF » par l'impression du navigateur. |
 | **Données** | Les montants officiels appliqués (2026 et 2027), les valeurs encore à confirmer, les impôts des 26 cantons avec la date du relevé, les sources, et la vérification des mises à jour. |
+
+Pour le courtier ou la compagnie : **logo de l'intermédiaire** sur le rapport, **fiche d'information LSA art. 45** et
+**procès-verbal de conseil** avec **signatures du client et du conseiller sur l'écran**, dossiers **chiffrés par un code**
+(AES 256), export et import d'un dossier en fichier. Rien ne quitte l'appareil.
+
+Le moteur (`moteur/`) est contrôlé par des cas de test calculés à la main à partir des montants officiels
+(`moteur/tests/cas.js`) ; Codemagic les rejoue avant chaque construction de l'app, et `outils/ci/essais-github.yml`
+est un modèle prêt pour GitHub Actions.
 
 S'y ajoute le **scan du certificat de prévoyance** (2e pilier) : le texte est lu sur l'appareil, les valeurs reconnues
 (avoir, rentes, capital décès, rachat, salaire) sont proposées et le conseiller les vérifie avant de les reprendre.
