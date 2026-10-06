@@ -137,6 +137,14 @@ export function casScenarios(egal, { r26, i26, c26 }) {
       egal('Le nom du lieu suit la commune', zhBas.cantons.ZH.lieu, basse.n);
       egal('Les autres cantons ne changent pas', zhBas.cantons.BE === i26.cantons.BE, true);
       egal('Impôt d’Église à Zurich (réformée) : plus que sans confession', Impots.impotRevenu(Impots.localiser(i26, c26, 'ZH', { confession: 'reformee' }), 'ZH', false, 100000).impot > Impots.impotRevenu(i26, 'ZH', false, 100000).impot, true);
+      if (c26.federalCapital) {
+        const j = i26.capitaux.indexOf(300000);
+        egal('Capital : toutes les communes ont leur facteur', toutes.every(c => c.kc > 0.3 && c.kc < 2), true);
+        egal('Capital : contrôle contre le calculateur officiel sous 5 %', c26.ecartMaxControleCapital < 0.05, true);
+        egal('Capital : formule fédéral + (chef-lieu − fédéral) × facteur', zhBas.cantons.ZH.capital.seul[j],
+          Math.round(c26.federalCapital.seul[j] + (i26.cantons.ZH.capital.seul[j] - c26.federalCapital.seul[j]) * basse.kc));
+        egal('Capital : commune la moins imposée de ZH, moins que Zurich', Impots.impotCapital(zhBas, 'ZH', false, 300000) < Impots.impotCapital(i26, 'ZH', false, 300000), true);
+      }
       egal('Les grilles avec enfants sont ajustées aussi', zhBas.cantons.ZH.revenu.marie2[point][0] < i26.cantons.ZH.revenu.marie2[point][0], true);
     }
     if (Impots.avecEnfants(i26, 'VD')) {

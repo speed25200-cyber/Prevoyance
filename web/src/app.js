@@ -19,6 +19,9 @@ import * as VuePlan from './vues/plan.js';
 import * as VueRapport from './vues/rapport.js';
 import * as VueDonnees from './vues/donnees.js';
 import { h, $ } from './ui.js';
+import { installerFond } from './fond.js';
+
+installerFond();
 
 const MODULES = { analyse: VueAnalyse, scenarios: VueScenarios, plan: VuePlan, rapport: VueRapport, donnees: VueDonnees };
 

@@ -1,6 +1,6 @@
 /* Prévoyance — direction artistique « éditorial, banque privée ».
    Chargée après app.css et vues.css : elle pose la typographie, la palette et la mise en page éditoriale.
-   - Deux polices, hébergées par l'application : Instrument Serif (titres, grands chiffres) et Instrument Sans (texte).
+   - Deux polices, hébergées par l'application : Fraunces (titres, grands chiffres) et Inter (texte).
    - Les couleurs viennent de la scène : pierre (1er pilier), bronze (2e pilier), verre (3e pilier), terre cuite (lacune).
    - Du papier, de l'encre, des filets : plus de cartes flottantes ni d'ombres. */
 
@@ -10,8 +10,8 @@
   --p1: #b3a188; --p2: #8a5b37; --p3: #4f8177; --salaire: #d9d2c4; --attente: #c9a24a; --lacune: #b4432b;
   --critique: #b4432b; --attention: #b98a2e; --opportunite: #4f8177; --info: #6a6358;
   --rayon: 3px;
-  --police: "Instrument Sans", ui-sans-serif, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  --titre: "Instrument Serif", "Iowan Old Style", "Times New Roman", serif;
+  --police: "Inter", ui-sans-serif, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --titre: "Fraunces", "Iowan Old Style", "Times New Roman", serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -22,7 +22,7 @@
   }
 }
 
-body { font: 400 15px/1.5 var(--police); font-synthesis: none; font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "ss01", "kern";
+body { font: 400 15px/1.5 var(--police); font-synthesis: none; font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "kern", "cv11", "ss03"; font-optical-sizing: auto;
   text-rendering: optimizeLegibility; }
 ::selection { background: var(--encre); color: var(--fond); }
 :focus-visible { outline: 1px solid var(--encre); outline-offset: 3px; }
@@ -99,17 +99,17 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: v
 /* ---------- tête de l'analyse : la scène, pleine largeur, le chiffre en grand */
 .tete { border-top: 0; padding: clamp(22px, 2.8vw, 40px); min-height: clamp(300px, 31vw, 440px); border-radius: var(--rayon); background: #0f0e0c; }
 @media (prefers-color-scheme: light) { .tete { background: #ece7dd; } }
-.tete .grand, .grand { font: 400 clamp(54px, 7.2vw, 116px)/.92 var(--titre); letter-spacing: -.025em; margin: 10px 0 14px; gap: 14px; }
-.grand small { font: 400 clamp(17px, 1.6vw, 24px)/1.2 var(--titre); font-style: italic; color: var(--encre-2); letter-spacing: 0; }
+.tete .grand, .grand { font: 300 clamp(46px, 5.6vw, 92px)/.95 var(--titre); letter-spacing: -.045em; margin: 10px 0 14px; gap: 14px; }
+.grand small { font: 300 clamp(17px, 1.6vw, 24px)/1.2 var(--titre); font-style: italic; color: var(--encre-2); letter-spacing: 0; }
 .petit-grand, .tete .petit-grand { font-size: clamp(34px, 4.2vw, 64px); line-height: 1; }
 .jauge { width: clamp(112px, 11vw, 150px); }
 .jauge circle { stroke-width: 2.5; stroke-linecap: butt; }
-.jauge-texte b { font: 400 clamp(44px, 4.4vw, 64px)/.9 var(--titre); letter-spacing: -.02em; }
+.jauge-texte b { font: 300 clamp(44px, 4.4vw, 64px)/.9 var(--titre); letter-spacing: -.02em; }
 .jauge-texte span { font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; max-width: 12ch; margin-top: 6px; }
 .scene-puce { border-radius: 2px; border: 0; border-top: 1px solid var(--encre); padding: 10px 14px 9px; gap: 4px;
   background: color-mix(in srgb, var(--fond) 70%, transparent); }
 .scene-puce small { font-size: 9.5px; letter-spacing: .16em; font-weight: 500; }
-.scene-puce b { font: 400 22px/1 var(--titre); letter-spacing: -.01em; }
+.scene-puce b { font: 400 19px/1 var(--titre); letter-spacing: -.02em; white-space: nowrap; }
 .scene-point { width: 7px; height: 7px; left: -3.5px; top: -3.5px; box-shadow: 0 0 0 1px var(--fond), 0 0 0 12px color-mix(in srgb, var(--encre) 12%, transparent); }
 
 /* ---------- les cinq risques : une ligne de sommaire */
@@ -122,7 +122,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: v
 .risque[aria-selected="true"]::before { transform: scaleX(1); }
 .risque:hover { transform: none; }
 .risque h3 { font: 500 10.5px/1.35 var(--police); text-transform: uppercase; letter-spacing: .14em; min-height: 2.7em; }
-.risque b { font: 400 clamp(26px, 2.5vw, 38px)/1 var(--titre); letter-spacing: -.015em; }
+.risque b { font: 400 clamp(20px, 1.85vw, 29px)/1 var(--titre); letter-spacing: -.025em; white-space: nowrap; }
 .risque small { font-size: 11.5px; }
 .barre-couv { height: 1px; border-radius: 0; background: var(--filet); overflow: visible; }
 .barre-couv i { height: 3px; margin-top: -1px; border-radius: 0; }
@@ -139,7 +139,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: v
 .lignes li { padding: 12px 0; }
 .lignes .nom i { border-radius: 50%; width: 7px; height: 7px; transform: translateY(-2px); }
 .lignes b { font-weight: 500; }
-.lignes em { border-radius: 0; border: 0; border-bottom: 1px solid var(--filet); padding: 0 0 1px; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.lignes em { margin-left: 10px; border-radius: 0; border: 0; border-bottom: 1px solid var(--filet); padding: 0 0 1px; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
 .lignes .total { font-weight: 400; }
 .lignes .total span, .lignes .total b { font: 400 21px/1.1 var(--titre); }
 .attente, .remarque, .remarque.ok { border-radius: 0; background: none; border-left: 2px solid var(--attention); padding: 2px 0 2px 16px; font-size: 14px; line-height: 1.55; }
@@ -159,7 +159,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: v
 .chiffre { background: none; border-radius: 0; padding: 16px 18px 4px 0; border-right: 1px solid var(--filet); margin-right: 18px; gap: 6px; }
 .chiffre:last-child { border-right: 0; }
 .chiffre small { font-size: 10.5px; text-transform: uppercase; letter-spacing: .13em; }
-.chiffre b { font: 400 clamp(28px, 2.7vw, 40px)/1 var(--titre); letter-spacing: -.015em; }
+.chiffre b { font: 400 clamp(24px, 2.3vw, 34px)/1 var(--titre); letter-spacing: -.025em; white-space: nowrap; }
 .chiffre span { font-size: 11.5px; }
 .options { gap: 0; border-top: 1px solid var(--filet); }
 .option { border: 0; border-right: 1px solid var(--filet); border-radius: 0; padding: 20px 22px 8px 0; margin-right: 22px; gap: 8px; position: relative; }
@@ -167,7 +167,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: v
 .option.meilleure { box-shadow: none; }
 .option.meilleure::before { content: ""; position: absolute; left: 0; right: 22px; top: -1px; height: 3px; background: var(--p3); }
 .option h3 { font: 500 10.5px/1.3 var(--police); text-transform: uppercase; letter-spacing: .14em; }
-.option > b { font: 400 clamp(30px, 3vw, 44px)/1 var(--titre); letter-spacing: -.015em; }
+.option > b { font: 400 clamp(26px, 2.5vw, 38px)/1 var(--titre); letter-spacing: -.025em; white-space: nowrap; }
 .option li b { font-weight: 500; }
 .mini-barres i, .cantons-barres i { border-radius: 0; }
 .mini-barres i { max-width: 34px; background: var(--filet); }
@@ -183,7 +183,7 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: v
 .tenue-barre em { top: -7px; bottom: -7px; width: 1px; border-radius: 0; }
 .avant-apres { gap: 22px; }
 .avant-apres small { font-size: 10px; letter-spacing: .16em; }
-.avant-apres b { font: 400 clamp(52px, 6vw, 96px)/.9 var(--titre); letter-spacing: -.02em; }
+.avant-apres b { font: 300 clamp(52px, 6vw, 96px)/.9 var(--titre); letter-spacing: -.02em; }
 .fleche { font: 400 30px/1 var(--titre); }
 .effets { gap: 18px; }
 .effet-tete { font-size: 14.5px; }
@@ -215,10 +215,10 @@ svg .zone { fill: color-mix(in srgb, var(--p3) 16%, transparent); }
 .page h3 { font: 500 10.5px/1.3 var(--police); letter-spacing: .16em; color: var(--encre-2); margin-top: 20px; }
 .page footer { font-size: 9.5px; text-transform: uppercase; letter-spacing: .14em; }
 .page .alertes li { background: none; padding: 10px 0; }
-.couverture h1 { font: 400 clamp(44px, 12cqw, 84px)/.92 var(--titre); letter-spacing: -.025em; }
+.couverture h1 { font: 300 clamp(44px, 12cqw, 84px)/.92 var(--titre); letter-spacing: -.025em; }
 .r-client { font: 400 26px/1.2 var(--titre); font-style: italic; }
 .r-fiche th { font-weight: 400; } .r-fiche td { font-weight: 500; }
-.r-score b { font: 400 128px/.85 var(--titre); letter-spacing: -.03em; }
+.r-score b { font: 300 128px/.85 var(--titre); letter-spacing: -.03em; }
 .r-score span { font-size: 10px; text-transform: uppercase; letter-spacing: .16em; }
 .r-texte { line-height: 1.65; }
 .r-signatures div { font-size: 10px; text-transform: uppercase; letter-spacing: .14em; }
@@ -245,10 +245,26 @@ svg .zone { fill: color-mix(in srgb, var(--p3) 16%, transparent); }
   .risque:nth-child(even) { padding-left: 14px; }
   .risque:nth-child(n + 3) { border-top: 1px solid var(--filet); }
   .tete { min-height: 520px; padding-bottom: 112px; }
-  .tete .grand, .grand { font-size: clamp(50px, 15vw, 78px); }
-  .scene-puce b { font-size: 17px; }
+  .tete .grand, .grand { font-size: clamp(44px, 12.5vw, 68px); }
+  .scene-puce b { font-size: 15px; }
   .chiffre, .option { border-right: 0; margin-right: 0; border-bottom: 1px solid var(--filet); padding-bottom: 14px; }
   .option.meilleure::before { right: 0; }
   .bascule-panneau { border-radius: 999px; background: color-mix(in srgb, var(--fond) 86%, transparent); box-shadow: none; border-color: var(--encre); }
   .bascule-panneau button { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .14em; }
 }
+
+/* ---------- le fond : un mur où la lumière glisse (boucle vidéo, voir src/fond.js) */
+.fond { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--fond); contain: strict; }
+.fond img, .fond video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transform: translate3d(var(--fx, 0px), var(--fy, 0px), 0) scale(var(--fz, 1.08)); will-change: transform; }
+.fond video { opacity: 0; transition: opacity 1.6s var(--aise); }
+.fond.pret video { opacity: 1; }
+.fond i { position: absolute; inset: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fond) 58%, transparent) 0%, color-mix(in srgb, var(--fond) 80%, transparent) 55%, color-mix(in srgb, var(--fond) 92%, transparent) 100%); }
+@media (prefers-color-scheme: light) {
+  .fond i { background: linear-gradient(180deg, color-mix(in srgb, var(--fond) 66%, transparent) 0%, color-mix(in srgb, var(--fond) 84%, transparent) 55%, color-mix(in srgb, var(--fond) 94%, transparent) 100%); }
+}
+.barre { background: color-mix(in srgb, var(--fond) 62%, transparent); }
+@media print { .fond { display: none !important; } }
+
+.grand > span { white-space: nowrap; }

@@ -1,6 +1,6 @@
 """Télécharge les polices de l'application (licence OFL, Google Fonts) dans web/polices/ et écrit polices.css.
 
-Instrument Serif (titres et grands chiffres) et Instrument Sans (texte, variable 400-700), sous-ensembles latin et
+Fraunces (titres et grands chiffres, variable 300-500) et Inter (texte, variable 400-600), sous-ensembles latin et
 latin étendu. Les fichiers sont servis par l'application elle-même : aucun appel externe, fonctionne hors ligne.
 
 Usage : python outils/visuels/polices.py
@@ -10,8 +10,8 @@ import urllib.request
 from pathlib import Path
 
 CIBLE = Path(__file__).resolve().parents[2] / 'web' / 'polices'
-ADRESSE = ('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700'
-           '&family=Instrument+Serif:ital@0;1&display=swap')
+ADRESSE = ('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..500;1,9..144,300..500'
+           '&family=Inter:opsz,wght@14..32,400..600&display=swap')
 NAVIGATEUR = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 GARDES = ('latin', 'latin-ext')
 
@@ -25,7 +25,7 @@ def main() -> None:
     CIBLE.mkdir(parents=True, exist_ok=True)
     feuille = lire(ADRESSE).decode('utf-8')
     blocs = re.findall(r'/\* ([a-z-]+) \*/\s*(@font-face \{.*?\})', feuille, re.S)
-    sortie = ['/* Polices de l\'application : Instrument Serif et Instrument Sans, licence OFL. Générées par outils/visuels/polices.py. */']
+    sortie = ['/* Polices de l\'application : Fraunces et Inter, licence OFL. Générées par outils/visuels/polices.py. */']
     total = 0
     for sous_ensemble, bloc in blocs:
         if sous_ensemble not in GARDES:

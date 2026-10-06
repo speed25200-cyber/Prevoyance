@@ -125,7 +125,7 @@ export const commune = (lieux, canton, numero) => lieux?.cantons?.[canton]?.find
  * Ramène les grilles d'un canton, relevées pour son chef-lieu, à une commune et à une confession :
  *   impôt = fédéral + (impôt du chef-lieu − fédéral) × facteur de la commune × (1 + part d'Église).
  * L'impôt fédéral ne dépend pas du lieu ; le facteur et la part d'Église viennent de communes-AAAA.json.
- * L'impôt sur les prestations en capital reste celui du chef-lieu.
+ * L'impôt sur les prestations en capital suit la même formule, avec son propre facteur (kc) quand il a été relevé.
  * @param {any} donnees impots-AAAA.json @param {any} lieux communes-AAAA.json @param {string} canton
  * @param {{commune?: number|null, confession?: string}} [ou]
  * @returns {any} les mêmes données, avec les grilles du canton ajustées (ou inchangées s'il n'y a rien à ajuster)
@@ -144,5 +144,14 @@ export function localiser(donnees, lieux, canton, { commune: numero = null, conf
       return [Math.round(f + (impot - f) * k * (1 + eglise)), marginal];
     });
   }
-  return { ...donnees, cantons: { ...donnees.cantons, [canton]: { ...base, revenu, lieu: lieu?.n ?? base.lieu, localise: { commune: lieu?.b ?? null, confession, facteur: k, eglise } } } };
+  let capital = base.capital;
+  if (lieux.federalCapital) {
+    const kc = lieu?.kc ?? 1, egliseCapital = lieux.confessionsCapital?.[canton]?.[confession] ?? 0;
+    capital = {};
+    for (const [cle, montants] of Object.entries(base.capital)) {
+      const federal = lieux.federalCapital[cle];
+      capital[cle] = /** @type {number[]} */ (montants).map((impot, i) => { const f = Math.min(impot, federal?.[i] ?? 0); return Math.round(f + (impot - f) * kc * (1 + egliseCapital)); });
+    }
+  }
+  return { ...donnees, cantons: { ...donnees.cantons, [canton]: { ...base, revenu, capital, lieu: lieu?.n ?? base.lieu, localise: { commune: lieu?.b ?? null, confession, facteur: k, eglise } } } };
 }

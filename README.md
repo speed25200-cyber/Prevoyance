@@ -90,7 +90,7 @@ proposent la mise à jour dans la vue « Données ». Les règles d'une nouvelle
 python -m http.server 8790                       # depuis la racine du dépôt
 ```
 
-- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (129 cas).
+- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (133 cas).
 - Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (23 essais : parcours, quatre langues complètes, largeur de téléphone).
 - Vitesse : une analyse complète prend environ 0,06 ms sur un PC de bureau (mesure dans un navigateur ouvert).
 
@@ -100,7 +100,7 @@ Le moteur donne un ordre de grandeur fiable pour un entretien de conseil, pas un
 Le revenu annuel moyen déterminant est estimé quand l'extrait de compte individuel manque ; les prestations du
 2e pilier sont au minimum légal quand le certificat manque ; l'impôt sur le revenu est ramené à la commune
 par un facteur mesuré à 100 000 de revenu (l'écart avec le calculateur officiel est affiché dans la vue « Données ») ;
-l'impôt sur les prestations en capital reste celui du chef-lieu. Les primes des assurances de risque ne sont pas estimées par l'application : elles dépendent de
+l'impôt sur les prestations en capital suit la même méthode, avec un écart mesuré jusqu'à 4 %. Les primes des assurances de risque ne sont pas estimées par l'application : elles dépendent de
 l'âge, de la santé et de l'assureur. Le conseiller saisit celles des offres reçues, et le budget du plan les intègre.
 Les textes allemands, italiens et anglais sont complets mais n'ont pas été relus par une personne de langue maternelle.
 Chaque valeur estimée est signalée comme telle dans le résultat.

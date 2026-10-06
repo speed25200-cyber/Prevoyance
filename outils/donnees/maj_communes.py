@@ -6,9 +6,12 @@ Complète moteur/donnees/impots-AAAA.json (grilles des chefs-lieux) par moteur/d
                 impôt cantonal et communal de la commune / celui du chef-lieu, mesuré à 100 000 de revenu brut ;
   - confessions par canton, l'impôt d'Église rapporté à l'impôt cantonal et communal du chef-lieu.
 Le moteur en tire : impôt(commune) = fédéral + (total du chef-lieu − fédéral) × k × (1 + part d'Église).
+La même chose est relevée pour l'impôt sur les prestations en capital (federalCapital, facteur kc, confessionsCapital),
+mesurée sur un retrait de 300 000.
 Le script contrôle cette formule sur un échantillon de communes et affiche l'écart avec le calculateur officiel.
 
-Usage : python outils/donnees/maj_communes.py [année]      (environ 2600 requêtes, une quinzaine de minutes)
+Usage : python outils/donnees/maj_communes.py [année] [--capital]   (environ 5000 requêtes, une demi-heure ;
+        avec --capital, seule la partie « prestations en capital » est ajoutée au fichier existant)
 """
 import datetime
 import json
@@ -25,6 +28,7 @@ ETATS = {'seul': 1, 'marie': 2}
 AGES_ENFANTS = [8, 10, 12]
 SANS_CONFESSION, REFORMEE, CATHOLIQUE = 4, 1, 2
 REFERENCE = 100000
+REFERENCE_CAPITAL = 300000
 PAUSE = 0.1
 
 
@@ -53,6 +57,47 @@ def detail(annee: int, lieu_id: int, etat: int = 1, brut: int = REFERENCE, enfan
             'local': r['TotalNetTax'] - r['IncomeTaxFed'] - r['IncomeTaxChurch']}
 
 
+def capital(annee: int, lieu_id: int, etat: int = 1, montant: int = REFERENCE_CAPITAL, confession: int = SANS_CONFESSION) -> dict:
+    r = appel('API_calculateManyCapitalTaxes', {
+        'SimKey': None, 'TaxYear': annee, 'TaxGroupID': lieu_id, 'Relationship': etat, 'Confession1': confession, 'NumberOfChildren': 0,
+        'Gender': 1, 'AgeAtPayment': 65, 'Capital': montant, 'Confession2': confession if etat == 2 else 0})[0]
+    return {'federal': r['TaxFed'], 'eglise': r.get('TaxChurch', 0), 'local': r['TaxCanton'] + r['TaxCity']}
+
+
+def completer_capital(annee: int, impots: dict, sortie: dict, chefs: dict, identifiants: dict) -> None:
+    """Ajoute à `sortie` l'impôt fédéral sur le capital, le facteur kc de chaque commune et la part d'Église."""
+    un_lieu = chefs['BE']['TaxLocationID']
+    sortie['federalCapital'] = {nom: [round(capital(annee, un_lieu, etat, c)['federal']) for c in impots['capitaux']] for nom, etat in ETATS.items()}
+    sortie['confessionsCapital'] = {}
+    reference = {}
+    for canton, chef in chefs.items():
+        base = capital(annee, chef['TaxLocationID'])
+        reference[canton] = base['local']
+        sortie['confessionsCapital'][canton] = {
+            'reformee': round(capital(annee, chef['TaxLocationID'], confession=REFORMEE)['eglise'] / max(base['local'], 1), 4),
+            'catholique': round(capital(annee, chef['TaxLocationID'], confession=CATHOLIQUE)['eglise'] / max(base['local'], 1), 4)}
+    for canton, liste in sortie['cantons'].items():
+        for i, commune in enumerate(liste):
+            commune['kc'] = round(capital(annee, identifiants[(canton, commune['b'])])['local'] / max(reference[canton], 1), 4)
+            if (i + 1) % 50 == 0:
+                print('capital', canton, i + 1, flush=True)
+    # contrôle sur un échantillon, pour un autre montant et un couple
+    random.seed(annee + 1)
+    plates = [(c, x) for c, liste in sortie['cantons'].items() for x in liste]
+    pire = 0.0
+    for canton, commune in random.sample(plates, 24):
+        for nom, etat, montant in (('seul', 1, 150000), ('marie', 2, 500000)):
+            i = impots['capitaux'].index(montant)
+            f = sortie['federalCapital'][nom][i]
+            prevu = f + (impots['cantons'][canton]['capital'][nom][i] - f) * commune['kc']
+            r = capital(annee, identifiants[(canton, commune['b'])], etat, montant)
+            reel = r['federal'] + r['local']
+            ecart = abs(prevu - reel) / max(reel, 1)
+            pire = max(pire, ecart)
+            print(f"contrôle capital {canton} {commune['n']} {nom} {montant} : prévu {round(prevu)}, officiel {round(reel)}, écart {ecart:.1%}", flush=True)
+    sortie['ecartMaxControleCapital'] = round(pire, 4)
+
+
 def localites(annee: int) -> list:
     """Toutes les localités du calculateur, par préfixe de numéro postal (la recherche plafonne à 200 réponses)."""
     vues = {}
@@ -67,7 +112,8 @@ def localites(annee: int) -> list:
 
 
 def main() -> None:
-    annee = int(sys.argv[1]) if len(sys.argv) > 1 else datetime.date.today().year
+    arguments = [a for a in sys.argv[1:] if not a.startswith('--')]
+    annee = int(arguments[0]) if arguments else datetime.date.today().year
     impots = json.loads((RACINE / 'moteur' / 'donnees' / f'impots-{annee}.json').read_text(encoding='utf-8'))
     revenus = impots['revenus']
 
@@ -83,6 +129,14 @@ def main() -> None:
         candidats = [t for t in toutes if t['Canton'] == canton and t['ZipCode'] == c['npa']]
         exact = [t for t in candidats if t['City'].lower() == c['lieu'].lower()]
         chefs[canton] = (exact or candidats)[0]
+    identifiants = {cle: lieux[0]['TaxLocationID'] for cle, lieux in communes.items()}
+    cible = RACINE / 'moteur' / 'donnees' / f'communes-{annee}.json'
+    if '--capital' in sys.argv:
+        sortie = json.loads(cible.read_text(encoding='utf-8'))
+        completer_capital(annee, impots, sortie, chefs, identifiants)
+        cible.write_text(json.dumps(sortie, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print('écrit :', cible, cible.stat().st_size, 'octets ; écart maximal du contrôle (capital) :', f"{sortie['ecartMaxControleCapital']:.1%}")
+        return
 
     # impôt fédéral : identique partout, relevé une fois sur les mêmes grilles
     federal = {}
@@ -137,7 +191,7 @@ def main() -> None:
         liste.sort(key=lambda x: x['n'])
         for x in liste:
             del x['id']
-    cible = RACINE / 'moteur' / 'donnees' / f'communes-{annee}.json'
+    completer_capital(annee, impots, sortie, chefs, identifiants)
     cible.write_text(json.dumps(sortie, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     print('écrit :', cible, cible.stat().st_size, 'octets ; écart maximal du contrôle :', f'{pire:.1%}')
 

@@ -1,6 +1,6 @@
 // Prévoyance — fonctionnement hors ligne (iPad en rendez-vous, sans réseau).
 // Réseau d'abord, copie gardée ensuite : en ligne on a toujours la dernière version ; hors ligne, la dernière connue.
-const CACHE = 'prevoyance-v5';
+const CACHE = 'prevoyance-v6';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', evenement => evenement.waitUntil(
