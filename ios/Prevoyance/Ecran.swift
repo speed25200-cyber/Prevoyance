@@ -53,6 +53,7 @@ final class Navigation: ObservableObject {
 
     let vue: WKWebView
     private let pont: Pont
+    private let coffre: Coffre
 
     init() {
         let pont = Pont()
@@ -70,6 +71,9 @@ final class Navigation: ObservableObject {
         reglages.userContentController.add(pont, name: "imprimer")
         // Scan d'un certificat de prévoyance : appareil photo, lecture et compréhension sur l'appareil (Scan.swift).
         reglages.userContentController.add(pont, name: "scanner")
+        // Chiffrement des dossiers par un code : la page n'a pas Web Crypto à cette adresse, l'app le fait pour elle (Coffre.swift).
+        let coffre = Coffre()
+        reglages.userContentController.addScriptMessageHandler(coffre, contentWorld: .page, name: "coffre")
         // Vue ouverte, libellés du menu, barre à montrer ou à retirer.
         reglages.userContentController.add(pont, name: "onglet")
 
@@ -87,6 +91,7 @@ final class Navigation: ObservableObject {
         pont.scan = ScanCertificat(vue: vue)
         self.vue = vue
         self.pont = pont
+        self.coffre = coffre
         pont.navigation = self
         vue.load(URLRequest(url: Adresse.accueil))
     }

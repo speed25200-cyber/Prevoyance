@@ -71,6 +71,12 @@
     noter('verrou : un code trop court est refusé', refus);
     Verrou.supprimer(faux);
     noter('verrou : coffre supprimé', !Verrou.actif(faux) && !Verrou.ouvert());
+    // un dossier lourd (logo, signatures) : 120 000 caractères passent par le chiffrement sans erreur
+    const lourd = { dossiers: [{ nom: 'Lourd', image: 'x'.repeat(120000) }] };
+    await Verrou.creer('code-essai-42', lourd, faux, 2000);
+    Verrou.fermer();
+    noter('verrou : un dossier lourd (120 000 caractères) se chiffre et se relit', (await Verrou.ouvrir('code-essai-42', faux))?.dossiers?.[0]?.image?.length === 120000);
+    Verrou.supprimer(faux);
     const conf = await import('./src/conformite.js');
     noter('conformité : une fiche vide n’est pas complète, les signatures sont sur la dernière page', conf.controle().some(x => !x.ok) && !!d.querySelector('.page:last-child .r-signatures'));
     // langues

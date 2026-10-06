@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Force $dossier | Out-Null
 $sortie = Join-Path $dossier "essais.html"
 $profil = Join-Path $dossier "profil-essais"
 if (Test-Path $profil) { Remove-Item $profil -Recurse -Force -Confirm:$false }
-$p = Start-Process -FilePath $edge -ArgumentList "--headless=new","--disable-gpu","--no-first-run","--user-data-dir=$profil","--window-size=1500,1100","--virtual-time-budget=40000","--dump-dom",$adresse `
+$p = Start-Process -FilePath $edge -ArgumentList "--headless=new","--disable-gpu","--no-first-run","--user-data-dir=$profil","--window-size=1500,1100","--virtual-time-budget=120000","--dump-dom",$adresse `
   -Wait -WindowStyle Hidden -RedirectStandardOutput $sortie -PassThru
 $html = Get-Content $sortie -Raw -Encoding utf8
 [regex]::Matches($html, '(?s)<li class="(ok|ko)">(.*?)</li>') | ForEach-Object { $_.Groups[2].Value }
