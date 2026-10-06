@@ -17,7 +17,9 @@ if not app.get('barre'):
     echecs.append({'nom': 'barre d’onglets native affichée', 'detail': str(app)})
 if app.get('noms') != 6:
     echecs.append({'nom': 'six libellés reçus par la barre native', 'detail': str(app)})
-print(f"BILAN {appareil} : {len(resultats) + 2 - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
+if not app.get('dossiers') or not app.get('textes'):
+    echecs.append({'nom': 'accueil : dossiers et libellés reçus de la page', 'detail': str(app)})
+print(f"BILAN {appareil} : {len(resultats) + 3 - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
 for r in echecs:
     print(f"error: {appareil} — {r.get('nom')} : {r.get('detail', '')}")
 sys.exit(1 if echecs or not resultats else 0)

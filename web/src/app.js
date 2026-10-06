@@ -10,7 +10,7 @@
 
 import { analyser, ANNEES, Impots } from '../../moteur/src/index.js';
 import { LANGUES, traducteur, formats } from './i18n.js';
-import { etat, garder, versDossier, dossier, VUES } from './etat.js';
+import { etat, garder, versDossier, dossier, VUES, nouveauDossier, dossierExemple } from './etat.js';
 import * as Donnees from './donnees.js';
 import * as Formulaire from './formulaire.js';
 import * as VueAnalyse from './vues/analyse.js';
@@ -44,9 +44,32 @@ function marquer() {
   for (const b of $('onglets').children) b.setAttribute('aria-selected', String(/** @type {HTMLElement} */ (b).dataset.vue === actif));
   placerBulle();
   // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
-  appNative()?.postMessage({ actif, visible: true, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
+  appNative()?.postMessage({ actif, visible: true, dossiers: resumeDossiers(),
+    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('exemple'), accueil: ctx.t('accueil') },
+    langue: etat.langue, langues: LANGUES, annee: etat.annee, annees: ANNEES, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
 }
 const appNative = () => /** @type {any} */ (window).webkit?.messageHandlers?.onglet ?? null;
+/** Les dossiers pour l'accueil de l'app : nom, date, score de couverture. */
+function resumeDossiers() {
+  return etat.dossiers.map(d => {
+    let score = 0;
+    try { if (ctx.regles) score = analyser(versDossier(d, d.cible), ctx.regles, { impots: ctx.impots }).score; } catch { /* dossier incomplet : score 0 */ }
+    return { id: String(d.id), nom: d.nom || ctx.t('sansNom'), date: new Date(d.modifie ?? Date.now()).toLocaleDateString(etat.langue + '-CH', { day: 'numeric', month: 'long', year: 'numeric' }),
+             score, ouvert: d.id === dossier().id };
+  });
+}
+/** Demandes de l'accueil de l'app : ouvrir un dossier sur son analyse, en créer un (vide ou d'exemple) et le saisir. */
+function ouvrirDossier(id) {
+  if (!etat.dossiers.some(d => String(d.id) === String(id))) return;
+  etat.ouvert = etat.dossiers.find(d => String(d.id) === String(id)).id; garder();
+  ctx.reconstruire();
+  aller('analyse');
+}
+function creerDossier(exemple = false) {
+  nouveauDossier(exemple ? dossierExemple() : undefined);
+  ctx.reconstruire();
+  aller(exemple ? 'analyse' : 'dossier');
+}
 /** La bulle de verre du menu se pose sous l'entrée active (elle glisse d'une entrée à l'autre). */
 function placerBulle() {
   const menu = $('onglets'), actif = /** @type {HTMLElement|null} */ (menu.querySelector('[aria-selected="true"]'));
@@ -184,4 +207,13 @@ await calculer();
 traduire();
 document.body.classList.add('pret');
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-/** @type {any} */ (window).__prevoyance = { etat, ctx, aller };
+/** Réglages demandés par l'app (menu natif) : langue et année des règles. */
+async function regler({ langue, annee } = {}) {
+  if (langue && LANGUES.includes(langue) && langue !== etat.langue) { etat.langue = langue; garder(); traduire(); }
+  if (annee && ANNEES.includes(annee) && annee !== etat.annee) {
+    etat.annee = annee; garder();
+    /** @type {HTMLSelectElement} */ ($('annee')).value = String(annee);
+    await calculer(); monterVue();
+  }
+}
+/** @type {any} */ (window).__prevoyance = { etat, ctx, aller, regler, ouvrirDossier, creerDossier, annoncer: marquer };

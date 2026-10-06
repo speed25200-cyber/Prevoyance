@@ -19,6 +19,10 @@ export async function executer(finale = 'analyse') {
     noter('page prête et dossier analysé', typeof p?.ctx?.analyse?.score === 'number', `score ${p?.ctx?.analyse?.score}`);
     noter('la page sait qu’elle est dans l’app', document.documentElement.classList.contains('natif'));
     noter('menu de la page retiré (barre native)', getComputedStyle(/** @type {HTMLElement} */ (document.getElementById('onglets'))).display === 'none');
+    noter('zoom de page désactivé', /user-scalable=no/.test(document.querySelector('meta[name=viewport]')?.getAttribute('content') ?? '') && Math.abs((visualViewport?.scale ?? 1) - 1) < 0.01,
+      `échelle ${visualViewport?.scale}`);
+    noter('en-tête de page retiré (titre et réglages natifs)', getComputedStyle(/** @type {HTMLElement} */ (document.querySelector('.barre'))).display === 'none');
+    noter('aucune sélection de texte au toucher', getComputedStyle(document.body).webkitUserSelect === 'none' || getComputedStyle(document.body).userSelect === 'none');
     const ponts = w.webkit?.messageHandlers ?? {};
     for (const nom of ['onglet', 'scanner', 'imprimer', 'coffre']) noter(`pont « ${nom} »`, !!ponts[nom]);
 
@@ -51,6 +55,11 @@ export async function executer(finale = 'analyse') {
     await attendre(900);
     const toile = /** @type {HTMLCanvasElement|null} */ (document.querySelector('.scene-toile'));
     noter('scène des piliers présente', !!toile && toile.width > 100 && toile.height > 50, toile ? `${toile.width}x${toile.height}` : 'absente');
+    // réglages pilotés par l'app : la langue change et revient
+    await p.regler({ langue: 'de' }); await attendre(500);
+    const allemand = document.documentElement.lang === 'de';
+    await p.regler({ langue: 'fr' }); await attendre(500);
+    noter('langue réglée depuis l’app', allemand && document.documentElement.lang === 'fr');
     noter('aucune erreur JavaScript', (w.__erreurs ?? []).length === 0, (w.__erreurs ?? []).join(' | '));
     if (finale !== 'analyse') { p.aller(finale); await attendre(900); }
     scrollTo(0, 0);

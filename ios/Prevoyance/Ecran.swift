@@ -16,12 +16,50 @@ struct Ecran: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Page(vue: navigation.vue).ignoresSafeArea()
-            if navigation.barreVisible {
+            if navigation.barreVisible && !navigation.accueil {
+                // en haut : retour à l'accueil, titre de l'écran comme un grand titre du système, menu des réglages
+                VStack {
+                    HStack(alignment: .center, spacing: 12) {
+                        Button {
+                            navigation.montrerAccueil()
+                        } label: {
+                            Verre {
+                                Image(systemName: "house")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Color.primary)
+                                    .frame(width: 40, height: 40)
+                            }
+                        }
+                        .buttonStyle(Appui())
+                        .accessibilityLabel(Text(navigation.textes["accueil"] ?? "Accueil"))
+                        Text(navigation.noms[navigation.onglet] ?? "")
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+                            .id(navigation.onglet)
+                            .transition(.opacity)
+                        Spacer(minLength: 12)
+                        MenuReglages(navigation: navigation)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+                    Spacer()
+                }
+                .transition(.opacity)
+            }
+            if navigation.barreVisible && !navigation.accueil {
                 BarreOnglets(navigation: navigation)
                     .frame(maxWidth: 560)
                     .padding(.horizontal, 14)
                     .padding(.bottom, -10)
                     .transition(.opacity)
+            }
+        }
+        // l'accueil couvre tout tant qu'aucun dossier n'est ouvert ; il s'efface en fondu quand on entre dans un dossier
+        .overlay {
+            if navigation.barreVisible && navigation.accueil {
+                Accueil(navigation: navigation)
+                    .transition(.opacity.combined(with: .scale(scale: 1.04)))
             }
         }
         // le clavier passe par-dessus la barre : elle ne remonte pas sur le formulaire
@@ -50,6 +88,15 @@ final class Navigation: ObservableObject {
                            "plan": "Conseil", "rapport": "Rapport", "donnees": "Données"]
     /// La barre n'apparaît qu'une fois la page prête (et se retire devant le code d'accès ou une fenêtre).
     @Published var barreVisible = false
+    /// Réglages affichés dans le menu natif ; la page les annonce et les applique.
+    @Published var langue = "fr"
+    @Published var langues = ["fr", "de", "it", "en"]
+    @Published var annee = 2026
+    @Published var annees = [2026, 2027]
+    /// L'accueil : affiché à l'ouverture, avec les dossiers et les libellés annoncés par la page.
+    @Published var accueil = true
+    @Published var dossiers: [DossierResume] = []
+    @Published var textes: [String: String] = [:]
 
     let vue: WKWebView
     private let pont: Pont
@@ -87,7 +134,15 @@ final class Navigation: ObservableObject {
         vue.isOpaque = false
         vue.backgroundColor = .clear
         vue.scrollView.contentInsetAdjustmentBehavior = .never
-        vue.scrollView.bounces = false
+        // une app ne se zoome pas : ni pincement, ni double-toucher (la page l'interdit aussi dans sa balise viewport)
+        vue.scrollView.delegate = pont
+        vue.scrollView.pinchGestureRecognizer?.isEnabled = false
+        vue.scrollView.minimumZoomScale = 1
+        vue.scrollView.maximumZoomScale = 1
+        vue.scrollView.bouncesZoom = false
+        vue.scrollView.alwaysBounceHorizontal = false
+        vue.scrollView.showsHorizontalScrollIndicator = false
+        vue.allowsBackForwardNavigationGestures = false
         vue.allowsLinkPreview = false
         vue.navigationDelegate = pont
         #if DEBUG
@@ -109,17 +164,51 @@ final class Navigation: ObservableObject {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.aller && window.__prevoyance.aller('\(cible)')")
     }
 
+    /// Accueil : ouvrir un dossier (la page l'ouvre et montre son analyse), en créer un, ou y revenir.
+    func ouvrir(dossier id: String) {
+        guard id.allSatisfy({ $0.isLetter || $0.isNumber }) else { return }
+        vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.ouvrirDossier && window.__prevoyance.ouvrirDossier('\(id)')")
+        withAnimation(.easeInOut(duration: 0.45)) { accueil = false }
+    }
+
+    func creerDossier(exemple: Bool) {
+        vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.creerDossier && window.__prevoyance.creerDossier(\(exemple))")
+        withAnimation(.easeInOut(duration: 0.45)) { accueil = false }
+    }
+
+    func montrerAccueil() {
+        // la page renvoie la liste à jour des dossiers (noms et scores peuvent avoir changé)
+        vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.annoncer && window.__prevoyance.annoncer()")
+        withAnimation(.easeInOut(duration: 0.45)) { accueil = true }
+    }
+
+    /// Réglage choisi dans le menu natif : la page l'applique, puis confirme par son message habituel.
+    func regler(langue nouvelle: String) {
+        guard langues.contains(nouvelle) else { return }
+        langue = nouvelle
+        vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.regler && window.__prevoyance.regler({ langue: '\(nouvelle)' })")
+    }
+
+    func regler(annee nouvelle: Int) {
+        guard annees.contains(nouvelle) else { return }
+        annee = nouvelle
+        vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.regler && window.__prevoyance.regler({ annee: \(nouvelle) })")
+    }
+
     /// Autotest : la page exécute web/src/autotest.js dans cette vue web ; le résultat, complété par l'état de la barre
     /// native, est écrit dans les documents de l'app, où le script ios/autotest.sh le lit.
     private func lancerAutotest() async {
         try? await Task.sleep(nanoseconds: 2_500_000_000)
-        let finale = ProcessInfo.processInfo.environment["PREVOYANCE_VUE"] ?? "analyse"
+        let demandee = ProcessInfo.processInfo.environment["PREVOYANCE_VUE"] ?? "analyse"
+        // « accueil » : l'autotest tourne derrière l'accueil, qui reste à l'écran pour la capture
+        let finale = demandee == "accueil" ? "analyse" : demandee
+        if demandee != "accueil" { accueil = false }
         let corps = "const m = await import('prevoyance://app/web/src/autotest.js'); return JSON.stringify(await m.executer(finale));"
         var page = "{\"echecs\":1,\"total\":1,\"resultats\":[{\"nom\":\"script d'autotest\",\"ok\":false,\"detail\":\"non exécuté\"}]}"
         if let retour = try? await vue.callAsyncJavaScript(corps, arguments: ["finale": finale], in: nil, contentWorld: .page) as? String {
             page = retour
         }
-        let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count)}"
+        let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count),\"dossiers\":\(dossiers.count),\"textes\":\(textes.count)}"
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? "{\"page\":\(page),\"app\":\(app)}".write(to: documents.appendingPathComponent("autotest.json"), atomically: true, encoding: .utf8)
     }
@@ -128,6 +217,19 @@ final class Navigation: ObservableObject {
     func recevoir(_ corps: Any) {
         guard let message = corps as? [String: Any] else { return }
         if let libelles = message["noms"] as? [String: String] { noms = libelles }
+        if let valeur = message["langue"] as? String, valeur != langue { langue = valeur }
+        if let valeurs = message["langues"] as? [String], valeurs != langues { langues = valeurs }
+        if let valeur = message["annee"] as? Int, valeur != annee { annee = valeur }
+        if let valeurs = message["annees"] as? [Int], valeurs != annees { annees = valeurs }
+        if let libelles = message["textes"] as? [String: String], libelles != textes { textes = libelles }
+        if let liste = message["dossiers"] as? [[String: Any]] {
+            let resumes = liste.compactMap { d -> DossierResume? in
+                guard let id = d["id"] as? String else { return nil }
+                return DossierResume(id: id, nom: d["nom"] as? String ?? "", date: d["date"] as? String ?? "",
+                                     score: d["score"] as? Int ?? 0, ouvert: d["ouvert"] as? Bool ?? false)
+            }
+            if resumes != dossiers { dossiers = resumes }
+        }
         if let actif = message["actif"] as? String, Navigation.vues.contains(actif), actif != onglet {
             withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { onglet = actif }
         }
@@ -141,6 +243,34 @@ final class Navigation: ObservableObject {
     }
 }
 
+/// Le menu des réglages, en haut à droite : année des règles et langue, dans un bouton de verre.
+struct MenuReglages: View {
+    @ObservedObject var navigation: Navigation
+    private static let nomsLangues = ["fr": "Français", "de": "Deutsch", "it": "Italiano", "en": "English"]
+
+    var body: some View {
+        Menu {
+            Picker("", selection: Binding(get: { navigation.annee }, set: { navigation.regler(annee: $0) })) {
+                ForEach(navigation.annees, id: \.self) { an in Text(String(an)).tag(an) }
+            }
+            Picker("", selection: Binding(get: { navigation.langue }, set: { navigation.regler(langue: $0) })) {
+                ForEach(navigation.langues, id: \.self) { code in Text(MenuReglages.nomsLangues[code] ?? code.uppercased()).tag(code) }
+            }
+        } label: {
+            Verre {
+                HStack(spacing: 6) {
+                    Text(String(navigation.annee)).font(.system(size: 15, weight: .semibold))
+                    Text(navigation.langue.uppercased()).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.secondary)
+                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.secondary)
+                }
+                .foregroundStyle(Color.primary)
+                .padding(.horizontal, 14)
+                .frame(height: 40)
+            }
+        }
+    }
+}
+
 /// La barre d'onglets : une capsule de verre (« Liquid Glass » d'iOS 26, matériau translucide avant), une bulle
 /// qui glisse sous l'onglet ouvert.
 struct BarreOnglets: View {
@@ -148,7 +278,7 @@ struct BarreOnglets: View {
     @Namespace private var espace
 
     var body: some View {
-        Fond {
+        Verre {
             HStack(spacing: 0) {
                 ForEach(Navigation.vues, id: \.self) { cible in
                     let actif = navigation.onglet == cible
@@ -182,8 +312,10 @@ struct BarreOnglets: View {
         }
     }
 
-    /// Le verre de la barre.
-    private struct Fond<Contenu: View>: View {
+}
+
+/// Le verre des éléments qui flottent (barre d'onglets, menu) : « Liquid Glass » d'iOS 26, matériau translucide avant.
+struct Verre<Contenu: View>: View {
         @ViewBuilder var contenu: () -> Contenu
 
         #if compiler(>=6.2)
@@ -204,12 +336,11 @@ struct BarreOnglets: View {
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5))
                 .shadow(color: .black.opacity(0.3), radius: 18, y: 10)
         }
-    }
 }
 
 /// Reçoit les demandes de la page (impression) et ouvre les liens externes dans Safari.
 @MainActor
-final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate, UIScrollViewDelegate {
     weak var vue: WKWebView?
     var scan: ScanCertificat?
     weak var navigation: Navigation?
@@ -239,6 +370,13 @@ final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     /// La page se recharge (verrouillage après une absence) : la barre se retire jusqu'à ce qu'elle soit prête.
     func webView(_ vue: WKWebView, didStartProvisionalNavigation chargement: WKNavigation!) {
         navigation?.recevoir(["visible": false])
+    }
+
+    /// Aucun zoom : la vue de défilement n'a rien à agrandir.
+    func viewForZooming(in vueDefilement: UIScrollView) -> UIView? { nil }
+
+    func scrollViewWillBeginZooming(_ vueDefilement: UIScrollView, with vue: UIView?) {
+        vueDefilement.pinchGestureRecognizer?.isEnabled = false
     }
 
     func webView(_ vue: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {

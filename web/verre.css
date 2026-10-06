@@ -214,6 +214,19 @@
   }
 
   /* ---------- dans l'app iPhone / iPad : le menu est la barre native (vrai verre du système), la page retire le sien */
+  /* Une app, pas une page : rien ne se sélectionne ni ne se surligne au toucher (sauf les champs), pas de double-toucher
+     qui zoome, pas de glissement horizontal. L'en-tête de la page est retiré : le titre et les réglages sont ceux de l'app. */
+  html.natif, html.natif body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation; overscroll-behavior-x: none; }
+  html.natif input, html.natif textarea, html.natif select { -webkit-user-select: text; user-select: text; }
+  html.natif .barre { display: none !important; }
+  html.natif .ecran-titre h1 { display: none; }
+  html.natif .ecran-titre p { margin-top: 0; }
+  html.natif .scene { padding-top: calc(env(safe-area-inset-top, 0px) + 62px); }
+  html.natif body::before { content: ""; position: fixed; left: 0; right: 0; top: 0; height: calc(env(safe-area-inset-top, 0px) + 74px); z-index: 5; pointer-events: none;
+    background: linear-gradient(180deg, var(--fond) 38%, color-mix(in srgb, var(--fond) 0%, transparent)); }
+  html.natif #erreur-calcul { top: calc(env(safe-area-inset-top, 0px) + 66px); }
+  html.natif .rubriques { top: calc(env(safe-area-inset-top, 0px) + 70px); }
   html.natif .onglets { display: none !important; }
   html.natif body::after { display: none !important; }
   html.natif .scene { padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 96px), 118px); }
