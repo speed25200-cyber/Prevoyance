@@ -9,22 +9,69 @@ enum Adresse {
     static let accueil = URL(string: "prevoyance://app/web/index.html")!
 }
 
-/// L'écran de l'application : la vue web, en plein écran, avec l'impression native du rapport.
-struct Ecran: UIViewRepresentable {
-    func makeCoordinator() -> Pont { Pont() }
+/// L'écran de l'application : la page en plein écran et, par-dessus, la barre d'onglets native en verre.
+struct Ecran: View {
+    @StateObject private var navigation = Navigation()
 
-    func makeUIView(context: Context) -> WKWebView {
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Page(vue: navigation.vue).ignoresSafeArea()
+            if navigation.barreVisible {
+                BarreOnglets(navigation: navigation)
+                    .frame(maxWidth: 560)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, -10)
+                    .transition(.opacity)
+            }
+        }
+        // le clavier passe par-dessus la barre : elle ne remonte pas sur le formulaire
+        .ignoresSafeArea(.keyboard)
+    }
+}
+
+/// La vue web, posée telle quelle dans l'écran (créée une seule fois par `Navigation`).
+struct Page: UIViewRepresentable {
+    let vue: WKWebView
+
+    func makeUIView(context: Context) -> WKWebView { vue }
+    func updateUIView(_ vue: WKWebView, context: Context) {}
+}
+
+/// Ce que la barre d'onglets et la page partagent : la vue ouverte, les libellés dans la langue choisie,
+/// et la vue web elle-même. La page prévient l'app (message « onglet ») ; l'app demande une vue à la page.
+@MainActor
+final class Navigation: ObservableObject {
+    static let vues = ["dossier", "analyse", "scenarios", "plan", "rapport", "donnees"]
+    static let icones = ["dossier": "person", "analyse": "chart.bar", "scenarios": "arrow.triangle.branch",
+                         "plan": "checklist", "rapport": "doc.text", "donnees": "cylinder.split.1x2"]
+
+    @Published var onglet = "analyse"
+    @Published var noms = ["dossier": "Dossier", "analyse": "Analyse", "scenarios": "Scénarios",
+                           "plan": "Conseil", "rapport": "Rapport", "donnees": "Données"]
+    /// La barre n'apparaît qu'une fois la page prête (et se retire devant le code d'accès ou une fenêtre).
+    @Published var barreVisible = false
+
+    let vue: WKWebView
+    private let pont: Pont
+
+    init() {
+        let pont = Pont()
         let reglages = WKWebViewConfiguration()
         reglages.setURLSchemeHandler(Ressources(), forURLScheme: Adresse.schema)
-        // La scène des trois colonnes est une boucle vidéo muette : elle doit jouer dans la page, sans geste.
         reglages.allowsInlineMediaPlayback = true
         reglages.mediaTypesRequiringUserActionForPlayback = []
         // « Enregistrer en PDF » : window.print() n'existe pas dans une vue web iOS, on le confie à l'app.
-        let script = "window.print = () => window.webkit.messageHandlers.imprimer.postMessage(document.title);"
+        // La classe « natif » dit à la page que le menu est tenu par l'app : elle retire le sien.
+        let script = """
+            window.print = () => window.webkit.messageHandlers.imprimer.postMessage(document.title);
+            document.documentElement.classList.add('natif');
+            """
         reglages.userContentController.addUserScript(WKUserScript(source: script, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        reglages.userContentController.add(context.coordinator, name: "imprimer")
+        reglages.userContentController.add(pont, name: "imprimer")
         // Scan d'un certificat de prévoyance : appareil photo, lecture et compréhension sur l'appareil (Scan.swift).
-        reglages.userContentController.add(context.coordinator, name: "scanner")
+        reglages.userContentController.add(pont, name: "scanner")
+        // Vue ouverte, libellés du menu, barre à montrer ou à retirer.
+        reglages.userContentController.add(pont, name: "onglet")
 
         let vue = WKWebView(frame: .zero, configuration: reglages)
         vue.isOpaque = false
@@ -32,17 +79,102 @@ struct Ecran: UIViewRepresentable {
         vue.scrollView.contentInsetAdjustmentBehavior = .never
         vue.scrollView.bounces = false
         vue.allowsLinkPreview = false
-        vue.navigationDelegate = context.coordinator
+        vue.navigationDelegate = pont
         #if DEBUG
         vue.isInspectable = true
         #endif
-        context.coordinator.vue = vue
-        context.coordinator.scan = ScanCertificat(vue: vue)
+        pont.vue = vue
+        pont.scan = ScanCertificat(vue: vue)
+        self.vue = vue
+        self.pont = pont
+        pont.navigation = self
         vue.load(URLRequest(url: Adresse.accueil))
-        return vue
     }
 
-    func updateUIView(_ vue: WKWebView, context: Context) {}
+    /// Un onglet est touché : la bulle glisse, la page change de vue.
+    func choisir(_ cible: String) {
+        guard Navigation.vues.contains(cible) else { return }
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { onglet = cible }
+        vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.aller && window.__prevoyance.aller('\(cible)')")
+    }
+
+    /// Message de la page : `actif` (vue ouverte), `noms` (libellés traduits), `visible` (montrer la barre).
+    func recevoir(_ corps: Any) {
+        guard let message = corps as? [String: Any] else { return }
+        if let libelles = message["noms"] as? [String: String] { noms = libelles }
+        if let actif = message["actif"] as? String, Navigation.vues.contains(actif), actif != onglet {
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { onglet = actif }
+        }
+        if let visible = message["visible"] as? Bool, visible != barreVisible {
+            withAnimation(.easeOut(duration: 0.25)) { barreVisible = visible }
+        }
+    }
+}
+
+/// La barre d'onglets : une capsule de verre (« Liquid Glass » d'iOS 26, matériau translucide avant), une bulle
+/// qui glisse sous l'onglet ouvert.
+struct BarreOnglets: View {
+    @ObservedObject var navigation: Navigation
+    @Namespace private var espace
+
+    var body: some View {
+        Fond {
+            HStack(spacing: 0) {
+                ForEach(Navigation.vues, id: \.self) { cible in
+                    let actif = navigation.onglet == cible
+                    Button {
+                        navigation.choisir(cible)
+                    } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: Navigation.icones[cible] ?? "circle")
+                                .font(.system(size: 19, weight: .medium))
+                                .frame(height: 24)
+                            Text(navigation.noms[cible] ?? cible)
+                                .font(.system(size: 10, weight: actif ? .semibold : .medium))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        .foregroundStyle(actif ? Color.primary : Color.secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background {
+                            if actif {
+                                Capsule().fill(Color.primary.opacity(0.14)).matchedGeometryEffect(id: "bulle", in: espace)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(actif ? .isSelected : [])
+                }
+            }
+            .padding(5)
+        }
+    }
+
+    /// Le verre de la barre.
+    private struct Fond<Contenu: View>: View {
+        @ViewBuilder var contenu: () -> Contenu
+
+        #if compiler(>=6.2)
+        var body: some View {
+            if #available(iOS 26.0, *) {
+                contenu().glassEffect(.regular.interactive(), in: Capsule())
+            } else {
+                ancien
+            }
+        }
+        #else
+        var body: some View { ancien }
+        #endif
+
+        private var ancien: some View {
+            contenu()
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.2), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.3), radius: 18, y: 10)
+        }
+    }
 }
 
 /// Reçoit les demandes de la page (impression) et ouvre les liens externes dans Safari.
@@ -50,8 +182,10 @@ struct Ecran: UIViewRepresentable {
 final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     weak var vue: WKWebView?
     var scan: ScanCertificat?
+    weak var navigation: Navigation?
 
     func userContentController(_ controleur: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "onglet" { navigation?.recevoir(message.body); return }
         if message.name == "scanner" {
             // « certificat » : appareil photo ; « fichier » : PDF ou image dans Fichiers ; « photo » : photothèque
             switch message.body as? String {
@@ -70,6 +204,11 @@ final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         // La mise en page A4 du rapport vient de la feuille de style d'impression de la page.
         impression.printFormatter = vue.viewPrintFormatter()
         impression.present(animated: true)
+    }
+
+    /// La page se recharge (verrouillage après une absence) : la barre se retire jusqu'à ce qu'elle soit prête.
+    func webView(_ vue: WKWebView, didStartProvisionalNavigation chargement: WKNavigation!) {
+        navigation?.recevoir(["visible": false])
     }
 
     func webView(_ vue: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {

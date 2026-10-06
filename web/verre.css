@@ -171,6 +171,11 @@
     .onglets { background: linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .5) 46%, rgba(255, 255, 255, .62)); }
   }
 
+  /* ---------- dans l'app iPhone / iPad : le menu est la barre native (vrai verre du système), la page retire le sien */
+  html.natif .onglets { display: none !important; }
+  html.natif body::after { display: none !important; }
+  html.natif .scene { padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 96px), 118px); }
+
   /* ---------- mouvement */
   @media (prefers-reduced-motion: no-preference) and (hover: hover) {
     .carte, .risque { transition: transform .5s var(--aise), box-shadow .5s var(--aise), border-color .3s, background .4s; }

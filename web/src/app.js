@@ -43,7 +43,10 @@ function marquer() {
   const actif = document.body.dataset.panneau === 'dossier' ? 'dossier' : etat.vue;
   for (const b of $('onglets').children) b.setAttribute('aria-selected', String(/** @type {HTMLElement} */ (b).dataset.vue === actif));
   placerBulle();
+  // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
+  appNative()?.postMessage({ actif, visible: true, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
 }
+const appNative = () => /** @type {any} */ (window).webkit?.messageHandlers?.onglet ?? null;
 /** La bulle de verre du menu se pose sous l'entrée active (elle glisse d'une entrée à l'autre). */
 function placerBulle() {
   const menu = $('onglets'), actif = /** @type {HTMLElement|null} */ (menu.querySelector('[aria-selected="true"]'));
@@ -171,4 +174,4 @@ await calculer();
 traduire();
 document.body.classList.add('pret');
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-/** @type {any} */ (window).__prevoyance = { etat, ctx };
+/** @type {any} */ (window).__prevoyance = { etat, ctx, aller };

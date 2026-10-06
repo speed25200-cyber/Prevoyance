@@ -49,7 +49,9 @@ export function ouvrir(ctx, reprendre) {
   const lire = () => { champs = Certificat.extraire(zone.value).champs; montrer('regles'); };
   zone.addEventListener('input', lire);
 
-  const fermer = () => { delete /** @type {any} */ (window).__prevoyanceScan; boite.close(); boite.remove(); };
+  // dans l'app, la barre d'onglets native se retire le temps de la fenêtre
+  const barre = visible => /** @type {any} */ (window).webkit?.messageHandlers?.onglet?.postMessage({ visible });
+  const fermer = () => { delete /** @type {any} */ (window).__prevoyanceScan; boite.close(); boite.remove(); barre(true); };
   valider.addEventListener('click', () => {
     for (const coche of /** @type {NodeListOf<HTMLInputElement>} */ (resultats.querySelectorAll('input[type=checkbox]'))) {
       if (!coche.checked) continue;
@@ -84,5 +86,6 @@ export function ouvrir(ctx, reprendre) {
   };
   document.body.append(boite);
   boite.showModal();
+  barre(false);
   if (natif) scanner?.focus(); else zone.focus();
 }

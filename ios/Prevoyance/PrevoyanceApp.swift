@@ -7,8 +7,7 @@ struct PrevoyanceApp: App {
     var body: some Scene {
         WindowGroup {
             Ecran()
-                .ignoresSafeArea()
-                .background(Color("FondLancement"))
+                .background(Color("FondLancement").ignoresSafeArea())
                 .persistentSystemOverlays(.hidden)
         }
     }
