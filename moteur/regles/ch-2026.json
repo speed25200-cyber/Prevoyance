@@ -58,7 +58,7 @@
     "rachatRetroactif": { "depuisAnnee": 2025, "maxAnneesArriere": 10, "plafondParRachat": 7258 }
   },
   "maladie": {
-    "echelleBernoise": [[1, 3], [2, 4], [4, 9], [9, 13], [14, 17], [19, 22], [24, 26], [29, 30], [34, 35], [39, 39]],
+    "echelleBernoise": [[1, 3], [2, 4], [3, 9], [5, 13], [10, 17], [15, 22], [20, 26], [25, 30], [30, 35], [35, 39]],
     "ijmUsuelle": { "taux": 0.8, "jours": 730, "delaiJours": 30 },
     "delaiRenteAIMois": 12
   }

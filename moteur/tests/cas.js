@@ -6,6 +6,7 @@
  */
 
 import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat, Conseil } from '../src/index.js';
+import * as Analyse from '../src/analyse.js';
 
 /** @param {(nom: string, obtenu: any, attendu: any, tolerance?: number) => void} egal @param {{r26: any, r27: any, i26?: any}} regles */
 export function cas(egal, { r26, r27, i26 }) {
@@ -256,6 +257,57 @@ export function casScenarios(egal, { r26, i26, c26 }) {
   const p2 = Scenarios.proposerPlan(serein, r26), c2 = Conseil.rediger(p2.avant, p2.mesures, p2.apres);
   egal('Conseil : dossier couvert, aucune recommandation de risque', [c2.resume.cle, c2.points.filter(p => p.urgence === 'maintenant').length], ['cs_resumeCouvert', 0]);
   }
+  // ---- contrôle du 06.10.2026 : chaque correction a son cas, calculé à la main
+  {
+    const base = { dateNaissance: '1986-01-01', sexe: 'h', statut: 'salarie', revenu: 90000, avs: { ramd: 90720 }, lpp: { avoir: 100000 } };
+    const a = age => analyser({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire', personne: base, hypotheses: { ageRetraite: age } }, r26);
+    const de = (x, cle) => x.risques.retraite.sources.find(s => s.cle === cle)?.montant ?? 0;
+    // AVS : 2520 x 13 à 65 ans ; anticipée de 2 ans au plus (-13,6 %) ; ajournée de 3 ans (+17,1 %)
+    egal('Départ à 65 ans : AVS entière', de(a(65), 'avs'), 32760);
+    egal('Départ à 63 ans : AVS réduite de 13,6 %', de(a(63), 'avs'), 28305);
+    egal('Départ à 62 ans : AVS dès 63 ans seulement, une année de pont', [de(a(62), 'avs'), a(62).personne.pontAVS, a(62).personne.debutAVS], [28305, 1, 63]);
+    egal('Départ à 62 ans : pas d’AVS dans la ligne de vie à 62 ans', a(62).chronologie.find(x => x.age === 62).pilier1, 0);
+    egal('Départ à 62 ans : alerte de pont', a(62).alertes.some(x => x.cle === 'pontAVS'), true);
+    egal('Départ à 68 ans : AVS majorée de 17,1 %', de(a(68), 'avs'), 38362);
+    // LPP art. 24 : la rente d'invalidité ne dépend pas de l'âge de départ (100 000 + bonifications sans intérêt jusqu'à 65 ans)
+    egal('Rente d’invalidité LPP identique à 60, 65 et 70 ans', [a(60), a(65), a(70)].map(x => x.personne.lpp.renteInvalidite), [23219, 23219, 23219]);
+    egal('Lacune d’invalidité comptée jusqu’à 65 ans, même pour un départ à 60', a(60).risques.invaliditeMaladie.annees, 25);
+    // LPP : pas de bonification après 65 ans ; rente plus basse avant, plus haute après
+    egal('Rente LPP : plus basse à 63 ans, plus haute à 68', [de(a(63), 'lpp') < de(a(65), 'lpp'), de(a(68), 'lpp') > de(a(65), 'lpp')], [true, true]);
+    // certificat : la rente saisie est ajustée, pas remplacée par le minimum légal
+    const cert = { dateAnalyse: '2026-01-01', etatCivil: 'celibataire', personne: { dateNaissance: '1976-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, lpp: { renteVieillesse: 36000 } } };
+    const ages = Scenarios.agesDeDepart(cert, r26, [64, 65, 66]);
+    egal('Âge de départ : rente du certificat reprise à 65 ans', ages[1].lpp, 36000);
+    egal('Âge de départ : pas de falaise à 64 ans (certificat ajusté)', [ages[0].lpp > 30000, ages[0].lpp < 36000, ages[2].lpp > 36000], [true, true, true]);
+    // femme née en 1962 : référence à 64 ans et 6 mois
+    const f62 = Scenarios.agesDeDepart({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire', personne: { ...base, dateNaissance: '1962-03-01', sexe: 'f' } }, r26, [62, 63]);
+    egal('Femme de 1962 : AVS possible dès 63 ans (64 ans et 6 mois moins 2 ans, arrondi)', [f62[0].pontAVS, f62[1].pontAVS], [1, 0]);
+    egal('Femme de 1962 : alertes de la génération transitoire', ['generationTransitoire', 'supplementTransitoire'].map(c =>
+      analyser({ dateAnalyse: '2026-01-01', personne: { ...base, dateNaissance: '1962-03-01', sexe: 'f' } }, r26).alertes.some(x => x.cle === c)), [true, true]);
+    // enfants : la rente s'éteint, la lacune grandit, le capital additionne les années
+    const famille = enfants => analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', enfants,
+      personne: { ...base, avs: { ramd: 84672 } }, conjoint: { dateNaissance: '1988-01-01', sexe: 'f', statut: 'sans', revenu: 0 } }, r26).risques.invaliditeMaladie;
+    const avec = famille([{ dateNaissance: '2016-01-01' }]), sans = famille([]);
+    egal('Invalidité avec un enfant de 10 ans : la lacune d’aujourd’hui est plus petite que celle d’après ses 25 ans', [avec.lacune < sans.lacune, avec.lacuneMax], [true, sans.lacune]);
+    egal('Invalidité avec un enfant : capital entre « lacune d’aujourd’hui » et « sans enfant »',
+      [avec.capitalRente > Math.round(avec.lacune * 20), avec.capitalRente < sans.capitalRente], [true, true]);
+    egal('Invalidité sans enfant : capital inchangé (rente constante)', Math.abs(sans.capitalRente - sans.lacune * (1 - Math.pow(1.015, -25)) / 0.015 * Math.sqrt(1.015)) < 60, true);
+    // conjoint survivant
+    const deces = (sexe, conjoint, enfants = []) => analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', enfants,
+      personne: { ...base, sexe, dateNaissance: '1976-01-01' }, conjoint }, r26).risques.decesMaladie.sources;
+    const rente = (sources, cle) => sources.find(s => s.cle === cle)?.montant ?? 0;
+    const mari50 = { dateNaissance: '1975-06-01', sexe: 'h', statut: 'salarie', revenu: 60000 }, femme50 = { ...mari50, sexe: 'f' }, femme40 = { ...femme50, dateNaissance: '1985-06-01' };
+    egal('Décès de l’épouse, veuf de 50 ans sans enfant : pas de rente AVS', rente(deces('f', mari50), 'avsConjoint'), 0);
+    egal('Décès du mari, veuve de 50 ans sans enfant : rente AVS de veuve', rente(deces('h', femme50), 'avsConjoint') > 20000, true);
+    egal('Veuve de 40 ans avec un enfant adulte : rente AVS de veuve', rente(deces('h', femme40, [{ dateNaissance: '1998-01-01' }]), 'avsConjoint') > 20000, true);
+    egal('Veuf avec un enfant mineur : rente AVS de veuf', rente(deces('f', mari50, [{ dateNaissance: '2015-01-01' }]), 'avsConjoint') > 20000, true);
+    const jeune = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', personne: { ...base, lpp: { avoir: 100000, renteConjoint: 12000 } }, conjoint: femme40 }, r26).risques.decesMaladie;
+    egal('LPP, veuve de 40 ans sans enfant : allocation de trois rentes annuelles au lieu de la rente', [rente(jeune.sources, 'lpp'), jeune.capitauxDisponibles], [0, 36000]);
+  }
+  egal('AVS plafond couple, échelles 44 et 30 (RAVS art. 53bis : 2 x 44 + 30, sur 3)', AVS.plafonnerCouple(r26, 2520, 1718, 44, 30), [2009, 1370]);
+  egal('Économie d’impôt estimée d’un rachat de 200 000 sur 100 000 de revenu : bornée par les paliers', Analyse.economieEstimee(100000, 200000), 17600);
+  egal('Économie d’impôt estimée d’une petite déduction : taux du palier', Analyse.economieEstimee(100000, 7258), 2030);
+  egal('Échelle bernoise : 3 mois dès la 5e année, 4 mois dès la 10e', [5, 10].map(n => r26.maladie.echelleBernoise.filter(([an]) => n >= an).pop()[1]), [13, 17]);
   egal('Champs d’un modèle de langage : contrôlés et bornés', Certificat.normaliser({ lppAvoir: 148250.4, lppRenteVieillesse: 12, lppRachat: null, autre: 5 }),
     { lppAvoir: { valeur: 148250, ligne: '' } });
 }

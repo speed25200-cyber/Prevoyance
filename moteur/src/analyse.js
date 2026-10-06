@@ -32,15 +32,31 @@ import * as Impots from './impots.js';
 import { age as ageA, anneeNaissance, arrondi, borne, renteDepuisCapital, somme, valeurActuelleRente, valeurFuture } from './util.js';
 
 const HYPOTHESES = { ageRetraite: 65, rendement3a: 0.02, rendementFortune: 0.015, escompte: 0.015, croissanceSalaire: 0,
-                     interetLPP: undefined, ageFinRente: 90, flexibilisationAVS: 0 };
+                     interetLPP: undefined, ageFinRente: 90, flexibilisationAVS: undefined };
 const BESOINS = { retraite: 0.8, invalidite: 0.9, deces: 0.7, capitalDeces: 0 };
+
+const PALIERS = [[30000, 0.08], [50000, 0.15], [80000, 0.22], [120000, 0.28], [180000, 0.33], [300000, 0.37], [Infinity, 0.4]];
 
 /** Taux marginal d'impôt estimé (moyenne suisse, revenu brut) : sert seulement à chiffrer un ordre de grandeur. */
 export function estimerTauxMarginal(revenu, marie = false) {
   const r = marie ? revenu * 0.75 : revenu;
-  const paliers = [[30000, 0.08], [50000, 0.15], [80000, 0.22], [120000, 0.28], [180000, 0.33], [300000, 0.37]];
-  for (const [seuil, taux] of paliers) if (r <= seuil) return taux;
+  for (const [seuil, taux] of PALIERS) if (r <= seuil) return taux;
   return 0.4;
+}
+
+/**
+ * Économie d'impôt estimée d'une déduction, sans barème cantonal : chaque tranche de la déduction est comptée au taux
+ * du palier qu'elle quitte. Une grosse déduction (rachat) ne rapporte donc pas « montant x taux marginal du sommet ».
+ * @param {number} revenu @param {number} deduction @param {boolean} [marie]
+ */
+export function economieEstimee(revenu, deduction, marie = false) {
+  const k = marie ? 0.75 : 1, haut = Math.max(0, revenu) * k, bas = Math.max(0, revenu - deduction) * k;
+  let total = 0, debut = 0;
+  for (const [seuil, taux] of PALIERS) {
+    total += Math.max(0, Math.min(haut, seuil) - Math.max(bas, debut)) * taux;
+    debut = seuil;
+  }
+  return arrondi(total / k, 10);
 }
 
 /** Profil d'une personne : âges, 1er et 2e piliers, 3e pilier à la retraite. */
@@ -64,21 +80,23 @@ function profil(regles, p, { quand, hyp, marie, enfants }) {
     capitalRetraite: c.capitalEcheance ?? arrondi(valeurFuture(c.avoir ?? 0, c.versementAnnuel ?? 0, anneesRestantes, c.rendement ?? hyp.rendement3a)),
   }));
   const fortuneRetraite = arrondi(valeurFuture(p.fortune ?? 0, 0, anneesRestantes, hyp.rendementFortune));
-  return { age, ref, ageRetraite, revenu, ramd, ramdEstime, echelle, manquantes, lpp, contrats, fortuneRetraite, anneesRestantes,
+  return { age, ref, naissance: anneeNaissance(p.dateNaissance), sexe: p.sexe, ageRetraite, revenu, ramd, ramdEstime, echelle, manquantes, lpp, contrats, fortuneRetraite, anneesRestantes,
            statut: p.statut, laaAssure: p.laa?.assure ?? p.statut === 'salarie',
            ijm: { assure: p.ijm?.assure ?? false, taux: p.ijm?.taux ?? regles.maladie.ijmUsuelle.taux, jours: p.ijm?.jours ?? regles.maladie.ijmUsuelle.jours },
            tauxMarginal: p.tauxMarginal, source: p };
 }
 
 /** Un risque chiffré : besoin, sources, lacune, capital pour la combler. */
-function risque(cle, besoin, sources, { annees = 0, escompte = 0, capitauxDisponibles = 0, capitalBesoin = 0 } = {}) {
+function risque(cle, besoin, sources, { annees = 0, escompte = 0, capitauxDisponibles = 0, capitalBesoin = 0, capitalRente: capitalCalcule = undefined,
+                                         lacuneMax = undefined } = {}) {
   const lignes = sources.filter(s => s.montant > 0).map(s => ({ ...s, montant: arrondi(s.montant) }));
   const total = somme(lignes.map(s => s.montant));
   const lacune = Math.max(0, arrondi(besoin - total));
-  const capitalRente = arrondi(valeurActuelleRente(lacune, annees, escompte), 100);
+  // lacune constante : valeur actuelle d'une rente ; lacune variable (rentes d'enfants qui s'éteignent) : capital fourni
+  const capitalRente = capitalCalcule ?? arrondi(valeurActuelleRente(lacune, annees, escompte), 100);
   const capital = Math.max(0, arrondi(capitalRente + capitalBesoin - capitauxDisponibles, 100));
   return { cle, besoin: arrondi(besoin), sources: lignes, total, lacune, lacuneMensuelle: arrondi(lacune / 12),
-           couverture: besoin > 0 ? borne(total / besoin, 0, 1.5) : 1, annees, capitalRente, capitauxDisponibles: arrondi(capitauxDisponibles),
+           couverture: besoin > 0 ? borne(total / besoin, 0, 1.5) : 1, annees, capitalRente, lacuneMax: Math.max(lacune, lacuneMax ?? 0), capitauxDisponibles: arrondi(capitauxDisponibles),
            capitalBesoin: arrondi(capitalBesoin), capital };
 }
 
@@ -103,7 +121,13 @@ export function analyser(dossier, regles, contexte = {}) {
   const alerte = (cle, gravite, valeurs = {}) => alertes.push({ cle, gravite, valeurs });
 
   // ---------------------------------------------------------------- retraite
-  const flex = AVS.facteurFlexibilisation(regles, hyp.flexibilisationAVS);
+  // Âge de départ et AVS : la rente peut être anticipée de deux ans au plus (réduite à vie) ou ajournée (majorée).
+  // Avant, il n'y a pas de rente : `pontAVS` compte les années à financer soi-même.
+  const refAVS = P.ref.ans + P.ref.mois / 12;
+  const ecartAVS = hyp.flexibilisationAVS ?? borne(P.ageRetraite - refAVS, -regles.avs.anticipationMaxAnnees, 5);
+  const flex = AVS.facteurFlexibilisation(regles, ecartAVS);
+  const debutAVS = Math.max(P.ageRetraite, Math.ceil(refAVS - regles.avs.anticipationMaxAnnees));
+  const pontAVS = Math.max(0, debutAVS - P.ageRetraite);
   let avsMensuelle = AVS.renteVieillesse(regles, P.ramd, P.echelle);
   let avsConjointMensuelle = C ? AVS.renteVieillesse(regles, C.ramd, C.echelle) : 0;
   let plafonne = false;
@@ -132,34 +156,58 @@ export function analyser(dossier, regles, contexte = {}) {
     ? arrondi(retraite.capital / Math.max(valeurFuture(0, 1, P.anneesRestantes, hyp.rendement3a), 1e-9), 10) : retraite.capital;
 
   // ---------------------------------------------------------------- invalidité
-  const anneesJusquaRetraite = Math.max(0, P.ageRetraite - P.age);
+  // les rentes d'invalidité courent jusqu'à l'âge de référence, quel que soit l'âge de départ souhaité
+  const anneesJusquaRetraite = Math.max(0, P.ref.ans - P.age);
+  // Rentes d'enfants : chacune s'arrête quand l'enfant a 18 ans, ou 25 ans au plus en formation. La lacune grandit donc
+  // d'année en année ; le capital à prévoir additionne les lacunes de chaque année (et pas la lacune d'aujourd'hui
+  // multipliée par la durée).
+  const dureesEnfants = aCharge.map(e => Math.max(0, e.fin - e.age));
+  const enfantsApres = annee => dureesEnfants.filter(d => d > annee).length;
+  const capitalVariable = (annees, sourcesPour, besoin) => {
+    let capital = 0, pire = 0;
+    for (let y = 0; y < annees; y++) {
+      const lacune = Math.max(0, besoin - somme(sourcesPour(enfantsApres(y)).map(s => Math.max(0, arrondi(s.montant)))));
+      pire = Math.max(pire, lacune);
+      capital += valeurActuelleRente(lacune, 1, hyp.escompte) * Math.pow(1 + hyp.escompte, -y);
+    }
+    return { capitalRente: arrondi(capital, 100), lacuneMax: arrondi(pire) };
+  };
   const ai = AVS.rentesAI(regles, { ramd: P.ramd, echelle: P.echelle, age: P.age, degre: 100 });
-  const aiAnnuelle = ai.assure * 12, aiEnfants = ai.parEnfant * 12 * nombreEnfants;
+  const aiAnnuelle = ai.assure * 12;
   const privees = somme(P.contrats.map(c => c.renteInvalidite ?? 0));
   const besoinInvalidite = P.revenu * besoins.invalidite;
   // maladie : AI + LPP, la LPP pouvant réduire ses prestations au-delà de 90 % du gain perdu (surindemnisation)
-  const lppInvalidite = P.lpp.renteInvalidite + P.lpp.renteEnfant * nombreEnfants;
-  const plafondLPP = Math.max(0, P.revenu * regles.lpp.surindemnisation - aiAnnuelle - aiEnfants);
-  const lppVersee = Math.min(lppInvalidite, plafondLPP);
-  const invaliditeMaladie = risque('invaliditeMaladie', besoinInvalidite, [
-    { cle: 'ai', pilier: 1, montant: aiAnnuelle },
-    { cle: 'aiEnfants', pilier: 1, montant: aiEnfants },
-    { cle: 'lpp', pilier: 2, montant: lppVersee, estime: P.lpp.estime, reduit: lppVersee < lppInvalidite },
-    { cle: 'privee', pilier: 3, montant: privees },
-  ], { annees: anneesJusquaRetraite, escompte: hyp.escompte });
+  const sourcesMaladie = n => {
+    const aiEnfants = ai.parEnfant * 12 * n, lppInvalidite = P.lpp.renteInvalidite + P.lpp.renteEnfant * n;
+    const lppVersee = Math.min(lppInvalidite, Math.max(0, P.revenu * regles.lpp.surindemnisation - aiAnnuelle - aiEnfants));
+    return [
+      { cle: 'ai', pilier: 1, montant: aiAnnuelle },
+      { cle: 'aiEnfants', pilier: 1, montant: aiEnfants },
+      { cle: 'lpp', pilier: 2, montant: lppVersee, estime: P.lpp.estime, reduit: lppVersee < lppInvalidite },
+      { cle: 'privee', pilier: 3, montant: privees },
+    ];
+  };
+  const invaliditeMaladie = risque('invaliditeMaladie', besoinInvalidite, sourcesMaladie(nombreEnfants),
+    { annees: anneesJusquaRetraite, escompte: hyp.escompte, ...capitalVariable(anneesJusquaRetraite, sourcesMaladie, besoinInvalidite) });
   // accident : la LAA complète l'AI jusqu'à 90 % du gain assuré ; la LPP n'intervient que s'il reste de la marge
-  const laaRente = P.laaAssure ? LAA.renteInvaliditeLAA(regles, { salaire: P.revenu, degre: 100, renteAIAnnuelle: aiAnnuelle + aiEnfants }) : 0;
-  const margeLPP = Math.max(0, P.revenu * regles.lpp.surindemnisation - aiAnnuelle - aiEnfants - laaRente);
-  const invaliditeAccident = risque('invaliditeAccident', besoinInvalidite, [
-    { cle: 'ai', pilier: 1, montant: aiAnnuelle },
-    { cle: 'aiEnfants', pilier: 1, montant: aiEnfants },
-    { cle: 'laa', pilier: 2, montant: laaRente },
-    { cle: 'lpp', pilier: 2, montant: Math.min(lppInvalidite, margeLPP), estime: P.lpp.estime },
-    { cle: 'privee', pilier: 3, montant: privees },
-  ], { annees: anneesJusquaRetraite, escompte: hyp.escompte });
+  const sourcesAccident = n => {
+    const aiEnfants = ai.parEnfant * 12 * n, lppInvalidite = P.lpp.renteInvalidite + P.lpp.renteEnfant * n;
+    const laaRente = P.laaAssure ? LAA.renteInvaliditeLAA(regles, { salaire: P.revenu, degre: 100, renteAIAnnuelle: aiAnnuelle + aiEnfants }) : 0;
+    const margeLPP = Math.max(0, P.revenu * regles.lpp.surindemnisation - aiAnnuelle - aiEnfants - laaRente);
+    return [
+      { cle: 'ai', pilier: 1, montant: aiAnnuelle },
+      { cle: 'aiEnfants', pilier: 1, montant: aiEnfants },
+      { cle: 'laa', pilier: 2, montant: laaRente },
+      { cle: 'lpp', pilier: 2, montant: Math.min(lppInvalidite, margeLPP), estime: P.lpp.estime },
+      { cle: 'privee', pilier: 3, montant: privees },
+    ];
+  };
+  const invaliditeAccident = risque('invaliditeAccident', besoinInvalidite, sourcesAccident(nombreEnfants),
+    { annees: anneesJusquaRetraite, escompte: hyp.escompte, ...capitalVariable(anneesJusquaRetraite, sourcesAccident, besoinInvalidite) });
   // les deux premières années : salaire ou indemnités journalières, avant la rente
   const semainesSalaire = (() => {
-    const anciennete = Math.max(1, Math.min(P.age - 25, 40));
+    // ancienneté chez l'employeur : celle du dossier si elle est saisie, sinon une carrière sans changement depuis 25 ans (optimiste)
+    const anciennete = Math.max(1, Math.min(P.source.anciennete ?? P.age - 25, 40));
     let s = 3;
     for (const [an, semaines] of regles.maladie.echelleBernoise) if (anciennete >= an) s = semaines;
     return s;
@@ -175,40 +223,55 @@ export function analyser(dossier, regles, contexte = {}) {
   invaliditeAccident.attente = attenteAccident;
 
   // ---------------------------------------------------------------- décès
-  const conjointAyantDroitAVS = marie && (nombreEnfants > 0 || (C ? C.age >= 45 : false));
-  const conjointAyantDroitLPP = marie || (etatCivil === 'concubin' && !!dossier.personne.lpp?.renteConjoint);
-  const survAVS = AVS.rentesSurvivants(regles, { ramd: P.ramd, echelle: P.echelle, age: P.age, conjointAyantDroit: conjointAyantDroitAVS,
-                                                 nombreEnfants });
+  // Droit du conjoint survivant (on suppose un mariage de cinq ans au moins) :
+  // - AVS : la veuve, si elle a un enfant (de tout âge) ou 45 ans révolus ; le veuf, seulement s'il a un enfant mineur ;
+  // - LPP (art. 19) : enfant à charge, ou 45 ans révolus ; sinon une allocation unique de trois rentes annuelles ;
+  // - LAA (art. 29) : enfant ayant droit à une rente ; la veuve aussi dès 45 ans ou si elle a des enfants adultes.
+  const sexeSurvivant = dossier.conjoint?.sexe ?? (dossier.personne.sexe === 'h' ? 'f' : 'h');
+  const survivantA45 = C ? C.age >= 45 : false;
+  const conjointAyantDroitAVS = marie && (sexeSurvivant === 'f' ? enfants.length > 0 || survivantA45 : aCharge.some(e => e.mineur));
+  const rentierLPP = marie && (nombreEnfants > 0 || (C ? survivantA45 : true));
+  const conjointAyantDroitLPP = rentierLPP || (etatCivil === 'concubin' && !!dossier.personne.lpp?.renteConjoint);
+  const allocationLPP = marie && !rentierLPP ? 3 * P.lpp.renteConjoint : 0;
+  const conjointAyantDroitLAA = marie && (nombreEnfants > 0 || (sexeSurvivant === 'f' && (enfants.length > 0 || survivantA45)));
+  const survivantsAVS = n => AVS.rentesSurvivants(regles, { ramd: P.ramd, echelle: P.echelle, age: P.age, conjointAyantDroit: conjointAyantDroitAVS,
+                                                           nombreEnfants: n });
+  const survAVS = survivantsAVS(nombreEnfants);
   const aQuelquun = marie || etatCivil === 'concubin' || nombreEnfants > 0;
   const besoinDeces = aQuelquun ? P.revenu * besoins.deces : 0;
   const plusJeune = nombreEnfants ? Math.min(...aCharge.map(e => e.age)) : null;
   const anneesEnfants = plusJeune === null ? 0 : Math.max(...aCharge.map(e => e.fin - e.age));
   const anneesConjoint = (marie || etatCivil === 'concubin') && C ? Math.max(0, C.ageRetraite - C.age) : 0;
   const anneesDeces = Math.max(anneesEnfants, Math.min(anneesConjoint, anneesJusquaRetraite));
-  const capitauxDeces = P.lpp.capitalDeces + somme(P.contrats.map(c => (c.capitalDeces ?? 0) + (c.forme === 'assurance' ? 0 : c.avoir ?? 0)))
+  const capitauxDeces = P.lpp.capitalDeces + allocationLPP + somme(P.contrats.map(c => (c.capitalDeces ?? 0) + (c.forme === 'assurance' ? 0 : c.avoir ?? 0)))
     + (dossier.personne.fortune ?? 0);
-  const lppSurvivants = (conjointAyantDroitLPP ? P.lpp.renteConjoint : 0) + P.lpp.renteEnfant * nombreEnfants;
+  const lppSurvivantsPour = n => (conjointAyantDroitLPP ? P.lpp.renteConjoint : 0) + P.lpp.renteEnfant * n;
   // Les capitaux disponibles au décès (capital de la caisse, 3e pilier, assurances, fortune) servent d'abord le besoin en
   // capital (hypothèque à rembourser…) ; le reste est converti en revenu sur la durée du besoin et compte comme une source.
   const capitauxLibres = Math.max(0, capitauxDeces - besoins.capitalDeces);
   const revenuCapitaux = aQuelquun ? renteDepuisCapital(capitauxLibres, anneesDeces, hyp.escompte) : 0;
-  const sourcesDeces = [
-    { cle: 'avsConjoint', pilier: 1, montant: survAVS.conjoint * 12 },
-    { cle: 'avsOrphelins', pilier: 1, montant: survAVS.parEnfant * 12 * nombreEnfants },
-    { cle: 'lpp', pilier: 2, montant: lppSurvivants, estime: P.lpp.estime },
-    { cle: 'capitaux', pilier: 3, montant: revenuCapitaux, capital: capitauxLibres },
-  ];
+  const sourcesDecesMaladie = n => {
+    const avs = survivantsAVS(n);
+    return [
+      { cle: 'avsConjoint', pilier: 1, montant: avs.conjoint * 12 },
+      { cle: 'avsOrphelins', pilier: 1, montant: avs.parEnfant * 12 * n },
+      { cle: 'lpp', pilier: 2, montant: lppSurvivantsPour(n), estime: P.lpp.estime },
+      { cle: 'capitaux', pilier: 3, montant: revenuCapitaux, capital: capitauxLibres },
+    ];
+  };
+  const sourcesDecesAccident = n => {
+    const avs = survivantsAVS(n), [conjoint, orphelins, lpp, capitaux] = sourcesDecesMaladie(n);
+    const laaSurv = P.laaAssure ? LAA.rentesSurvivantsLAA(regles, { salaire: P.revenu, conjointAyantDroit: conjointAyantDroitLAA, nombreEnfants: n,
+                                                                   rentesAVSAnnuelles: avs.total * 12 }).total : 0;
+    return [conjoint, orphelins, { cle: 'laa', pilier: 2, montant: laaSurv },
+      { ...lpp, montant: Math.min(lpp.montant, Math.max(0, P.revenu * regles.lpp.surindemnisation - avs.total * 12 - laaSurv)) }, capitaux];
+  };
   const optionsDeces = { annees: anneesDeces, escompte: hyp.escompte, capitalBesoin: Math.max(0, besoins.capitalDeces - capitauxDeces) };
-  const decesMaladie = risque('decesMaladie', besoinDeces, sourcesDeces, optionsDeces);
+  const decesMaladie = risque('decesMaladie', besoinDeces, sourcesDecesMaladie(nombreEnfants),
+    { ...optionsDeces, ...capitalVariable(anneesDeces, sourcesDecesMaladie, besoinDeces) });
   decesMaladie.capitauxDisponibles = arrondi(capitauxDeces);
-  const laaSurv = P.laaAssure ? LAA.rentesSurvivantsLAA(regles, { salaire: P.revenu, conjointAyantDroit: marie, nombreEnfants,
-                                                                 rentesAVSAnnuelles: survAVS.total * 12 }).total : 0;
-  const decesAccident = risque('decesAccident', besoinDeces, [
-    sourcesDeces[0], sourcesDeces[1], { cle: 'laa', pilier: 2, montant: laaSurv },
-    { cle: 'lpp', pilier: 2, montant: Math.min(lppSurvivants, Math.max(0, P.revenu * regles.lpp.surindemnisation - survAVS.total * 12 - laaSurv)),
-      estime: P.lpp.estime },
-    sourcesDeces[3],
-  ], optionsDeces);
+  const decesAccident = risque('decesAccident', besoinDeces, sourcesDecesAccident(nombreEnfants),
+    { ...optionsDeces, ...capitalVariable(anneesDeces, sourcesDecesAccident, besoinDeces) });
   decesAccident.capitauxDisponibles = arrondi(capitauxDeces);
 
   // ---------------------------------------------------------------- potentiels
@@ -218,7 +281,8 @@ export function analyser(dossier, regles, contexte = {}) {
   // économie d'une déduction : sur le barème réel du canton quand il est connu, sinon au taux marginal
   const economie = deduction => (fiscal && P.tauxMarginal === undefined
     ? /** @type {number} */ (Impots.economieDeduction(contexte.impots, /** @type {string} */ (dossier.canton), marie, revenuImposable, deduction, nombreEnfants))
-    : arrondi(deduction * marginal, 10));
+    : P.tauxMarginal !== undefined ? arrondi(Math.min(deduction, revenuImposable) * marginal, 10)
+      : economieEstimee(revenuImposable, deduction, marie));
   const plafond3a = P.statut === 'sans' ? 0 : P.lpp.affilie ? regles.pilier3a.plafondAvecLPP
     : Math.min(regles.pilier3a.plafondSansLPP, arrondi(P.revenu * regles.pilier3a.tauxSansLPP));
   const verse3a = somme(P.contrats.filter(c => c.type === '3a').map(c => c.versementAnnuel ?? 0));
@@ -250,6 +314,9 @@ export function analyser(dossier, regles, contexte = {}) {
   if (invaliditeMaladie.lacune > invaliditeAccident.lacune + 1000) alerte('ecartMaladieAccident', 'attention',
     { ecart: invaliditeMaladie.lacune - invaliditeAccident.lacune });
   if (P.sexe === 'f' && P.ref.mois > 0) alerte('generationTransitoire', 'info', { ans: P.ref.ans, mois: P.ref.mois });
+  // femmes nées de 1961 à 1969 : supplément de rente ou taux d'anticipation réduits (AVS 21), non chiffrés ici
+  if (P.sexe === 'f' && P.naissance >= 1961 && P.naissance <= 1969) alerte('supplementTransitoire', 'info');
+  if (pontAVS > 0) alerte('pontAVS', 'attention', { annees: pontAVS, age: debutAVS });
   if (P.anneesRestantes <= 10 && P.lpp.affilie) alerte('choixRenteCapital', 'info', { annees: P.anneesRestantes });
 
   // ---------------------------------------------------------------- score
@@ -260,12 +327,12 @@ export function analyser(dossier, regles, contexte = {}) {
 
   return {
     annee: regles.annee, dateAnalyse: quand, etatCivil, marie, canton: dossier.canton ?? null,
-    personne: { age: P.age, ageReference: P.ref, ageRetraite: P.ageRetraite, revenu: P.revenu, ramd: arrondi(P.ramd), ramdEstime: P.ramdEstime,
+    personne: { age: P.age, ageReference: P.ref, ageRetraite: P.ageRetraite, debutAVS, pontAVS, facteurAVS: flex, revenu: P.revenu, ramd: arrondi(P.ramd), ramdEstime: P.ramdEstime,
                 echelle: P.echelle, lpp: P.lpp, capital3a, capital3b },
     conjoint: C ? { age: C.age, revenu: C.revenu, avsMensuelle: avsConjointMensuelle, lppRente: C.lpp.renteVieillesse } : null,
     enfantsACharge: nombreEnfants,
     risques, potentiels, alertes, score,
-    chronologie: chronologie(regles, { P, hyp, avsAnnuelle, retraite, invaliditeMaladie, invaliditeAccident }),
+    chronologie: chronologie(regles, { P, hyp, avsAnnuelle, debutAVS, retraite, invaliditeMaladie, invaliditeAccident }),
     hypotheses: hyp, besoins,
   };
 }
@@ -279,7 +346,7 @@ function avsMensuelleBrute(regles, P) {
  * Revenus année par année, de l'âge actuel à la fin de la projection : parcours normal, et parcours en cas
  * d'invalidité (maladie ou accident) survenant aujourd'hui. Alimente la « ligne de vie » des interfaces.
  */
-function chronologie(regles, { P, hyp, avsAnnuelle, retraite, invaliditeMaladie, invaliditeAccident }) {
+function chronologie(regles, { P, hyp, avsAnnuelle, debutAVS, retraite, invaliditeMaladie, invaliditeAccident }) {
   const points = [];
   const retraiteParPilier = pilier => somme(retraite.sources.filter(s => s.pilier === pilier).map(s => s.montant));
   for (let a = P.age; a <= hyp.ageFinRente; a++) {
@@ -295,7 +362,7 @@ function chronologie(regles, { P, hyp, avsAnnuelle, retraite, invaliditeMaladie,
     };
     points.push({
       age: a, actif, salaire,
-      pilier1: actif ? 0 : arrondi(avsAnnuelle), pilier2: actif ? 0 : retraiteParPilier(2), pilier3: actif ? 0 : arrondi(retraiteParPilier(3)),
+      pilier1: actif || a < debutAVS ? 0 : arrondi(avsAnnuelle), pilier2: actif ? 0 : retraiteParPilier(2), pilier3: actif ? 0 : arrondi(retraiteParPilier(3)),
       besoin: actif ? salaire : retraite.besoin,
       invaliditeMaladie: arrondi(parcours(invaliditeMaladie)), invaliditeAccident: arrondi(parcours(invaliditeAccident)),
     });

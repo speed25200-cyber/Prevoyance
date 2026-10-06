@@ -5,8 +5,9 @@
  */
 
 import { analyser } from './analyse.js';
+import * as AVS from './avs.js';
 import * as Impots from './impots.js';
-import { arrondi, borne, renteDepuisCapital, valeurFuture } from './util.js';
+import { anneeNaissance, arrondi, renteDepuisCapital, valeurFuture } from './util.js';
 
 /**
  * Revenu de retraite selon l'âge de départ (anticipation ou ajournement).
@@ -16,22 +17,21 @@ import { arrondi, borne, renteDepuisCapital, valeurFuture } from './util.js';
  * @param {import('./analyse.js').Dossier} dossier @param {any} regles @param {number[]} [ages]
  */
 export function agesDeDepart(dossier, regles, ages = [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70]) {
-  const reference = regles.avs.ageReference[dossier.personne.sexe] ?? 65;
+  // âge de référence de la personne (femmes nées de 1961 à 1963 : entre 64 et 65 ans)
+  const ref = AVS.ageReference(regles, dossier.personne.sexe, anneeNaissance(dossier.personne.dateNaissance));
+  const reference = ref.ans + ref.mois / 12;
   return ages.map(age => {
-    const ecart = age - reference;
-    const lpp = { ...(dossier.personne.lpp ?? {}) };
-    // une rente saisie depuis le certificat vaut pour l'âge de référence : on la laisse recalculer pour les autres âges
-    if (ecart !== 0) { delete lpp.renteVieillesse; delete lpp.capitalRetraite; lpp.tauxConversion = (lpp.tauxConversion ?? regles.lpp.tauxConversion) + 0.002 * ecart; }
-    const a = analyser({
-      ...dossier, personne: { ...dossier.personne, lpp },
-      hypotheses: { ...(dossier.hypotheses ?? {}), ageRetraite: age, flexibilisationAVS: borne(ecart, -regles.avs.anticipationMaxAnnees, 5) },
-    }, regles);
+    const ecart = age - ref.ans;
+    // l'analyse applique elle-même l'effet de l'âge de départ : réduction ou supplément AVS, avoir et conversion LPP
+    const hypotheses = { ...(dossier.hypotheses ?? {}), ageRetraite: age };
+    delete hypotheses.flexibilisationAVS;
+    const a = analyser({ ...dossier, hypotheses }, regles);
     const r = a.risques.retraite;
     const de = cle => r.sources.filter(s => s.cle === cle).reduce((s, x) => s + x.montant, 0);
     return { age, ecart, avs: de('avs'), lpp: de('lpp'), pilier3: r.sources.filter(s => s.pilier === 3).reduce((s, x) => s + x.montant, 0),
              total: r.total, besoin: r.besoin, lacune: r.lacune, couverture: r.couverture,
              // avant 63 ans, l'AVS ne peut pas encore être touchée : il faut un pont
-             pontAVS: age < reference - regles.avs.anticipationMaxAnnees ? reference - regles.avs.anticipationMaxAnnees - age : 0 };
+             pontAVS: Math.max(0, Math.ceil(reference - regles.avs.anticipationMaxAnnees - age)) };
   });
 }
 

@@ -2,7 +2,7 @@
   "pays": "CH",
   "annee": 2027,
   "etat": "décidé le 02.10.2026, en vigueur le 01.01.2027 ; valeurs marquées « aConfirmer » reprises de 2026",
-  "aConfirmer": ["lpp.tauxInteretMinimal", "laa.gainAssureMax", "ac.plafond", "avs.bonificationEducative"],
+  "aConfirmer": ["lpp.tauxInteretMinimal", "laa.gainAssureMax", "ac.plafond", "avs.bonificationEducative", "avs.flexibilisation"],
   "sources": {
     "avs": "Conseil fédéral, communiqué du 02.10.2026 : rentes AVS/AI adaptées de 1,59 % au 01.01.2027 (rente minimale 1280, maximale 2560)",
     "lpp": "Même communiqué : déduction de coordination 26 880, seuil d'entrée 23 040 ; salaire maximal LPP = 3 x rente AVS maximale annuelle (92 160), salaire coordonné minimal = 1/8 (3840) et maximal = 65 280",
@@ -59,7 +59,7 @@
     "rachatRetroactif": { "depuisAnnee": 2025, "maxAnneesArriere": 10, "plafondParRachat": 7373 }
   },
   "maladie": {
-    "echelleBernoise": [[1, 3], [2, 4], [4, 9], [9, 13], [14, 17], [19, 22], [24, 26], [29, 30], [34, 35], [39, 39]],
+    "echelleBernoise": [[1, 3], [2, 4], [3, 9], [5, 13], [10, 17], [15, 22], [20, 26], [25, 30], [30, 35], [35, 39]],
     "ijmUsuelle": { "taux": 0.8, "jours": 730, "delaiJours": 30 },
     "delaiRenteAIMois": 12
   }

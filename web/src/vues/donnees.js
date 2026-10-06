@@ -18,7 +18,7 @@ const CLES = [
 ];
 
 /** Libellé lisible des valeurs encore à confirmer (clés du fichier de règles). */
-const A_CONFIRMER = { 'lpp.tauxInteretMinimal': 'dn_interet', 'laa.gainAssureMax': 'dn_laa', 'ac.plafond': 'dn_ac', 'avs.bonificationEducative': 'dn_bonification' };
+const A_CONFIRMER = { 'lpp.tauxInteretMinimal': 'dn_interet', 'laa.gainAssureMax': 'dn_laa', 'ac.plafond': 'dn_ac', 'avs.bonificationEducative': 'dn_bonification', 'avs.flexibilisation': 'dn_flexAVS' };
 
 export async function monter(ctx, racine) {
   const { t, f } = ctx;

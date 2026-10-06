@@ -36,11 +36,13 @@ export function tauxBonification(regles, age) {
 export function projeterAvoir(regles, p) {
   const { age, avoir, salaireAVS, ageRetraite = 65, croissanceSalaire = 0 } = p;
   const interet = p.interet ?? regles.lpp.tauxInteretMinimal;
+  const ageReference = regles.lpp.ageReference ?? 65;
   let a = avoir, sansInteret = avoir, salaire = salaireAVS;
   const annees = [];
   for (let x = age; x < ageRetraite; x++) {
     const assure = p.salaireAssure !== undefined ? p.salaireAssure * Math.pow(1 + croissanceSalaire, x - age) : salaireCoordonne(regles, salaire);
-    const taux = p.tauxEpargne ? p.tauxEpargne(x) : tauxBonification(regles, x);
+    // les bonifications légales s'arrêtent à l'âge de référence ; au-delà (ajournement), l'avoir ne porte plus que des intérêts
+    const taux = p.tauxEpargne ? p.tauxEpargne(x) : x < ageReference ? tauxBonification(regles, x) : 0;
     const bonification = assure * taux;
     a = a * (1 + interet) + bonification;
     sansInteret += bonification;
@@ -68,13 +70,23 @@ export function prestationsLPP(regles, p) {
              renteVieillesse: 0, capitalRetraite: c.avoir ?? 0, renteInvalidite: 0, renteConjoint: 0, renteEnfant: 0,
              capitalDeces: c.capitalDeces ?? 0, rachatPossible: 0, projection: [] };
   }
-  const projection = projeterAvoir(regles, { age: p.age, avoir: c.avoir ?? 0, salaireAVS: p.salaireAVS,
-                                             ageRetraite: p.ageRetraite, croissanceSalaire: p.croissanceSalaire, interet: p.interet });
-  const conversion = c.tauxConversion ?? regles.lpp.tauxConversion;
-  const avoirRetraite = c.capitalRetraite ?? projection.avoirFinal;
-  const renteVieillesse = c.renteVieillesse ?? arrondi(avoirRetraite * conversion);
-  // risque, minimum légal : avoir projeté sans intérêts x taux de conversion (LPP art. 24) ; conjoint 60 %, enfant 20 %
-  const renteInvalidite = c.renteInvalidite ?? arrondi(projection.sansInteret * regles.lpp.tauxConversion);
+  const ageReference = regles.lpp.ageReference ?? 65, ageRetraite = p.ageRetraite ?? ageReference, ecart = ageRetraite - ageReference;
+  const base = { age: p.age, avoir: c.avoir ?? 0, salaireAVS: p.salaireAVS, interet: p.interet };
+  const projection = projeterAvoir(regles, { ...base, ageRetraite, croissanceSalaire: p.croissanceSalaire });
+  const aReference = ecart === 0 ? projection : projeterAvoir(regles, { ...base, ageRetraite: ageReference, croissanceSalaire: p.croissanceSalaire });
+  // Départ avant ou après l'âge de référence : l'avoir s'arrête plus tôt ou continue de porter intérêt, et le taux de
+  // conversion bouge d'environ 0,2 point par année d'écart (usage des caisses ; le règlement fait foi). Les valeurs du
+  // certificat, données pour l'âge de référence, sont ajustées dans la même proportion : le niveau du plan est conservé.
+  const conversionReference = c.tauxConversion ?? regles.lpp.tauxConversion;
+  const conversion = Math.max(0, conversionReference + (regles.lpp.conversionParAnneeEcart ?? 0.002) * ecart);
+  const rapportAvoir = ecart !== 0 && aReference.avoirFinal > 0 ? projection.avoirFinal / aReference.avoirFinal : 1;
+  const rapportConversion = ecart !== 0 && conversionReference > 0 ? conversion / conversionReference : 1;
+  const avoirRetraite = c.capitalRetraite !== undefined ? arrondi(c.capitalRetraite * rapportAvoir) : projection.avoirFinal;
+  const renteVieillesse = c.renteVieillesse !== undefined ? arrondi(c.renteVieillesse * rapportAvoir * rapportConversion) : arrondi(avoirRetraite * conversion);
+  // risque, minimum légal (LPP art. 24) : avoir acquis + bonifications futures sans intérêts jusqu'à l'âge de référence,
+  // sur le salaire coordonné actuel, x taux de conversion ; conjoint 60 %, enfant 20 %. Indépendant de l'âge de départ choisi.
+  const risque = projeterAvoir(regles, { ...base, ageRetraite: ageReference, croissanceSalaire: 0 });
+  const renteInvalidite = c.renteInvalidite ?? arrondi(risque.sansInteret * regles.lpp.tauxConversion);
   const estime = c.renteVieillesse === undefined || c.renteInvalidite === undefined;
   return {
     affilie: true, estime, salaireCoordonne: coordonne,

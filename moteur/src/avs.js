@@ -76,13 +76,16 @@ export function facteurFlexibilisation(regles, annees) {
 }
 
 /**
- * Plafonnement des deux rentes d'un couple marié (150 % de la rente maximale, au prorata des échelles).
+ * Plafonnement des deux rentes d'un couple marié : 150 % de la rente maximale. Quand les durées de cotisation sont
+ * incomplètes, le plafond suit les échelles : deux fois la plus haute plus une fois la plus basse, divisé par trois
+ * (RAVS art. 53bis).
  * @param {any} regles @param {number} rente1 @param {number} rente2 @param {number} [echelle1] @param {number} [echelle2]
  * @returns {[number, number]}
  */
 export function plafonnerCouple(regles, rente1, rente2, echelle1 = 44, echelle2 = 44) {
   const complete = regles.avs.dureeCotisationComplete;
-  const plafond = regles.avs.renteMaxMensuelle * regles.avs.plafondCoupleFacteur * ((echelle1 + echelle2) / 2) / complete;
+  const part = (2 * Math.max(echelle1, echelle2) + Math.min(echelle1, echelle2)) / 3 / complete;
+  const plafond = regles.avs.renteMaxMensuelle * regles.avs.plafondCoupleFacteur * part;
   const somme = rente1 + rente2;
   if (somme <= plafond || somme === 0) return [rente1, rente2];
   return [arrondi(rente1 * plafond / somme), arrondi(rente2 * plafond / somme)];
