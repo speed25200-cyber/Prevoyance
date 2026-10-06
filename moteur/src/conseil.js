@@ -27,9 +27,12 @@ export function rediger(avant, mesures, apres, options = {}) {
   const part = (economie, montant, total) => (total > 0 ? Math.round(economie * Math.min(1, montant / total) / 10) * 10 : 0);
 
   // ---- ce qui ne peut pas attendre : les risques
-  const invalidite = r.invaliditeMaladie.lacune >= r.invaliditeAccident.lacune ? r.invaliditeMaladie : r.invaliditeAccident;
-  if (invalidite.lacune > 0) {
-    point('cs_invalidite', 'maintenant', { mensuelChf: invalidite.lacuneMensuelle, couvertPct: invalidite.couverture, renteChf: mesures.renteInvalidite ?? 0 });
+  const invalidite = Math.max(r.invaliditeMaladie.lacune, r.invaliditeMaladie.lacuneMax ?? 0) >= Math.max(r.invaliditeAccident.lacune, r.invaliditeAccident.lacuneMax ?? 0)
+    ? r.invaliditeMaladie : r.invaliditeAccident;
+  // la lacune retenue est la plus grande à venir : celle d'après les rentes d'enfants quand il y en a
+  const pire = x => Math.max(x.lacune, x.lacuneMax ?? 0);
+  if (pire(invalidite) > 0) {
+    point('cs_invalidite', 'maintenant', { mensuelChf: Math.round(pire(invalidite) / 12), couvertPct: invalidite.couverture, renteChf: mesures.renteInvalidite ?? 0 });
     if (r.invaliditeMaladie.lacune > r.invaliditeAccident.lacune + 1000) {
       point('cs_ecartMaladie', 'maintenant', { ecartChf: r.invaliditeMaladie.lacune - r.invaliditeAccident.lacune });
     }
@@ -38,7 +41,7 @@ export function rediger(avant, mesures, apres, options = {}) {
   if (mesures.laa || alerte('independantSansLAA')) point('cs_laa', 'maintenant');
   const deces = r.decesMaladie.capital >= r.decesAccident.capital ? r.decesMaladie : r.decesAccident;
   if (deces.capital > 0) {
-    point('cs_deces', 'maintenant', { capitalChf: mesures.capitalDeces ?? deces.capital, mensuelChf: deces.lacuneMensuelle, enfants: avant.enfantsACharge ?? 0 });
+    point('cs_deces', 'maintenant', { capitalChf: mesures.capitalDeces ?? deces.capital, mensuelChf: Math.round(pire(deces) / 12), enfants: avant.enfantsACharge ?? 0 });
   }
   if (alerte('concubinage')) point('cs_concubinage', 'maintenant');
   if (alerte('independantSansLPP')) point('cs_sansLPP', 'maintenant');
@@ -72,8 +75,10 @@ export function rediger(avant, mesures, apres, options = {}) {
   if (alerte('ramdEstime')) point('cs_extraitCI', 'aReunir');
   if (alerte('lppEstimee')) point('cs_certificat', 'aReunir');
 
-  const lacunes = Object.values(avant.risques).filter(x => x.lacune > 0).length;
-  const restantes = Object.values(apres.risques).filter(x => x.lacune > 0).length;
+  // un risque est ouvert s'il manque un revenu aujourd'hui, plus tard, ou un capital
+  const ouvert = x => x.lacune > 0 || (x.lacuneMax ?? 0) > 0 || x.capital > 0;
+  const lacunes = Object.values(avant.risques).filter(ouvert).length;
+  const restantes = Object.values(apres.risques).filter(ouvert).length;
   points.sort((a, b) => URGENCES.indexOf(a.urgence) - URGENCES.indexOf(b.urgence));
   return {
     resume: { cle: lacunes === 0 ? 'cs_resumeCouvert' : restantes === 0 ? 'cs_resumeComble' : 'cs_resumeReste',

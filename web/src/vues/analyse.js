@@ -133,7 +133,12 @@ export function afficher(ctx) {
     const [, montant, note, barre] = /** @type {HTMLElement[]} */ ([...bouton.children]);
     montant.classList.toggle('lacune', y.lacune > 0);
     if (y.besoin === 0) { montant.textContent = '—'; /** @type {any} */ (montant)._v = 0; note.textContent = t('sansObjet'); }
-    else { compter(montant, y.lacuneMensuelle, v => (y.lacune > 0 ? '− ' : '') + f.chf(v)); note.textContent = y.lacune > 0 ? t('parMois') : t('aucuneLacune'); }
+    else {
+      // pas de lacune aujourd'hui mais une plus tard (les rentes d'enfants s'arrêtent) : c'est elle qu'on montre
+      const plusTard = y.lacune === 0 && (y.lacuneMax ?? 0) > 0;
+      compter(montant, plusTard ? y.lacuneMax / 12 : y.lacuneMensuelle, v => (y.lacune > 0 || plusTard ? '− ' : '') + f.chf(v));
+      note.textContent = plusTard ? t('lacunePlusTard') : y.lacune > 0 ? t('parMois') : t('aucuneLacune');
+    }
     const trait = /** @type {HTMLElement} */ (barre.firstElementChild);
     trait.style.transform = `scaleX(${y.besoin === 0 ? 0 : Math.min(1, y.couverture)})`;
     trait.style.background = couleurCouverture(y.couverture);

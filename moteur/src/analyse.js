@@ -275,11 +275,17 @@ export function analyser(dossier, regles, contexte = {}) {
       { ...lpp, montant: Math.min(lpp.montant, Math.max(0, P.revenu * regles.lpp.surindemnisation - avs.total * 12 - laaSurv)) }, capitaux];
   };
   const optionsDeces = { annees: anneesDeces, escompte: hyp.escompte, capitalBesoin: Math.max(0, besoins.capitalDeces - capitauxDeces) };
-  const decesMaladie = risque('decesMaladie', besoinDeces, sourcesDecesMaladie(nombreEnfants),
-    { ...optionsDeces, ...capitalVariable(anneesDeces, sourcesDecesMaladie, besoinDeces) });
+  // Capital à prévoir au décès : la somme des lacunes de chaque année, comptées sans les capitaux, moins les capitaux
+  // disponibles. (Les répartir en rente égale sur toute la durée les ferait « dépenser » pendant les années sans lacune,
+  // alors que le manque n'apparaît souvent qu'à la fin des rentes d'orphelin.)
+  const capitalDecesPour = sources => {
+    const brut = capitalVariable(anneesDeces, n => sources(n).filter(s => s.cle !== 'capitaux'), besoinDeces);
+    const capitalRente = Math.max(0, arrondi(brut.capitalRente - capitauxLibres, 100));
+    return { capitalRente, lacuneMax: capitalRente > 0 ? capitalVariable(anneesDeces, sources, besoinDeces).lacuneMax : 0 };
+  };
+  const decesMaladie = risque('decesMaladie', besoinDeces, sourcesDecesMaladie(nombreEnfants), { ...optionsDeces, ...capitalDecesPour(sourcesDecesMaladie) });
   decesMaladie.capitauxDisponibles = arrondi(capitauxDeces);
-  const decesAccident = risque('decesAccident', besoinDeces, sourcesDecesAccident(nombreEnfants),
-    { ...optionsDeces, ...capitalVariable(anneesDeces, sourcesDecesAccident, besoinDeces) });
+  const decesAccident = risque('decesAccident', besoinDeces, sourcesDecesAccident(nombreEnfants), { ...optionsDeces, ...capitalDecesPour(sourcesDecesAccident) });
   decesAccident.capitauxDisponibles = arrondi(capitauxDeces);
 
   // ---------------------------------------------------------------- potentiels

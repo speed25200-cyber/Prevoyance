@@ -144,13 +144,15 @@ export function appliquerMesures(dossier, mesures, regles) {
  * (invalidité, décès), ensuite la retraite par les leviers fiscalement les plus efficaces (3a, puis rachat, puis
  * épargne libre). Renvoie le plan, l'analyse avant et l'analyse après.
  * @param {import('./analyse.js').Dossier} dossier @param {any} regles
+ * @param {{impots?: any}} [contexte] données fiscales : avec elles, le plan tient compte de l'impôt sur le retrait du 3a
  */
-export function proposerPlan(dossier, regles) {
-  const avant = analyser(dossier, regles);
+export function proposerPlan(dossier, regles, contexte = {}) {
+  const avant = analyser(dossier, regles, contexte);
   const r = avant.risques, pot = avant.potentiels;
   /** @type {Parameters<typeof appliquerMesures>[1]} */
   const mesures = {};
-  const pire = Math.max(r.invaliditeMaladie.lacune, r.invaliditeAccident.lacune);
+  // la rente à assurer couvre la plus grande lacune à venir (celle d'après les rentes d'enfants), pas seulement celle d'aujourd'hui
+  const pire = Math.max(r.invaliditeMaladie.lacuneMax, r.invaliditeAccident.lacuneMax);
   if (pire > 0) mesures.renteInvalidite = Math.ceil(pire / 1200) * 1200;
   const capitalDeces = Math.max(r.decesMaladie.capital, r.decesAccident.capital);
   if (capitalDeces > 0) mesures.capitalDeces = Math.ceil(capitalDeces / 10000) * 10000;
@@ -168,6 +170,15 @@ export function proposerPlan(dossier, regles) {
     }
     if (reste > 0) mesures.epargneLibre = Math.ceil(reste / 100) * 100;
   }
-  const apres = analyser(appliquerMesures(dossier, mesures, regles), regles);
+  let apres = analyser(appliquerMesures(dossier, mesures, regles), regles, contexte);
+  // Le 3a est imposé à son retrait et les montants sont arrondis : s'il reste une lacune de retraite, on complète
+  // (d'abord dans le 3a tant qu'il reste de la place, puis en épargne libre) jusqu'à ce qu'elle soit comblée.
+  for (let tour = 0; tour < 5 && apres.risques.retraite.lacune > 0 && r.retraite.lacune > 0; tour++) {
+    const plus = Math.max(100, Math.ceil(apres.risques.retraite.epargneAnnuelle / 100) * 100);
+    const dans3a = Math.min(Math.max(0, pot.pilier3a.potentiel - (mesures.versement3a ?? 0)), plus);
+    if (dans3a > 0) mesures.versement3a = (mesures.versement3a ?? 0) + dans3a;
+    if (plus - dans3a > 0) mesures.epargneLibre = (mesures.epargneLibre ?? 0) + plus - dans3a;
+    apres = analyser(appliquerMesures(dossier, mesures, regles), regles, contexte);
+  }
   return { mesures, avant, apres };
 }

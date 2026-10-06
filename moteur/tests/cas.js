@@ -319,6 +319,19 @@ export function casScenarios(egal, { r26, r27, i26, c26 }) {
     const jeune = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', personne: { ...base, lpp: { avoir: 100000, renteConjoint: 12000 } }, conjoint: femme40 }, r26).risques.decesMaladie;
     egal('LPP, veuve de 40 ans sans enfant : allocation de trois rentes annuelles au lieu de la rente', [rente(jeune.sources, 'lpp'), jeune.capitauxDisponibles], [0, 36000]);
   }
+  {
+    // le plan comble la retraite même quand le 3a est imposé à son retrait, et couvre la lacune d'après les rentes d'enfants
+    const foyer = { dateAnalyse: '2026-01-01', canton: 'VD', etatCivil: 'marie', enfants: [{ dateNaissance: '2018-01-01' }, { dateNaissance: '2020-01-01' }],
+      personne: { dateNaissance: '1986-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, lpp: { avoir: 100000 } },
+      conjoint: { dateNaissance: '1988-01-01', sexe: 'f', statut: 'sans', revenu: 0 } };
+    const plan = Scenarios.proposerPlan(foyer, r26, { impots: i26 });
+    egal('Plan avec impôts : la lacune de retraite est comblée', [plan.avant.risques.retraite.lacune > 0, plan.apres.risques.retraite.lacune], [true, 0]);
+    egal('Plan : la rente d’invalidité proposée couvre la plus grande lacune à venir', (plan.mesures.renteInvalidite ?? 0) >= Math.max(plan.avant.risques.invaliditeMaladie.lacuneMax, plan.avant.risques.invaliditeAccident.lacuneMax), true);
+    const conseil = Conseil.rediger(plan.avant, plan.mesures, plan.apres);
+    egal('Conseil : après le plan, plus aucun risque ouvert et un score de 100', [conseil.resume.v.restantes, plan.apres.score], [0, 100]);
+    egal('Conseil : le texte du décès ne dit jamais « 0 par mois » quand un capital est proposé',
+      conseil.points.filter(p => p.cle === 'cs_deces').every(p => p.v.mensuelChf > 0), true);
+  }
   egal('AVS plafond couple, échelles 44 et 30 (RAVS art. 53bis : 2 x 44 + 30, sur 3)', AVS.plafonnerCouple(r26, 2520, 1718, 44, 30), [2009, 1370]);
   egal('Économie d’impôt estimée d’un rachat de 200 000 sur 100 000 de revenu : bornée par les paliers', Analyse.economieEstimee(100000, 200000), 17600);
   egal('Économie d’impôt estimée d’une petite déduction : taux du palier', Analyse.economieEstimee(100000, 7258), 2030);

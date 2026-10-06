@@ -16,7 +16,7 @@ import * as ConseilTexte from '../conseil-texte.js';
 
 /** Le plan en vigueur : celui que le conseiller a réglé, sinon celui que le moteur propose. */
 export function planCourant(ctx) {
-  const propose = Scenarios.proposerPlan(ctx.dossierMoteur, ctx.regles);
+  const propose = Scenarios.proposerPlan(ctx.dossierMoteur, ctx.regles, { impots: ctx.impots });
   const d = dossier(), mesures = d.mesures?.[d.cible] ?? propose.mesures;
   const apres = analyser(Scenarios.appliquerMesures(ctx.dossierMoteur, mesures, ctx.regles), ctx.regles, { impots: ctx.impots });
   return { mesures, propose: propose.mesures, avant: ctx.analyse, apres };
