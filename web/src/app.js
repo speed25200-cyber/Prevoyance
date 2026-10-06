@@ -42,7 +42,16 @@ function icone(nom) {
 function marquer() {
   const actif = document.body.dataset.panneau === 'dossier' ? 'dossier' : etat.vue;
   for (const b of $('onglets').children) b.setAttribute('aria-selected', String(/** @type {HTMLElement} */ (b).dataset.vue === actif));
+  placerBulle();
 }
+/** La bulle de verre du menu se pose sous l'entrée active (elle glisse d'une entrée à l'autre). */
+function placerBulle() {
+  const menu = $('onglets'), actif = /** @type {HTMLElement|null} */ (menu.querySelector('[aria-selected="true"]'));
+  if (!actif) return;
+  menu.style.setProperty('--bulle-x', `${actif.offsetLeft}px`);
+  menu.style.setProperty('--bulle-l', `${actif.offsetWidth}px`);
+}
+new ResizeObserver(placerBulle).observe($('onglets'));
 function aller(cible) {
   if (cible === 'dossier') { document.body.dataset.panneau = 'dossier'; marquer(); scrollTo({ top: 0 }); return; }
   document.body.dataset.panneau = 'analyse';

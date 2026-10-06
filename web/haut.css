@@ -129,19 +129,6 @@ select { background-color: transparent; }
 
 /* ---------- clair : galerie */
 @media (prefers-color-scheme: light) {
-  .fond { display: none; }
-  /* sur un grand écran, le menu remonte dans l'en-tête, en mots soulignés */
-  @media (min-width: 900px) {
-    .barre { background: var(--fond); padding-bottom: 16px; }
-    .onglets { position: static; transform: none; background: none; border: 0; box-shadow: none; padding: 0; gap: clamp(16px, 2.2vw, 30px); -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .onglets button { padding: 8px 0; border-radius: 0; position: relative; }
-    .onglets button::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--encre); transform: scaleX(0); transform-origin: left; transition: transform .45s var(--aise); }
-    .onglets button[aria-selected="true"] { background: none; color: var(--encre); }
-    .onglets button[aria-selected="true"]::after { transform: scaleX(1); }
-    .scene { padding-bottom: 60px; }
-  }
-  .carte { border-radius: 0; border: 0; border-top: 1px solid var(--encre); background: none; padding: 24px 0 8px; }
-  .bloc { border: 0; }
   .tete { border-top: 0; padding: 0; background: #fff !important; border-radius: 30px; position: relative; min-height: clamp(460px, 62vh, 620px); display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; }
   .tete .resume { padding: clamp(26px, 4vw, 56px); width: min(56%, 640px); }
   .tete .scene-toile { position: absolute; left: auto; right: 0; top: 0; width: 46%; height: 100%; z-index: 0; }
@@ -151,24 +138,7 @@ select { background-color: transparent; }
     box-shadow: 0 18px 40px -24px rgba(11, 19, 34, .5); }
   .scene-puce:hover, .scene-puce.actif, .scene-puce:focus-visible { background: #fff; }
   .scene-puce b { font-size: 19px; font-weight: 500; }
-  /* les cinq risques : une liste fine */
-  .risques { display: block; border-top: 1px solid var(--encre); }
-  .risque { display: grid; grid-template-columns: minmax(0, 1fr) auto clamp(110px, 16vw, 190px); align-items: center; gap: 22px; width: 100%; padding: 17px 0; border: 0; border-bottom: 1px solid var(--filet);
-    border-radius: 0; background: none; text-align: left; }
-  .risque h3 { min-height: 0; font: 400 17px/1.3 var(--police); letter-spacing: -.01em; text-transform: none; color: var(--encre); }
-  .risque[aria-selected="true"] { border-color: var(--filet); }
-  .risque[aria-selected="true"] h3 { font-weight: 600; }
-  .risque b { font-size: 22px; font-weight: 400; }
-  .risque small { display: none; }
-  .barre-couv { height: 3px; background: var(--filet); }
-  .chiffre, .tenue, .option { background: none; border-radius: 0; border-top: 1px solid var(--filet); padding-left: 0; }
-  .option.meilleure { background: none; border: 0; border-top: 2px solid var(--encre); }
-  .attente, .remarque, .alertes li { background: none; border-radius: 0; border-left: 2px solid var(--encre); padding: 2px 0 2px 16px; }
-  .alertes li { border-left: 0; border-top: 1px solid var(--filet); padding: 13px 0; }
-  .alertes li:first-child { border-top: 0; }
-  .conformite { border-left: 0; padding-left: 0; }
   .champ input[type="text"], .champ input[type="date"], .champ input[type="password"], .champ select, .champ textarea { background-color: var(--creux); }
-  .bloc { background: #fff; }
   .verrou-carte { box-shadow: 0 40px 80px -50px rgba(11, 19, 34, .5); }
   .lignes em { background: var(--creux); }
 }
@@ -206,7 +176,6 @@ select { background-color: transparent; }
   .tete .resume { width: auto; padding: 24px 20px 26px; }
   .scene-piliers { left: 14px; right: 14px; top: 14px; grid-auto-flow: column; justify-content: start; gap: 8px; }
   .scene-puce { padding: 8px 10px; } .scene-puce b { font-size: 15px; }
-  .risque { grid-template-columns: minmax(0, 1fr) auto 70px; gap: 12px; }
 }
 /* ---------- champ de date : sur iPhone il garde sinon sa largeur propre et sort de sa carte */
 .champ, .champs, .rangee { min-width: 0; }
@@ -218,12 +187,7 @@ select { background-color: transparent; }
    La scène est une image fixe qui respire lentement : l'animation est faite par la carte graphique, sans scintiller. */
 @keyframes respire { from { transform: scale(1); } to { transform: scale(1.07); } }
 @media (pointer: coarse) {
-  .carte, .bloc, .risque { -webkit-backdrop-filter: none; backdrop-filter: none; }
   @media (prefers-reduced-motion: no-preference) { .tete .scene-toile { animation: respire 26s ease-in-out infinite alternate; will-change: transform; } }
-}
-@media (pointer: coarse) and (prefers-color-scheme: dark) {
-  .carte, .bloc, .risque { background: linear-gradient(160deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)), rgba(13, 22, 38, .8);
-    box-shadow: 0 20px 44px -30px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .16); }
 }
 
 /* ---------- téléphone : un écran simple, à la manière des réglages du système.
@@ -285,7 +249,6 @@ select { background-color: transparent; }
   .risque h3 { min-height: 0; margin: 0; font: 400 16px/1.3 var(--police); letter-spacing: 0; text-transform: none; color: var(--encre); }
   .risque[aria-selected="true"] h3 { font-weight: 700; }
   .risque b { font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
-  .risque small { display: none; }
   .risque .barre-couv { grid-column: 1 / -1; }
 
   /* cartes repliables : le titre ouvre et ferme */
