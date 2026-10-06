@@ -31,7 +31,8 @@ cd ios && xcodegen generate && open Prevoyance.xcodeproj
 
 Avant TestFlight, trois choses sont à faire par le titulaire du compte Apple (elles ne peuvent pas l'être d'ici) :
 
-1. créer l'identifiant d'app et la fiche dans App Store Connect, et reporter cet identifiant dans `project.yml`
-   et `codemagic.yaml` (aujourd'hui `ch.prevoyance.app`, provisoire) ;
+1. créer l'identifiant d'app (en cochant la capacité **Data Protection**, seul droit demandé par l'app) et la fiche
+   dans App Store Connect, et reporter cet identifiant dans `project.yml` et `codemagic.yaml` (aujourd'hui
+   `ch.prevoyance.app`, provisoire) ;
 2. ajouter ce dépôt comme application dans Codemagic ;
 3. y renseigner la variable `APP_STORE_APPLE_ID` (le numéro de la fiche).

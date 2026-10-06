@@ -43,6 +43,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ch.prevoyance.app
+    # Seul droit demandé : la protection des données. iOS chiffre les fichiers de l'app (dossiers des clients) dès que
+    # l'appareil est verrouillé. La capacité « Data Protection » doit être cochée sur l'identifiant de l'app.
+    entitlements:
+      path: Prevoyance/Prevoyance.entitlements
+      properties:
+        com.apple.developer.default-data-protection: NSFileProtectionComplete
     info:
       path: Prevoyance/Info.plist
       properties:
