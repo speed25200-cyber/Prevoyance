@@ -282,9 +282,8 @@ svg .axe { font: 500 13px var(--police); }
   transform: translate3d(var(--fx, 0px), var(--fy, 0px), 0) scale(var(--fz, 1.08)); will-change: transform; }
 .fond video { opacity: 0; transition: opacity 1.6s var(--aise); }
 .fond.pret video { opacity: 1; }
-.fond i { position: absolute; inset: 0; background: color-mix(in srgb, var(--fond) 80%, transparent); }
-.fond img, .fond video { filter: saturate(.35); }
-@media (prefers-color-scheme: dark) { .fond i { background: color-mix(in srgb, var(--fond) 62%, transparent); } }
+.fond i { position: absolute; inset: 0; background: color-mix(in srgb, var(--fond) 58%, transparent); }
+@media (prefers-color-scheme: dark) { .fond i { background: color-mix(in srgb, var(--fond) 45%, transparent); } }
 .carte, .bloc, .risque { background: color-mix(in srgb, var(--surface) 88%, transparent); }
 @media (min-width: 1000px) {
   .barre { background: color-mix(in srgb, var(--surface) 62%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(28px); backdrop-filter: saturate(1.6) blur(28px); }

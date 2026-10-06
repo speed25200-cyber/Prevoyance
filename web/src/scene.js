@@ -11,8 +11,8 @@
 
 /** Position des colonnes dans l'image (fraction de la largeur et de la hauteur) : sommet de chaque colonne. */
 const COLONNES = {
-  sombre: [{ x: 0.692, y: 0.33 }, { x: 0.75, y: 0.2 }, { x: 0.81, y: 0.09 }],
-  clair: [{ x: 0.657, y: 0.39 }, { x: 0.716, y: 0.22 }, { x: 0.778, y: 0.12 }],
+  sombre: [{ x: 0.704, y: 0.373 }, { x: 0.773, y: 0.243 }, { x: 0.848, y: 0.107 }],
+  clair: [{ x: 0.702, y: 0.404 }, { x: 0.773, y: 0.28 }, { x: 0.845, y: 0.14 }],
 };
 const RAPPORT = 3840 / 1648;
 
