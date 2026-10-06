@@ -46,6 +46,12 @@
     }
     d.querySelector('#onglets [data-vue=rapport]').click();
     noter('rapport : au moins six pages', await jusqua(() => d.querySelectorAll('.page').length >= 6), String(d.querySelectorAll('.page').length));
+    // conformité : fiche de l'intermédiaire (art. 45 LSA) et procès-verbal de conseil en fin de rapport
+    const titres = [...d.querySelectorAll('.page header h2')].map(x => x.textContent);
+    noter('rapport : informations de l’intermédiaire et procès-verbal de conseil', titres.includes('Informations de l’intermédiaire') && titres.at(-1) === 'Procès-verbal de conseil', titres.slice(-2).join(' | '));
+    noter('rapport : le bandeau signale ce qui manque', /sur \d+/.test(d.querySelector('.conformite h2')?.textContent ?? '') && d.querySelectorAll('.page .a-completer').length > 0, d.querySelector('.conformite h2')?.textContent);
+    const conf = await import('./src/conformite.js');
+    noter('conformité : une fiche vide n’est pas complète, les signatures sont sur la dernière page', conf.controle().some(x => !x.ok) && !!d.querySelector('.page:last-child .r-signatures'));
     // langues
     for (const l of ['de', 'it', 'en', 'fr']) { d.querySelector(`[data-langue=${l}]`).click(); await jusqua(() => d.documentElement.lang === l && d.querySelectorAll('.page').length >= 6); }
     noter('retour au français', d.documentElement.lang === 'fr');

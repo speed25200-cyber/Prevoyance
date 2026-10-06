@@ -11,6 +11,7 @@ import { etat, garder, dossier } from '../etat.js';
 import { RISQUES, detailRisque, texteAlerte } from './analyse.js';
 import { planCourant, budgetPlan } from './plan.js';
 import { Impots } from '../../../moteur/src/index.js';
+import * as Conformite from '../conformite.js';
 
 const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
 
@@ -132,9 +133,9 @@ export function afficher(ctx) {
       ligne(t('rp_moteur'), `v${VERSION}`)),
     h('h3', {}, t('rp_sources')),
     h('ul', { class: 'r-sources' }, ...Object.values(regles.sources).map(s => h('li', {}, String(s)))),
-    h('p', { class: 'r-texte' }, t('rp_avertissement')),
-    h('div', { class: 'r-signatures' }, h('div', {}, h('span', {}, t('rp_signClient'))), h('div', {}, h('span', {}, t('rp_signConseiller')))),
     pied(avecDeces ? 7 : 6));
+  // ---- 8 et 9. informations de l'intermédiaire (art. 45 LSA) et procès-verbal de conseil, avec les signatures
+  const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, avecDeces ? 8 : 7);
 
-  zone.replaceChildren(outils, h('div', { class: 'rapport' }, ...[couverture, synthese, retraite, invalidite, deces, pagePlan, sources].filter(Boolean)));
+  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' }, ...[couverture, synthese, retraite, invalidite, deces, pagePlan, sources, ...legales].filter(Boolean)));
 }

@@ -370,3 +370,17 @@ dialog.scan textarea:focus { outline: none; border-color: var(--accent); }
 .scan-ligne .montant input { width: 100%; border: 0; border-radius: 10px; background: var(--surface); color: inherit; padding: 10px 10px 10px 50px; font-weight: 600; min-height: 44px; }
 .scan-actions { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 @media (max-width: 640px) { .scan-ligne { grid-template-columns: auto minmax(0, 1fr); } .scan-ligne .montant { grid-column: 1 / -1; } }
+
+/* ---------- conformité : saisie et bandeau du rapport */
+.champ textarea { width: 100%; min-height: 84px; border: 1.5px solid transparent; border-radius: 12px; background: var(--creux); color: inherit; padding: 12px 14px;
+  font: inherit; font-size: 17px; font-weight: 500; line-height: 1.4; resize: vertical; }
+.champ textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+.champ textarea::placeholder { color: var(--encre-3); font-weight: 400; }
+.bascule { gap: 14px; line-height: 1.3; }
+.conformite { border-left: 4px solid var(--attention); margin-bottom: 18px; display: grid; gap: 6px; }
+.conformite.complete { border-left-color: var(--ok); }
+.page .a-completer { font-style: normal; color: var(--encre-2); border-bottom: 1px dotted currentColor; }
+.page .r-fiche td { white-space: pre-line; }
+@media print { .conformite { display: none !important; } }
+/* impression : aucune marge de l'écran ne doit ajouter une page vide après le rapport */
+@media print { .scene { padding: 0 !important; max-width: none !important; margin: 0 !important; } .analyse { gap: 0 !important; } html, body { height: auto !important; } }

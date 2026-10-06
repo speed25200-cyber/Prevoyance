@@ -7,6 +7,7 @@
 
 import { h, $ } from './ui.js';
 import * as Scan from './scan.js';
+import * as Conformite from './conformite.js';
 import { etat, garder, dossier, nouveauDossier, supprimerDossier, dupliquerDossier, dossierVide, dossierExemple, CANTONS, aujourdhui } from './etat.js';
 
 /** @type {{t: (c: string, v?: any) => string, f: any, apresChangement: () => void, reconstruire: () => void}} */
@@ -181,6 +182,9 @@ export function construire() {
       curseur('besoins.invalidite', 'besoinInvalidite', 0.5, 1, 0.05, v => `${Math.round(v * 100)} % ${t('duRevenu')}`),
       curseur('besoins.deces', 'besoinDeces', 0.4, 1, 0.05, v => `${Math.round(v * 100)} % ${t('duRevenu')}`),
       curseur('ageRetraite', 'ageRetraite', 58, 70, 1, v => `${v} ${t('ans')}`)),
+    // conformité : procès-verbal de conseil du dossier, puis fiche de l'intermédiaire (une fois pour tous les dossiers)
+    bloc('lg_conseil', ouvert('lg_conseil', true), ...Conformite.champsConseil(ctx, construire)),
+    bloc('lg_intermediaire', ouvert('lg_intermediaire', false), ...Conformite.champsIntermediaire(ctx, construire)),
   ];
   blocs.forEach((b, i) => b.style.setProperty('--i', String(i)));
   $('saisie').replaceChildren(

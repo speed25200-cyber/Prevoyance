@@ -26,6 +26,13 @@ S'y ajoute le **scan du certificat de prévoyance** (2e pilier) : le texte est l
 Dans l'app iPhone / iPad : appareil photo, reconnaissance de texte et modèle de langage de l'appareil. Dans un
 navigateur : texte collé, ou « Scanner du texte » de Safari. Rien n'est envoyé.
 
+**Conformité (LSA révisée, en vigueur depuis le 1er janvier 2024).** L'application aide l'intermédiaire à documenter
+son conseil : fiche d'information selon l'art. 45 LSA (nom et adresse, lié ou non lié, formation, responsabilité,
+traitement des données), conflits d'intérêts (art. 45a), rémunération des intermédiaires non liés (art. 45b), et
+procès-verbal de conseil avec la vérification d'une assurance sur la vie qualifiée (art. 39j et 39k). Ces deux pages
+terminent le rapport ; un bandeau signale ce qui reste à compléter. L'application ne remplace ni l'enregistrement
+auprès de la FINMA, ni les documents de l'assureur, ni un avis juridique.
+
 S'y ajoutent aussi : un portefeuille de dossiers (créer, dupliquer, exporter, importer), l'analyse de chacun des deux
 membres d'un couple, un mode présentation plein écran, le clair et le sombre selon l'appareil.
 
