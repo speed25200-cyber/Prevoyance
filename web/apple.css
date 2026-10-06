@@ -398,3 +398,15 @@ dialog.scan textarea:focus { outline: none; border-color: var(--accent); }
 .verrou-carte [role="alert"]:empty { display: none; }
 body:has(.verrou) .barre, body:has(.verrou) .scene { visibility: hidden; }
 @media print { .verrou { display: none !important; } }
+
+/* ---------- conseil personnalisé */
+.conseil-resume { font-size: 19px; line-height: 1.45; max-width: 70ch; margin: 0 0 16px; }
+.conseil-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.conseil-point { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; padding: 15px 0; border-top: 1px solid var(--filet); align-items: start; }
+.conseil-rang { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 600 14px/1 var(--police); border: 1.5px solid var(--encre); }
+.conseil-point small { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--encre-2); }
+.conseil-point p { margin-top: 3px; font-size: 17px; line-height: 1.45; }
+.conseil-point[data-urgence="maintenant"] .conseil-rang { background: var(--encre); color: var(--fond); }
+.conseil-actions { display: grid; gap: 6px; justify-items: end; }
+.page .conseil-resume { font-size: 15px; } .page .conseil-point { padding: 10px 0; } .page .conseil-point p { font-size: 13.5px; } .page .conseil-point small { font-size: 9.5px; }
+.page .conseil-rang { width: 24px; height: 24px; font-size: 12px; }

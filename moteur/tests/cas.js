@@ -5,7 +5,7 @@
  * (tests/run.mjs, intégration continue) et dans l'app iOS.
  */
 
-import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat } from '../src/index.js';
+import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat, Conseil } from '../src/index.js';
 
 /** @param {(nom: string, obtenu: any, attendu: any, tolerance?: number) => void} egal @param {{r26: any, r27: any, i26?: any}} regles */
 export function cas(egal, { r26, r27, i26 }) {
@@ -234,6 +234,28 @@ export function casScenarios(egal, { r26, i26, c26 }) {
     [210400, 38120, 38400, 23040, 18500, 96000]);
   egal('Certificat IT', Certificat.extraire("Avere di vecchiaia 88'000.00\nRendita annua di vecchiaia 19'300.00").champs.lppRenteVieillesse.valeur, 19300);
   egal('Texte sans rapport : rien de proposé', Object.keys(Certificat.extraire('Facture n° 2026-118\nTotal 1 250.00').champs), []);
+  // ---- conseil personnalisé : déduit du dossier, dans l'ordre d'un conseiller
+  {
+  const menage = { dateAnalyse: '2026-01-01', canton: 'VD', etatCivil: 'marie', enfants: [{ dateNaissance: '2019-01-01' }],
+    personne: { dateNaissance: '1986-01-01', sexe: 'h', statut: 'salarie', revenu: 110000, avs: { anneesManquantes: 2 }, lpp: { avoir: 90000, rachatPossible: 40000 } },
+    conjoint: { dateNaissance: '1988-01-01', sexe: 'f', statut: 'sans', revenu: 0 } };
+  const plan = Scenarios.proposerPlan(menage, r26), conseil = Conseil.rediger(plan.avant, plan.mesures, plan.apres);
+  const cles = conseil.points.map(p => p.cle), rangs = conseil.points.map(p => Conseil.URGENCES.indexOf(p.urgence));
+  egal('Conseil : les risques avant la retraite, les pièces à la fin', rangs.every((x, i) => i === 0 || rangs[i - 1] <= x), true);
+  egal('Conseil : chaque lacune a sa recommandation', ['cs_invalidite', 'cs_deces', 'cs_retraite'].filter(c => !cles.includes(c)),
+    [plan.avant.risques.invaliditeMaladie.lacune > 0 || plan.avant.risques.invaliditeAccident.lacune > 0 ? null : 'cs_invalidite',
+      plan.avant.risques.decesMaladie.capital > 0 || plan.avant.risques.decesAccident.capital > 0 ? null : 'cs_deces', plan.avant.risques.retraite.lacune > 0 ? null : 'cs_retraite'].filter(Boolean));
+  const troisA = conseil.points.find(p => p.cle === 'cs_3a');
+  egal('Conseil : le versement 3a est celui du plan', troisA?.v.montantChf, plan.mesures.versement3a);
+  egal('Conseil : l’économie d’impôt ne dépasse pas celle du potentiel entier', troisA.v.economieChf <= plan.avant.potentiels.pilier3a.economieImpot, true);
+  egal('Conseil : années AVS manquantes signalées', conseil.points.find(p => p.cle === 'cs_anneesAVS')?.v.annees, 2);
+  egal('Conseil : pièces à réunir quand des valeurs sont estimées', cles.includes('cs_extraitCI'), true);
+  egal('Conseil : le résumé compte les lacunes avant et après', [conseil.resume.v.lacunes > 0, conseil.resume.v.apres >= conseil.resume.v.avant], [true, true]);
+  const serein = { dateAnalyse: '2026-01-01', etatCivil: 'celibataire', personne: { dateNaissance: '1975-01-01', sexe: 'h', statut: 'salarie', revenu: 60000, ramd: 60000,
+    lpp: { avoir: 900000, renteVieillesse: 60000, renteInvalidite: 54000 }, ijm: { assure: true } } };
+  const p2 = Scenarios.proposerPlan(serein, r26), c2 = Conseil.rediger(p2.avant, p2.mesures, p2.apres);
+  egal('Conseil : dossier couvert, aucune recommandation de risque', [c2.resume.cle, c2.points.filter(p => p.urgence === 'maintenant').length], ['cs_resumeCouvert', 0]);
+  }
   egal('Champs d’un modèle de langage : contrôlés et bornés', Certificat.normaliser({ lppAvoir: 148250.4, lppRenteVieillesse: 12, lppRachat: null, autre: 5 }),
     { lppAvoir: { valeur: 148250, ligne: '' } });
 }

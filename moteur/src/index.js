@@ -16,6 +16,7 @@ export * as LAA from './laa.js';
 export * as Impots from './impots.js';
 export * as Scenarios from './scenarios.js';
 export * as Certificat from './certificat.js';
+export * as Conseil from './conseil.js';
 export * as outils from './util.js';
 
 export const VERSION = '0.5.0';

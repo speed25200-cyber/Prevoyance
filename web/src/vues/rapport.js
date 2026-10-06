@@ -12,6 +12,7 @@ import { RISQUES, detailRisque, texteAlerte } from './analyse.js';
 import { planCourant, budgetPlan } from './plan.js';
 import { Impots } from '../../../moteur/src/index.js';
 import * as Conformite from '../conformite.js';
+import * as ConseilTexte from '../conseil-texte.js';
 
 const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
 
@@ -119,7 +120,9 @@ export function afficher(ctx) {
         ligne(t('pl_budgetEpargne'), `${f.chf(b.epargne)} ${t('parAn')}`), ligne(t('pl_budgetPrimes'), b.attendues ? `${f.chf(b.primes)} ${t('parAn')} (${t('pl_offresAttendues', { n: b.attendues })})` : `${f.chf(b.primes)} ${t('parAn')}`),
         ligne(t('pl_budgetEconomie'), `− ${f.chf(b.economie)} ${t('parAn')}`), ligne(t('pl_budgetNet'), `${f.chf(b.net)} ${t('parAn')} · ${f.chf(b.net / 12)} ${t('parMois')}`)));
     })(),
-    h('p', { class: 'petit' }, t('pl_primes')), pied(avecDeces ? 6 : 5));
+    h('p', { class: 'petit' }, t('pl_primes')), pied(avecDeces ? 7 : 6));
+  // ---- conseil personnalisé : avant le plan chiffré
+  const pageConseil = ConseilTexte.page(ctx, { page, entete, pied }, avecDeces ? 6 : 5);
 
   // ---- 7. hypothèses et sources
   const hyp = a.hypotheses;
@@ -133,9 +136,9 @@ export function afficher(ctx) {
       ligne(t('rp_moteur'), `v${VERSION}`)),
     h('h3', {}, t('rp_sources')),
     h('ul', { class: 'r-sources' }, ...Object.values(regles.sources).map(s => h('li', {}, String(s)))),
-    pied(avecDeces ? 7 : 6));
+    pied(avecDeces ? 8 : 7));
   // ---- 8 et 9. informations de l'intermédiaire (art. 45 LSA) et procès-verbal de conseil, avec les signatures
-  const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, avecDeces ? 8 : 7);
+  const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, avecDeces ? 9 : 8);
 
-  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' }, ...[couverture, synthese, retraite, invalidite, deces, pagePlan, sources, ...legales].filter(Boolean)));
+  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, sources, ...legales].filter(Boolean)));
 }

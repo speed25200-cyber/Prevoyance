@@ -108,7 +108,7 @@ proposent la mise à jour dans la vue « Données ». Les règles d'une nouvelle
 python -m http.server 8790                       # depuis la racine du dépôt
 ```
 
-- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (145 cas).
+- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (153 cas).
 - Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (35 essais : parcours, quatre langues complètes, largeur de téléphone,
   pages légales du rapport, chiffrement).
 - Vitesse : une analyse complète prend environ 0,06 ms sur un PC de bureau (mesure dans un navigateur ouvert).

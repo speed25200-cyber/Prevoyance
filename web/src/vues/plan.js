@@ -10,6 +10,7 @@ import { analyser, Scenarios, Impots } from '../../../moteur/src/index.js';
 import { dossier, garder } from '../etat.js';
 import { curseur } from '../formulaire.js';
 import { RISQUES } from './analyse.js';
+import * as ConseilTexte from '../conseil-texte.js';
 
 /** @type {Record<string, HTMLElement>} */ let r = {};
 
@@ -42,6 +43,7 @@ export function monter(ctx, racine) {
       h('div', { class: 'avant-apres' },
         h('div', {}, h('small', {}, t('pl_avant')), ref('scoreAvant', h('b', {}, '0'))), h('span', { class: 'fleche', 'aria-hidden': 'true' }, '→'),
         h('div', { class: 'apres' }, h('small', {}, t('pl_apres')), ref('scoreApres', h('b', {}, '0'))))),
+    ref('conseil', h('div', {})),
     h('div', { class: 'deux' },
       h('div', { class: 'carte' }, h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('pl_mesures')), h('p', {}, t('pl_mesures_d'))),
         h('button', { type: 'button', class: 'pastille', onclick: () => { if (d.mesures) delete d.mesures[d.cible]; garder(); monter(ctx, racine); } }, t('pl_proposer'))),
@@ -73,6 +75,7 @@ export function afficher(ctx) {
   r.phrase.textContent = restantes === 0 ? t('pl_toutCouvert') : restantes === 1 ? t('pl_reste1') : t('pl_reste', { n: restantes });
   const mensuel = ((mesures.versement3a ?? 0) + (mesures.epargneLibre ?? 0)) / 12;
   r.sousPhrase.textContent = t('pl_effort', { m: f.chf(mensuel), r: f.chf(mesures.rachatLPP ?? 0) });
+  r.conseil.replaceChildren(ConseilTexte.carte(ctx));   // le conseil suit le plan réglé par le conseiller
   r.effets.replaceChildren(...RISQUES.filter(c => avant.risques[c].besoin > 0).map(c => {
     const x = avant.risques[c], y = apres.risques[c], echelle = Math.max(x.besoin, 1);
     return h('div', { class: 'effet' },
