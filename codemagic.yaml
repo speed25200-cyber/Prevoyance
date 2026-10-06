@@ -77,9 +77,28 @@ workflows:
             grep -h -E "error:|error :|BUILD FAILED|ARCHIVE FAILED|Provisioning profile|entitlement" /tmp/xcodebuild_logs/*.log | sort -u | head -80
             exit 65
           }
+      - name: Envoi sur TestFlight
+        working_directory: ios
+        script: |
+          # L'envoi se fait ici plutôt que par la publication automatique : les serveurs d'Apple renvoient parfois une
+          # erreur 500 passagère pendant un transfert qui réussit quand même. Seule la confirmation d'Apple compte.
+          set +e
+          for essai in 1 2 3; do
+            app-store-connect publish --path build/ios/ipa/*.ipa 2>&1 | tee envoi.log
+            if grep -q "UPLOAD SUCCEEDED" envoi.log; then
+              echo "==== Apple confirme la réception du build ===="
+              grep -E "Delivery UUID|Version code|Version:" envoi.log | sort -u
+              exit 0
+            fi
+            if grep -q "must be higher than the previously uploaded version" envoi.log; then
+              echo "==== Ce numéro de build est déjà chez Apple : l'envoi précédent avait abouti ===="
+              exit 0
+            fi
+            echo "==== envoi non confirmé (essai $essai), nouvelle tentative dans 30 s ===="
+            sleep 30
+          done
+          echo "==== envoi refusé par Apple ===="
+          grep -E "ERROR|error" envoi.log | sort -u | head -30
+          exit 1
     artifacts:
       - ios/build/ios/ipa/*.ipa
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
