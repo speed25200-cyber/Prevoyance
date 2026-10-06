@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Prévoyance — un univers, trois écrans</title>
+<!-- Un univers de design montré sur trois écrans de l'app : accueil, dossier du client, analyse.
+     ?v=nuit|a|b|c|d|e|f choisit l'univers. Les scènes sont générées (Higgsfield) ; planches rendues en image par Edge. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1640px; height: 1180px; background: var(--planche); font-family: var(--police); display: grid; grid-template-rows: auto 1fr; padding: 44px 0 0; }
+  header { text-align: center; color: var(--legende); }
+  header b { display: block; font: 700 34px/1.1 -apple-system, "Segoe UI", sans-serif; letter-spacing: -.02em; }
+  header span { font: 400 18px -apple-system, "Segoe UI", sans-serif; opacity: .7; }
+  main { display: flex; gap: 54px; justify-content: center; align-items: center; }
+  figure { display: grid; gap: 14px; justify-items: center; }
+  figcaption { font: 600 14px -apple-system, "Segoe UI", sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--legende); opacity: .6; }
+  .tel { width: 430px; height: 932px; border-radius: 62px; padding: 14px; background: #0c0c0e; box-shadow: 0 50px 90px -40px rgba(0, 0, 0, .55); }
+  .ecran { position: relative; width: 100%; height: 100%; border-radius: 50px; overflow: hidden; background: var(--fond); color: var(--encre); }
+  .ile { position: absolute; left: 50%; top: 14px; width: 118px; height: 34px; margin-left: -59px; border-radius: 20px; background: #000; z-index: 5; }
+  .heure { position: absolute; left: 36px; top: 21px; font: 600 16px -apple-system, "Segoe UI", sans-serif; z-index: 5; color: var(--heure, var(--encre)); }
+  .sur { font: var(--sur-police, 600 12px -apple-system, "Segoe UI", sans-serif); letter-spacing: var(--sur-espace, .3em); text-transform: uppercase; color: var(--discret); }
+  .titre { font: var(--titre-police); letter-spacing: var(--titre-espace, -.03em); }
+  .panneau { background: var(--panneau); border: var(--panneau-bord); border-radius: var(--rayon); box-shadow: var(--panneau-ombre, none); }
+  .cta { display: grid; place-items: center; height: 56px; border-radius: var(--rayon-bouton); background: var(--cta); color: var(--cta-encre); font: 600 17px -apple-system, "Segoe UI", sans-serif; box-shadow: var(--cta-ombre, none); }
+  .cta.second { background: var(--second); color: var(--encre); border: var(--second-bord, 0); font-weight: 500; box-shadow: none; }
+  .barre { position: absolute; left: 18px; right: 18px; bottom: 22px; height: 66px; border-radius: var(--rayon-barre); background: var(--barre); border: var(--panneau-bord); display: flex; justify-content: space-around; align-items: center;
+    font: 600 11px -apple-system, "Segoe UI", sans-serif; color: var(--discret); box-shadow: var(--panneau-ombre, none); z-index: 4; }
+  .barre b { padding: 12px 14px; border-radius: var(--rayon-bouton); background: var(--actif); color: var(--actif-encre); }
+
+  /* accueil */
+  .accueil { background-image: var(--scene); background-size: cover; background-position: center top; }
+  .accueil .voile { position: absolute; inset: 0; background: var(--voile); }
+  .accueil .bas { position: absolute; left: 26px; right: 26px; bottom: 44px; }
+  .accueil .titre { font-size: 40px; line-height: 1.05; margin: 12px 0 24px; }
+  .ligne-dossier { display: flex; align-items: center; gap: 14px; height: 78px; padding: 0 18px; }
+  .ligne-dossier svg { width: 46px; height: 46px; flex: none; transform: rotate(-90deg); }
+  .ligne-dossier div { flex: 1; font-family: -apple-system, "Segoe UI", sans-serif; } .ligne-dossier b { display: block; font-size: 18px; } .ligne-dossier span { font-size: 14px; color: var(--discret); }
+  .duo { display: flex; gap: 12px; margin-top: 14px; } .duo .cta:first-child { flex: 1; } .duo .cta.second { padding: 0 22px; }
+
+  /* dossier */
+  .dossier, .analyse { padding: 72px 22px 0; }
+  .dossier .titre, .analyse .titre { font-size: 34px; margin: 6px 0 4px; }
+  .dossier > p, .analyse > p.note { font: 400 15px -apple-system, "Segoe UI", sans-serif; color: var(--discret); margin-bottom: 18px; }
+  .champs { padding: 2px 18px; font-family: -apple-system, "Segoe UI", sans-serif; }
+  .champs p { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--filet); font-size: 16px; }
+  .champs p:last-child { border-bottom: 0; }
+  .champs p b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .champs p i { font-style: normal; color: var(--discret); }
+  .interrupteur { width: 50px; height: 30px; border-radius: 15px; background: var(--accent); position: relative; }
+  .interrupteur::after { content: ""; position: absolute; right: 3px; top: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; }
+  .rubriques { display: flex; gap: 8px; margin: 16px 0 14px; font: 600 13px -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  .rubriques span { padding: 9px 14px; border-radius: var(--rayon-bouton); background: var(--second); border: var(--second-bord, 0); white-space: nowrap; color: var(--discret); }
+  .rubriques span.actif { background: var(--actif); color: var(--actif-encre); border-color: transparent; }
+
+  /* analyse */
+  .nombre { font: var(--nombre-police); letter-spacing: -.045em; color: var(--nombre, var(--encre)); margin: 8px 0 2px; }
+  .nombre small { font: 400 16px -apple-system, "Segoe UI", sans-serif; letter-spacing: 0; color: var(--discret); margin-left: 8px; }
+  .tete { padding: 20px 20px 18px; }
+  .tete .champs { padding: 0; margin: 10px 0 14px; }
+  .risques { margin-top: 14px; padding: 4px 18px; font-family: -apple-system, "Segoe UI", sans-serif; }
+  .risque { padding: 13px 0; border-bottom: 1px solid var(--filet); }
+  .risque:last-child { border-bottom: 0; }
+  .risque p { display: flex; justify-content: space-between; font-size: 16px; } .risque p b { font-weight: 600; }
+  .risque div { height: 4px; border-radius: 2px; background: var(--filet); margin-top: 9px; overflow: hidden; } .risque div i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+</style>
+<body>
+<header><b id="nom"></b><span id="phrase"></span></header>
+<main>
+  <figure><div class="tel"><div class="ecran accueil"><div class="ile"></div><span class="heure" style="color:var(--heure-scene)">9:41</span><div class="voile"></div><div class="bas">
+    <p class="sur">Prévoyance</p><p class="titre">Les lacunes des trois piliers, en clair.</p>
+    <div class="panneau ligne-dossier"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="var(--filet)" stroke-width="4"/><circle cx="24" cy="24" r="20" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="10"/></svg><div><b>Famille Rochat</b><span>6 octobre 2026 · score 92</span></div><span style="opacity:.5">›</span></div>
+    <div class="duo"><div class="cta">Nouveau dossier</div><div class="cta second">Exemple</div></div></div></div></div><figcaption>Accueil</figcaption></figure>
+
+  <figure><div class="tel"><div class="ecran dossier"><div class="ile"></div><span class="heure">9:41</span>
+    <p class="sur">Famille Rochat</p><p class="titre">Dossier</p><p>La situation du client.</p>
+    <div class="rubriques"><span class="actif">Client</span><span>Ménage</span><span>2e pilier</span><span>3e pilier</span><span>Logement</span></div>
+    <div class="panneau champs">
+      <p><span>Nom du dossier</span><b>Famille Rochat</b></p><p><span>Canton</span><i>VD · Vaud ›</i></p><p><span>Commune</span><i>Lausanne</i></p>
+      <p><span>Date de naissance</span><b>21.03.1987</b></p><p><span>Activité</span><i>Salarié ›</i></p><p><span>Revenu annuel brut</span><b>CHF 104’000</b></p>
+      <p><span>Assurance-accidents</span><span class="interrupteur"></span></p></div>
+    <div class="cta" style="margin-top:16px">Voir l’analyse</div>
+    <div class="barre"><b>Dossier</b><span>Analyse</span><span>Scénarios</span><span>Conseil</span><span>Rapport</span></div></div></div><figcaption>Dossier du client</figcaption></figure>
+
+  <figure><div class="tel"><div class="ecran analyse"><div class="ile"></div><span class="heure">9:41</span>
+    <p class="sur">Retraite — lacune</p>
+    <div class="panneau tete" style="margin-top:12px"><p class="nombre">CHF 1’190<small>par mois</small></p>
+      <div class="champs"><p><span>Couvert</span><b>83 %</b></p><p><span>Besoin</span><b>CHF 83’200</b></p><p><span>Capital à prévoir</span><b>CHF 298’000</b></p></div>
+      <div class="cta">Voir le conseil personnalisé →</div></div>
+    <div class="panneau risques">
+      <div class="risque"><p><b>Retraite</b><b>− CHF 1’190</b></p><div><i style="width:83%"></i></div></div>
+      <div class="risque"><p><span>Invalidité · maladie</span><b>− CHF 309</b></p><div><i style="width:91%"></i></div></div>
+      <div class="risque"><p><span>Invalidité · accident</span><b>CHF 0</b></p><div><i style="width:100%"></i></div></div>
+      <div class="risque"><p><span>Décès · maladie</span><b>− CHF 110</b></p><div><i style="width:97%"></i></div></div></div>
+    <div class="barre"><span>Dossier</span><b>Analyse</b><span>Scénarios</span><span>Conseil</span><span>Rapport</span></div></div></div><figcaption>Analyse</figcaption></figure>
+</main>
+<script>
+  const SANS = '-apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif', SERIF = '"New York", "Iowan Old Style", Georgia, serif',
+    MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace', ROND = '"SF Pro Rounded", ui-rounded, -apple-system, "Segoe UI", sans-serif';
+  const voile = (c, a = .9) => `linear-gradient(180deg, ${c.replace('X', '0')} 42%, ${c.replace('X', String(a))} 63%, ${c.replace('X', '1')} 76%)`;
+  const UNIVERS = {
+    nuit: ['Nuit', 'Verre et eau noire, bleu profond. L’actuel.', { scene: 'accueil-sombre.png', planche: '#dfe0e4', legende: '#15171c', police: SANS, fond: 'radial-gradient(120% 70% at 0% 0%, #17386f, #040913 60%)', encre: '#f4f7fb', discret: 'rgba(244,247,251,.6)', filet: 'rgba(255,255,255,.13)', accent: '#2f7cf6',
+      'heure-scene': '#fff', voile: voile('rgba(2,5,11,X)', .82), 'titre-police': `700 34px ${SANS}`, 'nombre-police': `300 50px ${SANS}`, panneau: 'linear-gradient(135deg, rgba(255,255,255,.15), rgba(255,255,255,.05))', 'panneau-bord': '1px solid rgba(255,255,255,.17)', rayon: '26px', 'rayon-bouton': '28px', 'rayon-barre': '33px',
+      cta: 'linear-gradient(180deg,#5a9bff,#1557d6)', 'cta-encre': '#fff', 'cta-ombre': '0 14px 28px -12px rgba(31,100,232,.8)', second: 'rgba(255,255,255,.1)', 'second-bord': '1px solid rgba(255,255,255,.17)', barre: 'rgba(20,32,58,.78)', actif: 'rgba(255,255,255,.2)', 'actif-encre': '#fff' }],
+    a: ['A — Éditorial', 'Galerie au matin, travertin et bronze. L’allure d’une banque privée.', { scene: 'variante-a.png', planche: '#e6e2d9', legende: '#16130f', police: SERIF, fond: '#f6f3ec', encre: '#16130f', discret: '#8b8377', filet: '#d9d3c6', accent: '#c2410c',
+      'heure-scene': '#16130f', voile: voile('rgba(246,243,236,X)'), 'titre-police': `400 38px ${SERIF}`, 'titre-espace': '-.02em', 'nombre-police': `400 58px ${SERIF}`, panneau: 'transparent', 'panneau-bord': '0', rayon: '0', 'rayon-bouton': '4px', 'rayon-barre': '4px',
+      cta: '#16130f', 'cta-encre': '#f6f3ec', second: 'transparent', 'second-bord': '1px solid #16130f', barre: '#f6f3ec', actif: '#16130f', 'actif-encre': '#f6f3ec' }],
+    b: ['B — Instrument', 'Noir studio, carbone et lumière vive. L’allure d’un outil de précision.', { scene: 'variante-b.png', planche: '#d9dadd', legende: '#15171c', police: SANS, fond: '#000', encre: '#f4f4f5', discret: '#8a8a94', filet: '#27272a', accent: '#d4ff3a',
+      'heure-scene': '#fff', voile: voile('rgba(0,0,0,X)', .88), 'sur-police': `600 12px ${MONO}`, 'sur-espace': '.16em', 'titre-police': `600 34px ${SANS}`, 'titre-espace': '-.04em', 'nombre-police': `600 46px ${MONO}`, nombre: '#d4ff3a', panneau: '#111113', 'panneau-bord': '1px solid #27272a', rayon: '18px', 'rayon-bouton': '14px', 'rayon-barre': '20px',
+      cta: '#d4ff3a', 'cta-encre': '#000', second: '#111113', 'second-bord': '1px solid #27272a', barre: '#111113', actif: '#d4ff3a', 'actif-encre': '#000' }],
+    c: ['C — Chaleureux', 'Sable et soleil, céramique et bois. Rassurant, humain.', { scene: 'variante-c.png', planche: '#e9e2d4', legende: '#1f2a24', police: ROND, fond: '#f3ede2', encre: '#1f2a24', discret: '#6b7469', filet: '#e7dfcf', accent: '#17402f',
+      'heure-scene': '#1f2a24', voile: voile('rgba(243,237,226,X)'), 'sur-espace': '.18em', 'titre-police': `700 34px ${ROND}`, 'nombre-police': `700 50px ${ROND}`, panneau: '#fffaf1', 'panneau-bord': '0', 'panneau-ombre': '0 14px 30px -18px rgba(31,42,36,.4)', rayon: '28px', 'rayon-bouton': '28px', 'rayon-barre': '33px',
+      cta: '#17402f', 'cta-encre': '#f3ede2', second: '#f6c453', barre: '#fffaf1', actif: '#17402f', 'actif-encre': '#f3ede2' }],
+    d: ['D — Alpin', 'Aube sur un lac de glacier, granit, acier et glace. La précision suisse.', { scene: 'variante-d.png', planche: '#dfe4ea', legende: '#17212b', police: SANS, fond: '#f2f5f8', encre: '#17212b', discret: '#6c7a88', filet: '#dbe2ea', accent: '#d5202a',
+      'heure-scene': '#17212b', voile: voile('rgba(242,245,248,X)'), 'titre-police': `600 34px ${SANS}`, 'titre-espace': '-.035em', 'nombre-police': `300 54px ${SANS}`, panneau: '#ffffff', 'panneau-bord': '1px solid #dbe2ea', rayon: '14px', 'rayon-bouton': '12px', 'rayon-barre': '18px',
+      cta: '#17212b', 'cta-encre': '#fff', second: '#ffffff', 'second-bord': '1px solid #c9d3de', barre: '#ffffff', actif: '#d5202a', 'actif-encre': '#fff' }],
+    e: ['E — Lumière', 'Blanc pur et verre irisé. Léger, optimiste, très contemporain.', { scene: 'variante-e.png', planche: '#e7e6ee', legende: '#1b1830', police: SANS, fond: 'linear-gradient(160deg, #ffffff, #f4f1fb 60%, #eef6fb)', encre: '#1b1830', discret: '#7d7a92', filet: '#e8e5f2', accent: '#7c5cff',
+      'heure-scene': '#1b1830', voile: voile('rgba(255,255,255,X)'), 'titre-police': `700 34px ${SANS}`, 'nombre-police': `700 50px ${SANS}`, nombre: '#7c5cff', panneau: 'rgba(255,255,255,.8)', 'panneau-bord': '1px solid #fff', 'panneau-ombre': '0 20px 40px -24px rgba(124,92,255,.45)', rayon: '30px', 'rayon-bouton': '28px', 'rayon-barre': '33px',
+      cta: 'linear-gradient(120deg,#7c5cff,#4fb8ff)', 'cta-encre': '#fff', 'cta-ombre': '0 14px 28px -12px rgba(124,92,255,.7)', second: '#fff', 'second-bord': '1px solid #e8e5f2', barre: 'rgba(255,255,255,.9)', actif: '#1b1830', 'actif-encre': '#fff' }],
+    f: ['F — Or noir', 'Marbre noir, or brossé et cristal ambré. L’allure d’une maison de haute joaillerie.', { scene: 'variante-f.png', planche: '#d8d5cf', legende: '#15120c', police: SERIF, fond: '#0b0906', encre: '#f3ead7', discret: '#a3977e', filet: 'rgba(214,180,106,.22)', accent: '#d6b46a',
+      'heure-scene': '#f3ead7', voile: voile('rgba(11,9,6,X)', .86), 'titre-police': `400 38px ${SERIF}`, 'titre-espace': '-.015em', 'nombre-police': `400 56px ${SERIF}`, nombre: '#e7cd8e', panneau: 'rgba(214,180,106,.07)', 'panneau-bord': '1px solid rgba(214,180,106,.28)', rayon: '6px', 'rayon-bouton': '4px', 'rayon-barre': '6px',
+      cta: 'linear-gradient(180deg,#e7cd8e,#b8923f)', 'cta-encre': '#15120c', second: 'transparent', 'second-bord': '1px solid rgba(214,180,106,.5)', barre: '#14110b', actif: '#d6b46a', 'actif-encre': '#15120c' }],
+  };
+  const v = new URLSearchParams(location.search).get('v') ?? 'nuit', [nom, phrase, jetons] = UNIVERS[v] ?? UNIVERS.nuit;
+  document.getElementById('nom').textContent = nom; document.getElementById('phrase').textContent = phrase;
+  for (const [cle, valeur] of Object.entries(jetons)) document.body.style.setProperty('--' + cle, cle === 'scene' ? `url(${valeur})` : valeur);
+</script>
+</body>
+</html>
