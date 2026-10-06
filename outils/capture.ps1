@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Force $dossier | Out-Null
 $cible = Join-Path $dossier "$vue-$largeur-$theme.png"
 if (Test-Path $cible) { Remove-Item $cible -Confirm:$false }
 $arguments = @("--headless=new", "--disable-gpu", "--no-first-run", "--hide-scrollbars", "--user-data-dir=$dossier\profil-$theme",
-               "--window-size=$largeur,$hauteur", "--virtual-time-budget=7000", "--screenshot=$cible")
+               "--window-size=$largeur,$hauteur", "--virtual-time-budget=20000", "--screenshot=$cible")
 if ($theme -eq "sombre") { $arguments += "--force-dark-mode"; $arguments += "--enable-features=WebContentsForceDark:inversion_method/cielab_based" }
 $arguments += "$adresse#$vue"
 Start-Process -FilePath $edge -ArgumentList $arguments -Wait -WindowStyle Hidden
