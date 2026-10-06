@@ -336,6 +336,8 @@ dialog.scan textarea:focus { outline: none; border-color: var(--accent); }
 .scan-ligne span { display: grid; gap: 2px; min-width: 0; }
 .scan-ligne small { color: var(--encre-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scan-ligne .montant input { width: 100%; border: 0; border-radius: 10px; background: var(--surface); color: inherit; padding: 10px 10px 10px 50px; font-weight: 600; min-height: 44px; }
+.scan-sources { display: flex; flex-wrap: wrap; gap: 10px; }
+.scan-sources .pastille { flex: 1 1 auto; min-height: 46px; padding: 10px 16px; font-size: 15px; }
 .scan-actions { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 @media (max-width: 640px) { .scan-ligne { grid-template-columns: auto minmax(0, 1fr); } .scan-ligne .montant { grid-column: 1 / -1; } }
 

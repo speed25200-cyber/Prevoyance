@@ -2,7 +2,8 @@
 /**
  * Scan d'un certificat de prévoyance : lecture sur l'appareil, puis vérification par le conseiller.
  *
- * - Dans l'app iPhone / iPad : l'app ouvre le scanner de documents, lit le texte (reconnaissance de caractères de
+ * - Dans l'app iPhone / iPad : l'app ouvre le scanner de documents, ou reprend un certificat déjà enregistré (PDF ou
+ *   image dans Fichiers, photo de la photothèque), lit le texte (texte du PDF, sinon reconnaissance de caractères de
  *   l'appareil) et, si l'appareil a un modèle de langage, lui fait remplir les champs. Elle rappelle
  *   `window.__prevoyanceScan({ texte, champs, lecteur })`.
  * - Dans un navigateur : le conseiller colle le texte du certificat, ou touche le champ puis « Scanner du texte » sur
@@ -59,15 +60,21 @@ export function ouvrir(ctx, reprendre) {
     fermer();
   });
 
-  const scanner = natif ? h('button', { type: 'button', class: 'bouton', onclick: () => { etat.textContent = t('sc_enCours'); natif.postMessage('certificat'); } }, t('sc_photographier')) : null;
+  const demander = quoi => () => { etat.textContent = t('sc_enCours'); natif.postMessage(quoi); };
+  const scanner = natif ? h('button', { type: 'button', class: 'bouton', onclick: demander('certificat') }, t('sc_photographier')) : null;
+  // certificat déjà enregistré : un PDF ou une image dans Fichiers, ou une photo de la photothèque
+  const existants = natif ? h('div', { class: 'scan-sources' },
+    h('button', { type: 'button', class: 'pastille', onclick: demander('fichier') }, t('sc_fichier')),
+    h('button', { type: 'button', class: 'pastille', onclick: demander('photo') }, t('sc_photo'))) : null;
   const boite = /** @type {HTMLDialogElement} */ (h('dialog', { class: 'scan' },
     h('h2', {}, t('sc_titre')), h('p', { class: 'note' }, t('sc_prive')),
-    scanner, zone, etat, resultats,
+    scanner, existants, zone, etat, resultats,
     h('div', { class: 'scan-actions' }, h('button', { type: 'button', class: 'pastille', onclick: fermer }, t('sc_annuler')), valider)));
   boite.addEventListener('cancel', fermer);
 
   // réponse de l'app : texte lu, et champs remplis par le modèle de langage de l'appareil quand il existe
   /** @type {any} */ (window).__prevoyanceScan = reponse => {
+    if (reponse?.erreur === 'annulé') { etat.textContent = t('sc_aideApp'); return; }
     if (!reponse || reponse.erreur) { etat.textContent = t('sc_echec'); return; }
     zone.value = reponse.texte ?? '';
     const lus = Certificat.extraire(zone.value).champs;

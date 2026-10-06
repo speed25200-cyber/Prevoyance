@@ -52,7 +52,15 @@ final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     var scan: ScanCertificat?
 
     func userContentController(_ controleur: WKUserContentController, didReceive message: WKScriptMessage) {
-        if message.name == "scanner" { scan?.ouvrir(); return }
+        if message.name == "scanner" {
+            // « certificat » : appareil photo ; « fichier » : PDF ou image dans Fichiers ; « photo » : photothèque
+            switch message.body as? String {
+            case "fichier": scan?.choisirFichier()
+            case "photo": scan?.choisirPhoto()
+            default: scan?.ouvrir()
+            }
+            return
+        }
         guard message.name == "imprimer", let vue else { return }
         let impression = UIPrintInteractionController.shared
         let infos = UIPrintInfo(dictionary: nil)
