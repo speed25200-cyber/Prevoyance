@@ -54,6 +54,7 @@ export function monter(ctx, racine) {
     h('div', { class: 'deux' },
       h('div', { class: 'carte' }, h('h2', {}, t('detail')), ref('detail', h('div'))),
       h('div', { class: 'carte' }, h('h2', {}, t('potentiels')), ref('potentiels', h('div')))),
+    ref('menage', h('div', { class: 'carte', hidden: true })),
     h('div', { class: 'carte' }, h('h2', {}, t('alertes')), ref('alertes', h('ul', { class: 'alertes' }))),
     h('p', { class: 'avertissement' }, t('avertissement')));
   graphique = creerGraphique(toile, bulle);
@@ -137,6 +138,7 @@ export function afficher(ctx) {
   requestAnimationFrame(() => { for (const i of /** @type {NodeListOf<HTMLElement>} */ (r.detail.querySelectorAll('.pile i'))) i.style.width = `${(+(i.dataset.part ?? 0) * 100).toFixed(2)}%`; });
 
   r.potentiels.replaceChildren(...leviers(ctx, a));
+  afficherMenage(ctx);
   const triees = [...a.alertes].sort((p, q) => GRAVITES.indexOf(p.gravite) - GRAVITES.indexOf(q.gravite));
   r.alertes.replaceChildren(...triees.map(al => h('li', { style: { '--c': `var(--${al.gravite})` } }, h('span', {}, texteAlerte(ctx, al)))));
 }
@@ -172,4 +174,24 @@ export function leviers({ t, f }, a) {
     h('p', {}, t('p_avs_d', { n: p.avs.anneesManquantes, m: f.chf(p.avs.perteMensuelle) }))));
   out.push(h('p', { class: 'petit' }, p.canton ? t('tauxMarginalCanton', { t: Math.round(p.tauxMarginal * 100), c: p.canton }) : t('tauxMarginal', { t: Math.round(p.tauxMarginal * 100) })));
   return out;
+}
+
+/** Le ménage à la retraite : les revenus des deux conjoints additionnés, face à leur besoin commun. */
+function afficherMenage(ctx) {
+  const { t, f, analyse: a, analyseAutre: b } = ctx;
+  r.menage.hidden = !b;
+  if (!b) return;
+  const x = a.risques.retraite, y = b.risques.retraite, besoin = x.besoin + y.besoin, total = x.total + y.total;
+  const lacune = Math.max(0, besoin - total), echelle = Math.max(besoin, total, 1);
+  const noms = dossier().cible === 'conjoint' ? [t('conjointCourt'), t('client')] : [t('client'), t('conjointCourt')];
+  const part = (s, classe = '') => h('i', { class: classe, style: { '--c': COULEUR_PILIER[s.pilier], width: `${(s.montant / echelle * 100).toFixed(2)}%` } });
+  r.menage.replaceChildren(
+    h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('mn_titre')), h('p', {}, t('mn_d'))),
+      h('b', { class: 'menage-total ' + (lacune > 0 ? 'lacune' : 'ok') }, lacune > 0 ? `− ${f.chf(lacune / 12)} ${t('parMois')}` : t('aucuneLacune'))),
+    h('div', { class: 'pile large' }, ...x.sources.map(s => part(s)), h('i', { class: 'separateur' }), ...y.sources.map(s => part(s, 'second')),
+      lacune > 0 ? h('i', { class: 'manque', style: { width: `${(lacune / echelle * 100).toFixed(2)}%` } }) : null),
+    h('ul', { class: 'lignes' },
+      h('li', {}, h('span', {}, noms[0]), h('b', {}, f.chf(x.total))), h('li', {}, h('span', {}, noms[1]), h('b', {}, f.chf(y.total))),
+      h('li', { class: 'total' }, h('span', {}, t('mn_besoin')), h('b', {}, f.chf(besoin))),
+      a.marie ? h('li', {}, h('span', { class: 'petit' }, t('mn_plafond', { m: f.chf(ctx.regles.avs.renteMaxMensuelle * ctx.regles.avs.plafondCoupleFacteur) })), h('b', {}, '')) : null));
 }

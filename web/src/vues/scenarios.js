@@ -85,6 +85,21 @@ export function afficher(ctx) {
     if (lignes.length) blocs.push(carte(t('sc_fiscal'), t('sc_fiscal_d', { l: impots.cantons[canton].lieu, d: impots.releveLe }), ...lignes, h('p', { class: 'petit' }, t('sc_fiscal_note'))));
   }
 
+  // ---- et dans un autre canton ? impôt sur le revenu du ménage, chef-lieu par chef-lieu
+  if (impots && canton) {
+    const brut = P.revenu + (a.conjoint && marie ? a.conjoint.revenu : 0);
+    const valeurs = Object.keys(impots.cantons).map(c => ({ c, v: Impots.impotRevenu(impots, c, marie, brut)?.impot ?? 0 })).sort((x, y) => x.v - y.v);
+    const ici = valeurs.find(x => x.c === canton), max = Math.max(...valeurs.map(x => x.v), 1), moins = valeurs[0];
+    blocs.push(carte(t('sc_cantons'), t('sc_cantons_d', { r: f.chf(brut) }),
+      h('div', { class: 'cantons-barres' }, ...valeurs.map((x, i) => h('div', { class: x.c === canton ? 'actif' : '', style: { '--i': i }, title: `${t('ct_' + x.c)} · ${f.chf(x.v)}` },
+        h('b', {}, f.court(x.v)), h('i', { style: { height: `${Math.round(x.v / max * 100)}%` } }), h('small', {}, x.c)))),
+      h('div', { class: 'chiffres' },
+        chiffre(`${canton} · ${impots.cantons[canton].lieu}`, f.chf(ici?.v ?? 0), t('parAn')),
+        chiffre(`${moins.c} · ${impots.cantons[moins.c].lieu}`, f.chf(moins.v), t('sc_cantonMoins'), 'plus'),
+        chiffre(t('sc_cantonEcart'), f.chf((ici?.v ?? 0) - moins.v), t('parAn'))),
+      h('p', { class: 'petit' }, `${impots.source}. ${impots.hypotheses}.`)));
+  }
+
   // ---- placement : simulation
   const annees = Math.max(1, P.ageRetraite - P.age), profil = PROFILS[d.profilPlacement] ?? PROFILS.equilibre;
   const versement = (d.cible === 'conjoint' ? d.conjoint : d.personne).versement3a || a.potentiels.pilier3a.plafond;

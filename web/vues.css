@@ -258,3 +258,10 @@ body.presentation .choix-annee { display: none; }
   body.presentation .bascule-panneau { display: none; }
 }
 @media print { .bascule-panneau { display: none !important; } }
+
+/* ---------- le ménage à la retraite */
+.menage-total { font: 650 clamp(18px, 1.8vw, 24px)/1.1 var(--titre); letter-spacing: -.02em; }
+.menage-total.lacune { color: var(--lacune); } .menage-total.ok { color: var(--p3); }
+.pile.large { height: 18px; }
+.pile i.second { opacity: .62; }
+.pile i.separateur { flex: 0 0 3px; width: 3px; background: var(--surface); }

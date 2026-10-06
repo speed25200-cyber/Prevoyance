@@ -17,6 +17,9 @@ const CLES = [
   ['dn_3a', r => r.pilier3a.plafondAvecLPP], ['dn_3aSans', r => r.pilier3a.plafondSansLPP], ['dn_laa', r => r.laa.gainAssureMax],
 ];
 
+/** Libellé lisible des valeurs encore à confirmer (clés du fichier de règles). */
+const A_CONFIRMER = { 'lpp.tauxInteretMinimal': 'dn_interet', 'laa.gainAssureMax': 'dn_laa', 'ac.plafond': 'dn_ac', 'avs.bonificationEducative': 'dn_bonification' };
+
 export async function monter(ctx, racine) {
   const { t, f } = ctx;
   const [r1, r2, manifeste, impots] = await Promise.all([Donnees.regles(ANNEES[0]), Donnees.regles(ANNEES[1]), Donnees.manifeste(), Donnees.impots(ANNEES[0])]);
@@ -45,7 +48,7 @@ export async function monter(ctx, racine) {
           return h('tr', {}, h('th', {}, t(cle)), h('td', {}, mise(a, nature)), h('td', { class: change ? 'change' : '' }, mise(b, nature)),
             h('td', { class: change ? 'change' : 'meme' }, change ? (nature === 'taux' ? '' : (b > a ? '+ ' : '− ') + f.chf(Math.abs(b - a))) : '='));
         }))),
-      r2.aConfirmer?.length ? h('p', { class: 'remarque' }, t('dn_aConfirmer', { l: r2.aConfirmer.join(', ') })) : null,
+      r2.aConfirmer?.length ? h('p', { class: 'remarque' }, t('dn_aConfirmer', { l: r2.aConfirmer.map(c => t(A_CONFIRMER[c] ?? c)).join(' ; ') })) : null,
       h('p', { class: 'petit' }, `${r1.annee} : ${r1.etat} · ${r2.annee} : ${r2.etat}`)),
   ];
 

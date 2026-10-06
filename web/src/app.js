@@ -10,7 +10,7 @@
 
 import { analyser, ANNEES } from '../../moteur/src/index.js';
 import { LANGUES, traducteur, formats } from './i18n.js';
-import { etat, garder, versDossier, VUES } from './etat.js';
+import { etat, garder, versDossier, dossier, VUES } from './etat.js';
 import * as Donnees from './donnees.js';
 import * as Formulaire from './formulaire.js';
 import * as VueAnalyse from './vues/analyse.js';
@@ -24,7 +24,7 @@ const MODULES = { analyse: VueAnalyse, scenarios: VueScenarios, plan: VuePlan, r
 
 /** @type {any} */
 const ctx = {
-  t: traducteur(etat.langue), f: formats(etat.langue), regles: null, impots: null, analyse: null, dossierMoteur: null,
+  t: traducteur(etat.langue), f: formats(etat.langue), regles: null, impots: null, analyse: null, analyseAutre: null, dossierMoteur: null,
   /** Recalcule ; `remonter` reconstruit la vue (structure changée), `recharger` relit les données de référence. */
   recalculer: async (remonter = false, recharger = false) => { if (recharger) { ctx.regles = null; ctx.impots = null; } await calculer(); if (remonter) monterVue(); },
   apresChangement, reconstruire: () => { Formulaire.construire(); ctx.recalculer(true); },
@@ -50,6 +50,9 @@ async function calculer() {
   try {
     ctx.dossierMoteur = versDossier();
     ctx.analyse = analyser(ctx.dossierMoteur, ctx.regles, { impots: ctx.impots });
+    // couple : la même analyse pour l'autre personne, pour chiffrer la retraite du ménage
+    const d = dossier();
+    ctx.analyseAutre = d.avecConjoint ? analyser(versDossier(d, d.cible === 'conjoint' ? 'personne' : 'conjoint'), ctx.regles, { impots: ctx.impots }) : null;
   } catch (erreur) {
     console.error(erreur);
     return;
