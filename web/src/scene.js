@@ -65,7 +65,9 @@ export function creerScene(canvas, reperes) {
     if (vise === null) {
       const ecran = largeur / Math.max(1, hauteur);
       v.z = 1;
-      v.x = ecran >= RAPPORT ? 0.5 : Math.min(1 - ecran / RAPPORT / 2, Math.max(0.5, col[1].x - 0.22 * ecran / RAPPORT));
+      // cadre étroit (moitié d'écran, téléphone) : les trois colonnes au centre ; cadre large : colonnes à droite, texte à gauche
+      v.x = ecran >= RAPPORT ? 0.5 : ecran < 1.5 ? Math.min(1 - ecran / RAPPORT / 2, col[1].x)
+        : Math.min(1 - ecran / RAPPORT / 2, Math.max(0.5, col[1].x - 0.22 * ecran / RAPPORT));
       v.y = 0.5;
     } else {
       v.z = 1.9; v.x = col[vise].x - 0.07; v.y = Math.min(0.62, col[vise].y + 0.2);

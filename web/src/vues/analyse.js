@@ -37,7 +37,14 @@ export function monter(ctx, racine) {
         h('svg', { viewBox: '0 0 120 120', 'aria-hidden': 'true' }, h('circle', { class: 'piste', cx: 60, cy: 60, r: 52 }), ref('arc', h('circle', { class: 'arc', cx: 60, cy: 60, r: 52 }))),
         h('div', { class: 'jauge-texte' }, ref('score', h('b', {}, '0')), h('span', {}, t('score')))))),
       h('div', { class: 'resume' }, cibles, ref('resumeTitre', h('p', { class: 'surtitre' })),
-        ref('grand', h('p', { class: 'grand' }, ref('resumeMontant', h('span', {}, 'CHF 0')), h('small', {}, t('parMois')))), ref('resumeNote', h('p', { class: 'note' }))),
+        ref('grand', h('p', { class: 'grand' }, ref('resumeMontant', h('span', {}, 'CHF 0')), h('small', {}, t('parMois')))), ref('resumeNote', h('p', { class: 'note' })),
+        // trois chiffres-clés du risque affiché, puis le pas suivant : le conseil
+        h('div', { class: 'cles' },
+          h('div', {}, h('small', {}, t('couvert')), ref('cleCouverture', h('b', {}, '–'))),
+          h('div', {}, h('small', {}, t('besoin')), ref('cleBesoin', h('b', {}, '–'))),
+          h('div', {}, h('small', {}, t('capital')), ref('cleCapital', h('b', {}, '–')))),
+        h('button', { type: 'button', class: 'bouton vers-conseil', onclick: () => /** @type {HTMLElement|null} */ (document.querySelector('#onglets [data-vue=plan]'))?.click() },
+          t('voirConseil'), h('i', { 'aria-hidden': 'true' }))),
       ref('sceneToile', h('canvas', { class: 'scene-toile', 'aria-hidden': 'true' })),
       h('div', { class: 'scene-voile', 'aria-hidden': 'true' }),
       ...[1, 2, 3].map(n => ref('repere' + n, h('i', { class: 'scene-point', 'aria-hidden': 'true' }))),
@@ -103,6 +110,9 @@ export function afficher(ctx) {
   if (x.capital > 0) morceaux.push(`${t('capital')} ${f.chf(x.capital)} (${t('surLaDuree', { n: x.annees })})`);
   if (x.cle === 'retraite' && x.epargneAnnuelle > 0) morceaux.push(t('epargne', { m: f.chf(x.epargneAnnuelle) }));
   r.resumeNote.textContent = morceaux.join(' · ');
+  r.cleCouverture.textContent = f.pourcent(Math.min(1, x.couverture));
+  compter(r.cleBesoin, x.besoin, f.chf);
+  compter(r.cleCapital, x.capital ?? 0, f.chf);
   // ce que chaque pilier verse pour le risque choisi, posé sur sa colonne
   for (const n of [1, 2, 3]) {
     const verse = x.sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0);

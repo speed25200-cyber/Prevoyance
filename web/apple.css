@@ -57,34 +57,6 @@ select { border: 0; background-color: var(--creux); border-radius: 10px; padding
 .segments button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
 @media (prefers-color-scheme: dark) { .segments button[aria-pressed="true"] { background: #2f3d55; color: #fff; } }
 
-@media (min-width: 1000px) {
-  body { display: grid; grid-template-columns: 264px minmax(0, 1fr); align-items: start; }
-  .barre { position: sticky; top: 0; height: 100vh; height: 100dvh; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 0;
-    padding: calc(22px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px)) calc(14px + env(safe-area-inset-left, 0px));
-    border-right: 1px solid var(--filet); background: color-mix(in srgb, var(--surface) 60%, var(--fond)); }
-  .marque { padding: 0 8px 22px; }
-  .onglets { display: flex; flex-direction: column; order: 0; width: auto; overflow: visible; }
-  .onglets button { flex: none; }
-  .actions { margin-top: auto; flex-direction: column; align-items: stretch; gap: 10px; flex-wrap: nowrap; padding-top: 16px; border-top: 1px solid var(--filet); }
-}
-
-/* ---------- navigation : barre d'onglets en bas (iPad portrait, téléphone) */
-@media (max-width: 999.98px) {
-  .barre { position: static; -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--fond); flex-wrap: wrap; padding-bottom: 6px; }
-  .actions .lien { padding: 8px 4px; }
-  .choix-annee { padding: 0; gap: 8px; }
-  .onglets { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; justify-content: space-around; gap: 0; width: auto; order: 0; overflow: visible;
-    padding: 6px max(6px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
-    background: color-mix(in srgb, var(--surface) 86%, transparent); -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px);
-    border-top: 1px solid var(--filet); }
-  .onglets button { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 3px; padding: 5px 2px; border-radius: 10px; font-size: 11px; font-weight: 500; color: var(--encre-2);
-    text-align: center; white-space: nowrap; }
-  .onglets button .icone { color: currentColor; }
-  .onglets button:hover { background: none; }
-  .onglets button[aria-selected="true"] { background: none; color: var(--accent); }
-  .onglets button[aria-selected="true"] .icone { color: var(--accent); }
-  .scene { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-}
 body.presentation .onglets [data-vue="dossier"], body.presentation .onglets [data-vue="donnees"] { display: none; }
 body.presentation .scene { max-width: 1280px; }
 
@@ -287,10 +259,6 @@ svg .axe { font: 500 13px var(--police); }
 .fond i { position: absolute; inset: 0; background: color-mix(in srgb, var(--fond) 58%, transparent); }
 @media (prefers-color-scheme: dark) { .fond i { background: color-mix(in srgb, var(--fond) 45%, transparent); } }
 .carte, .bloc, .risque { background: color-mix(in srgb, var(--surface) 88%, transparent); }
-@media (min-width: 1000px) {
-  .barre { background: color-mix(in srgb, var(--surface) 62%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(28px); backdrop-filter: saturate(1.6) blur(28px); }
-}
-@media (max-width: 999.98px) { .barre { background: none; } }
 @media print { .fond { display: none !important; } }
 
 /* ---------- pas de texte en couleur : les chiffres et les mots restent à l'encre ; la couleur ne sert qu'aux petits
@@ -302,7 +270,7 @@ svg .axe { font: 500 13px var(--police); }
   content: ""; display: inline-block; width: .34em; height: .34em; border-radius: 50%; background: var(--lacune); margin-right: .28em; vertical-align: .16em; }
 .effet-tete b.ok::before, .menage-total.ok::before { content: ""; display: inline-block; width: .5em; height: .5em; border-radius: 50%; background: var(--ok);
   margin-right: .4em; vertical-align: .05em; }
-.barre-couv i, .effet-barres i:not(.avant), .tenue-barre i, .tenue.depasse .tenue-barre i, .mini-barres .actif i { background: var(--accent) !important; }
+.barre-couv i, .effet-barres i:not(.avant), .tenue-barre i, .tenue.depasse .tenue-barre i, .mini-barres .actif i { background: var(--trait) !important; }
 .option.meilleure { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .remarque, .remarque.ok, .attente { background: var(--creux); }
 .pastille.danger { color: var(--encre-2); }
