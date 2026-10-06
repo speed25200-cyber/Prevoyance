@@ -17,6 +17,8 @@ const COLONNES = {
   clair: [{ x: 0.702, y: 0.404 }, { x: 0.773, y: 0.28 }, { x: 0.845, y: 0.14 }],
 };
 const RAPPORT = 3840 / 1648;
+/** Images déjà chargées, par adresse : la vue est reconstruite à chaque passage, l'image ne doit pas l'être. */
+const IMAGES = /** @type {Map<string, HTMLImageElement>} */ (new Map());
 
 /**
  * @param {HTMLCanvasElement} canvas @param {HTMLElement[]} reperes trois éléments, un par pilier
@@ -36,10 +38,15 @@ export function creerScene(canvas, reperes) {
 
   function charger() {
     prete = false; filmPret = false;
-    image = new Image();
-    image.decoding = 'async';
-    image.onload = () => { prete = true; lancer(); };
-    image.src = `images/colonnes-${theme}${Math.max(canvas.clientWidth, 1) * (devicePixelRatio || 1) > 1500 ? '' : '-m'}.webp`;
+    const adresse = `images/colonnes-${theme}${Math.max(canvas.clientWidth, 1) * (devicePixelRatio || 1) > 1500 ? '' : '-m'}.webp`;
+    const connue = IMAGES.get(adresse);
+    if (connue && connue.complete && connue.naturalWidth) { image = connue; prete = true; lancer(); } else {
+      const nouvelle = new Image();
+      image = nouvelle;
+      nouvelle.decoding = 'async';
+      nouvelle.onload = () => { IMAGES.set(adresse, nouvelle); if (image === nouvelle) { prete = true; lancer(); } };
+      nouvelle.src = adresse;
+    }
     film?.pause();
     film = null;
     if (calme.matches || tactile.matches) return;

@@ -116,7 +116,12 @@ function monterVue() {
   };
   // première image sans transition ; ensuite, fondu-glissé entre les vues quand le navigateur le permet
   const transition = /** @type {any} */ (document).startViewTransition;
-  if (transition && montee && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  // écran tactile : pas de transition de vue du navigateur (elle photographie toute la page, fond compris : lent)
+  const tactile = matchMedia('(pointer: coarse)').matches;
+  if (tactile) {
+    changer();
+    if (montee && !matchMedia('(prefers-reduced-motion: reduce)').matches) $('vue').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
+  } else if (transition && montee && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const tr = transition.call(document, changer);
     for (const promesse of [tr.ready, tr.finished, tr.updateCallbackDone]) promesse?.catch(() => {});   // transition sautée : la vue est montée quand même
     setTimeout(changer, 350);                                  // filet : si le navigateur tarde à appeler la transition, on monte la vue

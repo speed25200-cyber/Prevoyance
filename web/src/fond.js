@@ -25,7 +25,8 @@ export function installerFond() {
     const theme = sombre.matches ? 'sombre' : 'clair';
     racine.classList.remove('pret');
     image.src = `${IMAGES}fond-${theme}.webp`;
-    if (calme.matches) { film.removeAttribute('src'); film.load(); return; }
+    // écran tactile : image fixe (un film sous des panneaux de verre coûte cher et peut scintiller)
+    if (calme.matches || matchMedia('(pointer: coarse)').matches) { film.removeAttribute('src'); film.load(); return; }
     film.src = `${IMAGES}fond-${theme}.mp4`;
     jouer();
   };
