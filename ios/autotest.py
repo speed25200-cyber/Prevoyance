@@ -23,7 +23,10 @@ if (app.get('rubriques') or 0) < 7 or (app.get('champs') or 0) < 30:
     echecs.append({'nom': 'dossier natif : rubriques et champs reçus de la page', 'detail': str(app)})
 if not app.get('analyse') or app.get('risques') != 5 or (app.get('ligne') or 0) < 10:
     echecs.append({'nom': 'analyse native : modèle reçu de la page', 'detail': str(app)})
-print(f"BILAN {appareil} : {len(resultats) + 5 - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
+for vue, minimum in (('scenarios', 4), ('plan', 3), ('rapport', 1), ('donnees', 3)):
+    if ((app.get('ecrans') or {}).get(vue) or 0) < minimum:
+        echecs.append({'nom': f'écran natif {vue} : cartes reçues de la page', 'detail': str(app.get('ecrans'))})
+print(f"BILAN {appareil} : {len(resultats) + 9 - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
 for r in echecs:
     print(f"error: {appareil} — {r.get('nom')} : {r.get('detail', '')}")
 sys.exit(1 if echecs or not resultats else 0)

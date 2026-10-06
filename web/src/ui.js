@@ -58,6 +58,8 @@ export function colonnes(colonnes, { hauteur = 260, court, surClic }) {
   const y = v => hauteur - bas - v / max * (hauteur - bas - haut);
   const pas = (largeur - gauche - 8) / n, lc = Math.min(54, pas * 0.62);
   const svg = h('svg', { viewBox: `0 0 ${largeur} ${hauteur}`, class: 'colonnes', role: 'img' });
+  /** @type {any} */ (svg).__natif = { type: 'colonnes', surClic, colonnes: colonnes.map(c => ({ libelle: c.libelle, note: c.note ?? '', actif: !!c.actif, besoin: c.besoin ?? 0,
+    couches: c.couches.map(x => Math.round(x.valeur)) })) };
   const brut = max / 4, p10 = Math.pow(10, Math.floor(Math.log10(Math.max(brut, 1)))), palier = [1, 2, 2.5, 5, 10].map(m => m * p10).find(p => p >= brut) ?? brut;
   for (let v = palier; v < max; v += palier) {
     svg.append(h('line', { x1: gauche, x2: largeur - 4, y1: y(v), y2: y(v), class: 'grille' }), h('text', { x: gauche - 8, y: y(v) + 4, class: 'axe', 'text-anchor': 'end' }, court(v)));
@@ -91,6 +93,7 @@ export function couloir(points, { court, ageDepart, hauteur = 260 }) {
   const max = Math.max(1, ...points.map(p => p.p90)) * 1.06, n = Math.max(1, points.length - 1);
   const x = i => gauche + (largeur - gauche - 10) * i / n, y = v => hauteur - bas - v / max * (hauteur - bas - haut);
   const svg = h('svg', { viewBox: `0 0 ${largeur} ${hauteur}`, class: 'couloir', role: 'img' });
+  /** @type {any} */ (svg).__natif = { type: 'couloir', depart: ageDepart ?? 0, points: points.map(p => ({ annee: p.annee, p10: p.p10, p50: p.p50, p90: p.p90, verse: p.verse })) };
   const brut = max / 4, p10 = Math.pow(10, Math.floor(Math.log10(Math.max(brut, 1)))), palier = [1, 2, 2.5, 5, 10].map(m => m * p10).find(p => p >= brut) ?? brut;
   for (let v = palier; v < max; v += palier) {
     svg.append(h('line', { x1: gauche, x2: largeur - 4, y1: y(v), y2: y(v), class: 'grille' }), h('text', { x: gauche - 8, y: y(v) + 4, class: 'axe', 'text-anchor': 'end' }, court(v)));

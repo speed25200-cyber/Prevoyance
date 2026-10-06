@@ -210,6 +210,15 @@ await calculer();
 traduire();
 document.body.classList.add('pret');
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+// Scénarios, Conseil, Rapport, Données : la page décrit ce qu'elle affiche, l'app le dessine. Chaque changement de la
+// vue (calcul, réglage) est annoncé, regroupé sur un court délai.
+let annonceEcran = 0;
+function annoncerEcran() {
+  if (!appNative() || etat.vue === 'analyse') return;
+  clearTimeout(annonceEcran);
+  annonceEcran = setTimeout(() => appNative()?.postMessage({ ecran: { vue: etat.vue, ...Natif.ecran($('vue')) } }), 140);
+}
+if (appNative()) new MutationObserver(annoncerEcran).observe($('vue'), { childList: true, subtree: true, characterData: true });
 // Le formulaire se décrit à l'app à chaque reconstruction ; l'app y écrit par `champ(id, valeur)`.
 Formulaire.quandSchema(schema => appNative()?.postMessage({ schema }));
 /** Écran Analyse natif : risque affiché, personne analysée. */
@@ -225,4 +234,4 @@ async function regler({ langue, annee } = {}) {
   }
 }
 /** @type {any} */ (window).__prevoyance = { etat, ctx, aller, regler, ouvrirDossier, creerDossier, annoncer: marquer,
-  champ: Formulaire.agir, risque: choisirRisque, cible: choisirCible, modeles: () => ({ analyse: Natif.analyse(ctx) }) };
+  champ: Formulaire.agir, action: (id, valeur) => { Natif.agir(id, valeur); annoncerEcran(); }, ecran: () => Natif.ecran($('vue')), risque: choisirRisque, cible: choisirCible, modeles: () => ({ analyse: Natif.analyse(ctx) }) };

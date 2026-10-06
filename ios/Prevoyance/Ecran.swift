@@ -22,6 +22,9 @@ struct Ecran: View {
                     DossierNatif(navigation: navigation).transition(.opacity)
                 } else if navigation.onglet == "analyse" {
                     AnalyseNatif(navigation: navigation).transition(.opacity)
+                } else {
+                    // Scénarios, Conseil, Rapport, Données : décrits par la page, dessinés par l'app
+                    EcranDecrit(navigation: navigation, vue: navigation.onglet).id(navigation.onglet).transition(.opacity)
                 }
             }
             if navigation.barreVisible && !navigation.accueil && !Navigation.natifs.contains(navigation.onglet) {
@@ -89,7 +92,7 @@ struct Page: UIViewRepresentable {
 final class Navigation: ObservableObject {
     static let vues = ["dossier", "analyse", "scenarios", "plan", "rapport", "donnees"]
     /// Onglets dont l'écran est dessiné par l'app (SwiftUI), sans passer par la page.
-    static let natifs: Set<String> = ["dossier", "analyse"]
+    static let natifs: Set<String> = ["dossier", "analyse", "scenarios", "plan", "rapport", "donnees"]
     static let icones = ["dossier": "person", "analyse": "chart.bar", "scenarios": "arrow.triangle.branch",
                          "plan": "checklist", "rapport": "doc.text", "donnees": "cylinder.split.1x2"]
 
@@ -112,6 +115,9 @@ final class Navigation: ObservableObject {
     @Published var nomDossier = ""
     @Published var versionSchema = 0
     @Published var analyse: AnalyseModele?
+    /// Les autres écrans, tels que la page les décrit, par vue.
+    @Published var ecrans: [String: [CarteEcran]] = [:]
+    @Published var versionEcran = 0
 
     let vue: WKWebView
     private let pont: Pont
@@ -197,6 +203,13 @@ final class Navigation: ObservableObject {
     /// Image (signature, logo) : la page reçoit l'image, le modèle local retient seulement qu'elle existe.
     func ecrire(_ id: String, texte: String, presence: Double) { envoyer(id, texte) { $0.nombre = presence } }
 
+    /// Action sur un élément d'un écran décrit (curseur, choix, bouton, champ) : la page l'exécute et renvoie l'écran à jour.
+    func agir(_ id: String, _ valeur: Any) {
+        guard !id.isEmpty else { return }
+        vue.callAsyncJavaScript("window.__prevoyance && window.__prevoyance.action(id, valeur)", arguments: ["id": id, "valeur": valeur],
+                                in: nil, in: .page, completionHandler: nil)
+    }
+
     /// Demande simple à la page : risque affiché, personne analysée.
     func appeler(_ fonction: String, _ argument: String) {
         guard ["risque", "cible"].contains(fonction) else { return }
@@ -249,7 +262,8 @@ final class Navigation: ObservableObject {
             page = retour
         }
         let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count),\"dossiers\":\(dossiers.count),\"textes\":\(textes.count),"
-            + "\"rubriques\":\(rubriques.count),\"champs\":\(rubriques.reduce(0) { $0 + $1.champs.count }),\"analyse\":\(analyse != nil),\"risques\":\(analyse?.risques.count ?? 0),\"ligne\":\(analyse?.ligne.count ?? 0)}"
+            + "\"rubriques\":\(rubriques.count),\"champs\":\(rubriques.reduce(0) { $0 + $1.champs.count }),\"analyse\":\(analyse != nil),\"risques\":\(analyse?.risques.count ?? 0),\"ligne\":\(analyse?.ligne.count ?? 0),"
+            + "\"ecrans\":{" + ["scenarios", "plan", "rapport", "donnees"].map { "\"\($0)\":\(ecrans[$0]?.count ?? 0)" }.joined(separator: ",") + "}}"
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? "{\"page\":\(page),\"app\":\(app)}".write(to: documents.appendingPathComponent("autotest.json"), atomically: true, encoding: .utf8)
     }
@@ -263,6 +277,10 @@ final class Navigation: ObservableObject {
             versionSchema += 1
         }
         if let modele = message["analyse"] as? [String: Any], let lu = AnalyseModele(modele), lu != analyse { analyse = lu }
+        if let ecran = message["ecran"] as? [String: Any], let vue = ecran["vue"] as? String {
+            ecrans[vue] = CarteEcran.lire(ecran)
+            versionEcran += 1
+        }
         if let libelles = message["noms"] as? [String: String] { noms = libelles }
         if let valeur = message["langue"] as? String, valeur != langue { langue = valeur }
         if let valeurs = message["langues"] as? [String], valeurs != langues { langues = valeurs }
