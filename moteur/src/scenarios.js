@@ -31,7 +31,7 @@ export function agesDeDepart(dossier, regles, ages = [60, 61, 62, 63, 64, 65, 66
     return { age, ecart, avs: de('avs'), lpp: de('lpp'), pilier3: r.sources.filter(s => s.pilier === 3).reduce((s, x) => s + x.montant, 0),
              total: r.total, besoin: r.besoin, lacune: r.lacune, couverture: r.couverture,
              // avant 63 ans, l'AVS ne peut pas encore être touchée : il faut un pont
-             pontAVS: Math.max(0, Math.ceil(reference - regles.avs.anticipationMaxAnnees - age)) };
+             pontAVS: a.personne.pontAVS };
   });
 }
 

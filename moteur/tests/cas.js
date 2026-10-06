@@ -107,7 +107,7 @@ export function cas(egal, { r26, r27, i26 }) {
 }
 
 /** Suite du jeu de cas : impôts par canton (données relevées auprès de l'AFC) et scénarios de conseil. */
-export function casScenarios(egal, { r26, i26, c26 }) {
+export function casScenarios(egal, { r26, r27, i26, c26 }) {
   // ---- interpolation et grilles fiscales
   egal('Interpolation au milieu', Impots.interpoler([0, 10], [0, 100], 5), 50);
   egal('Interpolation prolongée', Impots.interpoler([0, 10, 20], [0, 100, 300], 30), 500);
@@ -281,7 +281,22 @@ export function casScenarios(egal, { r26, i26, c26 }) {
     egal('Âge de départ : pas de falaise à 64 ans (certificat ajusté)', [ages[0].lpp > 30000, ages[0].lpp < 36000, ages[2].lpp > 36000], [true, true, true]);
     // femme née en 1962 : référence à 64 ans et 6 mois
     const f62 = Scenarios.agesDeDepart({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire', personne: { ...base, dateNaissance: '1962-03-01', sexe: 'f' } }, r26, [62, 63]);
-    egal('Femme de 1962 : AVS possible dès 63 ans (64 ans et 6 mois moins 2 ans, arrondi)', [f62[0].pontAVS, f62[1].pontAVS], [1, 0]);
+    egal('Femme de 1962 (génération transitoire) : AVS possible dès 62 ans, sans pont', [f62[0].pontAVS, f62[1].pontAVS], [0, 0]);
+    // AVS 21 : RAMD 60 480 = classe la plus basse ; née en 1965 : supplément entier de 160 fr. ; anticipation de 2 ans : -2 %
+    const f65 = age => analyser({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire', hypotheses: { ageRetraite: age },
+      personne: { ...base, dateNaissance: '1965-03-01', sexe: 'f', avs: { ramd: 60480 } } }, r26).risques.retraite.sources;
+    egal('Femme de 1965 à 65 ans : rente 2117 x 13 et supplément de 160 x 12', ['avs', 'avsSupplement'].map(c => f65(65).find(s => s.cle === c)?.montant), [27521, 1920]);
+    egal('Femme de 1965 à 63 ans : réduction de 2 % seulement, pas de supplément', [f65(63).find(s => s.cle === 'avs').montant, f65(63).some(s => s.cle === 'avsSupplement')], [26971, false]);
+    egal('AVS 21 : classes de revenu et échelonnement', [AVS.generationTransitoire(r26, 'f', 1966, 70000).supplementMensuel, AVS.generationTransitoire(r26, 'f', 1961, 100000).supplementMensuel,
+      AVS.generationTransitoire(r26, 'h', 1965, 60000), AVS.generationTransitoire(r26, 'f', 1970, 60000)], [81, 13, null, null]);
+    // rachat rétroactif 3a : une année ouverte en 2026 (2025), deux en 2027 ; plafonné à un petit plafond par an
+    const p3 = (regles, extra = {}) => analyser({ dateAnalyse: `${regles.annee}-01-01`, etatCivil: 'celibataire', personne: { ...base, ...extra } }, regles).potentiels.pilier3a.retroactif;
+    egal('Rachat 3a 2026 : lacune estimée d’une année, rachat du petit plafond', [p3(r26).possible, p3(r26).anneesOuvertes, p3(r26).estime], [7258, 1, true]);
+    egal('Rachat 3a : lacune connue de 3000', p3(r26, { lacune3a: 3000 }).possible, 3000);
+    egal('Rachat 3a 2027 : deux années ouvertes, un seul plafond par an', [p3(r27).anneesOuvertes, p3(r27).possible], [2, r27.pilier3a.rachatRetroactif.plafondParRachat]);
+    // âge LPP : né en décembre 1981, analysé en janvier 2026 : 44 ans révolus mais 45 ans au sens de la LPP (15 %)
+    egal('Âge LPP en année civile : bonification de 15 % dès l’année des 45 ans', analyser({ dateAnalyse: '2026-01-01',
+      personne: { ...base, dateNaissance: '1981-12-15', lpp: { avoir: 0 } } }, r26).personne.lpp.projection[0].bonification, Math.round(63540 * 0.15));
     egal('Femme de 1962 : alertes de la génération transitoire', ['generationTransitoire', 'supplementTransitoire'].map(c =>
       analyser({ dateAnalyse: '2026-01-01', personne: { ...base, dateNaissance: '1962-03-01', sexe: 'f' } }, r26).alertes.some(x => x.cle === c)), [true, true]);
     // enfants : la rente s'éteint, la lacune grandit, le capital additionne les années

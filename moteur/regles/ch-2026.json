@@ -18,6 +18,13 @@
     "treiziemeRente": true,
     "ageReference": { "h": 65, "f": 65 },
     "transitionFemmes": { "1960": [64, 0], "1961": [64, 3], "1962": [64, 6], "1963": [64, 9] },
+    "generationTransitoire": {
+      "note": "AVS 21, femmes nées de 1961 à 1969 : supplément de rente à vie sans anticipation (hors plafond des couples, hors 13e rente), ou taux d'anticipation réduits dès 62 ans. Classes de revenu : RAMD jusqu'à 4 fois, jusqu'à 5 fois, au-delà de 5 fois la rente minimale annuelle.",
+      "de": 1961, "a": 1969, "seuilsRamd": [4, 5], "supplement": [160, 100, 50],
+      "echelonnement": { "1961": 0.25, "1962": 0.5, "1963": 0.75, "1964": 1, "1965": 1, "1966": 0.81, "1967": 0.63, "1968": 0.44, "1969": 0.25 },
+      "anticipationMaxAnnees": 3,
+      "anticipation": { "1": [0, 0.025, 0.035], "2": [0.02, 0.045, 0.065], "3": [0.03, 0.065, 0.105] }
+    },
     "anticipationMaxAnnees": 2,
     "reductionAnticipationParAn": 0.068,
     "supplementsAjournement": { "1": 0.052, "2": 0.108, "3": 0.171, "4": 0.24, "5": 0.315 },

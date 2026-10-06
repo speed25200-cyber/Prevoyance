@@ -66,6 +66,22 @@ export function ageReference(regles, sexe, anneeNaissance) {
 }
 
 /**
+ * Génération transitoire d'AVS 21 (femmes nées de 1961 à 1969) : supplément de rente mensuel si la rente n'est pas
+ * anticipée, ou taux de réduction plus bas en cas d'anticipation (possible dès 62 ans). Les deux dépendent du revenu
+ * annuel moyen. `null` pour toute autre personne.
+ * @param {any} regles @param {'h'|'f'} sexe @param {number} anneeNaissance @param {number} ramd
+ * @returns {{classe: number, supplementMensuel: number, reductions: number[], anticipationMax: number}|null}
+ */
+export function generationTransitoire(regles, sexe, anneeNaissance, ramd) {
+  const g = regles.avs.generationTransitoire;
+  if (!g || sexe !== 'f' || anneeNaissance < g.de || anneeNaissance > g.a) return null;
+  const minimale = regles.avs.renteMinMensuelle * 12;
+  const classe = ramd <= minimale * g.seuilsRamd[0] ? 0 : ramd <= minimale * g.seuilsRamd[1] ? 1 : 2;
+  return { classe, supplementMensuel: arrondi(g.supplement[classe] * (g.echelonnement[String(anneeNaissance)] ?? 0)),
+           reductions: [0, g.anticipation['1'][classe], g.anticipation['2'][classe], g.anticipation['3'][classe]], anticipationMax: g.anticipationMaxAnnees };
+}
+
+/**
  * Effet d'une anticipation (années négatives) ou d'un ajournement (positives) sur la rente de vieillesse.
  * @param {any} regles @param {number} annees de -2 à +5 @returns {number} facteur multiplicatif
  */

@@ -30,7 +30,7 @@ export function tauxBonification(regles, age) {
  * Projection de l'avoir de vieillesse année par année jusqu'à la retraite (minimum légal, ou plan personnalisé).
  * @param {any} regles
  * @param {{age: number, avoir: number, salaireAVS: number, ageRetraite?: number, interet?: number,
- *          croissanceSalaire?: number, tauxEpargne?: (age: number) => number, salaireAssure?: number}} p
+ *          croissanceSalaire?: number, tauxEpargne?: (age: number) => number, salaireAssure?: number, decalageAge?: number}} p
  * @returns {{avoirFinal: number, sansInteret: number, annees: {age: number, salaireAssure: number, bonification: number, avoir: number}[]}}
  */
 export function projeterAvoir(regles, p) {
@@ -42,7 +42,8 @@ export function projeterAvoir(regles, p) {
   for (let x = age; x < ageRetraite; x++) {
     const assure = p.salaireAssure !== undefined ? p.salaireAssure * Math.pow(1 + croissanceSalaire, x - age) : salaireCoordonne(regles, salaire);
     // les bonifications légales s'arrêtent à l'âge de référence ; au-delà (ajournement), l'avoir ne porte plus que des intérêts
-    const taux = p.tauxEpargne ? p.tauxEpargne(x) : x < ageReference ? tauxBonification(regles, x) : 0;
+    // la tranche de bonification suit l'âge LPP (année civile moins année de naissance), parfois un an de plus que l'âge révolu
+    const taux = p.tauxEpargne ? p.tauxEpargne(x) : x < ageReference ? tauxBonification(regles, x + (p.decalageAge ?? 0)) : 0;
     const bonification = assure * taux;
     a = a * (1 + interet) + bonification;
     sansInteret += bonification;
@@ -56,7 +57,7 @@ export function projeterAvoir(regles, p) {
  * Prestations LPP d'une personne : valeurs du certificat si elles existent, sinon minimum légal.
  * Toutes les rentes sont annuelles.
  * @param {any} regles
- * @param {{age: number, salaireAVS: number, ageRetraite?: number, croissanceSalaire?: number, interet?: number,
+ * @param {{age: number, salaireAVS: number, ageRetraite?: number, croissanceSalaire?: number, interet?: number, decalageAge?: number,
  *          lpp?: {affilie?: boolean, avoir?: number, renteVieillesse?: number, capitalRetraite?: number,
  *                 tauxConversion?: number, renteInvalidite?: number, renteConjoint?: number, renteEnfant?: number,
  *                 capitalDeces?: number, rachatPossible?: number, partCapital?: number}}} p
@@ -71,7 +72,7 @@ export function prestationsLPP(regles, p) {
              capitalDeces: c.capitalDeces ?? 0, rachatPossible: 0, projection: [] };
   }
   const ageReference = regles.lpp.ageReference ?? 65, ageRetraite = p.ageRetraite ?? ageReference, ecart = ageRetraite - ageReference;
-  const base = { age: p.age, avoir: c.avoir ?? 0, salaireAVS: p.salaireAVS, interet: p.interet };
+  const base = { age: p.age, avoir: c.avoir ?? 0, salaireAVS: p.salaireAVS, interet: p.interet, decalageAge: p.decalageAge };
   const projection = projeterAvoir(regles, { ...base, ageRetraite, croissanceSalaire: p.croissanceSalaire });
   const aReference = ecart === 0 ? projection : projeterAvoir(regles, { ...base, ageRetraite: ageReference, croissanceSalaire: p.croissanceSalaire });
   // Départ avant ou après l'âge de référence : l'avoir s'arrête plus tôt ou continue de porter intérêt, et le taux de

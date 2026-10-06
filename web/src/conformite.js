@@ -15,6 +15,7 @@
 
 import { h } from './ui.js';
 import { etat, garder, dossier } from './etat.js';
+import * as Signature from './signature.js';
 
 const VIE = ['aucune', 'appropriee', 'deconseillee', 'nonVerifiee'];
 
@@ -85,6 +86,15 @@ export function champsConseil(ctx, reconstruire) {
     ...(c.vie === 'aucune' ? [] : [champ(ctx, c, 'connaissances', 'lg_connaissances', { long: true })]),
     coche(ctx, c, 'infoRemise', 'lg_infoRemise'),
     coche(ctx, c, 'consentement', 'lg_consentement'),
+    // signatures sur l'écran : reprises sur le procès-verbal du rapport, avec le lieu et la date
+    h('p', { class: 'intertitre' }, ctx.t('lg_signatures')),
+    h('p', { class: 'petit sans-marge' }, ctx.t('lg_signaturesAide')),
+    champ(ctx, c, 'lieu', 'lg_lieu'),
+    ...['client', 'conseiller'].map(qui => Signature.zone({ libelle: ctx.t(qui === 'client' ? 'rp_signClient' : 'rp_signConseiller'), effacer: ctx.t('lg_effacer'),
+      valeur: c.signatures?.[qui] ?? '', surChangement: image => {
+        c.signatures = { ...(c.signatures ?? {}), [qui]: image, date: new Date().toISOString() };
+        dossier().modifie = new Date().toISOString(); garder();
+      } })),
   ];
 }
 
@@ -93,6 +103,17 @@ export function champsIntermediaire(ctx, reconstruire) {
   const i = intermediaire(), lie = i.genre === 'lie';
   return [
     h('p', { class: 'petit sans-marge' }, ctx.t('lg_intermediaireAide')),
+    // logo du courtier ou de la compagnie : en tête de chaque page du rapport
+    h('div', { class: 'logo-choix' },
+      i.logo ? h('img', { src: i.logo, alt: '' }) : h('span', { class: 'petit' }, ctx.t('lg_logoAide')),
+      h('label', { class: 'pastille' }, ctx.t(i.logo ? 'lg_logoChanger' : 'lg_logoChoisir'),
+        h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', hidden: true, onchange: async e => {
+          const fichier = e.target.files?.[0];
+          if (!fichier) return;
+          const image = await Signature.lireLogo(fichier);
+          if (image) { i.logo = image; garder(); reconstruire(); }
+        } })),
+      i.logo ? h('button', { type: 'button', class: 'pastille', onclick: () => { i.logo = ''; garder(); reconstruire(); } }, ctx.t('lg_logoRetirer')) : null),
     champ(ctx, i, 'nom', 'lg_nom'),
     champ(ctx, i, 'adresse', 'lg_adresse'),
     choix(ctx, i, 'genre', 'lg_genre', ['nonLie', 'lie'], 'lg_', reconstruire),
@@ -142,7 +163,11 @@ export function pages(ctx, { page, entete, pied, ligne }, numero) {
       c.vie === 'aucune' ? null : ligne(t('lg_connaissances'), c.vie === 'nonVerifiee' && !rempli(c.connaissances) ? '—' : v(c.connaissances)),
       ligne(t('lg_infoRemise'), t(c.infoRemise ? 'lg_oui' : 'lg_non')), ligne(t('lg_consentement'), t(c.consentement ? 'lg_oui' : 'lg_non'))),
     h('p', { class: 'r-texte' }, t('rp_avertissement')),
-    h('div', { class: 'r-signatures' }, h('div', {}, h('span', {}, t('rp_signClient'))), h('div', {}, h('span', {}, t('rp_signConseiller')))),
+    c.lieu || c.signatures?.date ? h('p', { class: 'r-texte r-lieu' }, [c.lieu, c.signatures?.date
+      ? new Date(c.signatures.date).toLocaleDateString(etat.langue + '-CH', { day: 'numeric', month: 'long', year: 'numeric' }) : ''].filter(Boolean).join(', ')) : null,
+    h('div', { class: 'r-signatures' }, ...['client', 'conseiller'].map(qui => h('div', {},
+      c.signatures?.[qui] ? h('img', { src: c.signatures[qui], alt: '' }) : null,
+      h('span', {}, t(qui === 'client' ? 'rp_signClient' : 'rp_signConseiller'))))),
     pied(numero + 1));
   return [information, proces];
 }

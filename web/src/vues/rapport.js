@@ -30,8 +30,11 @@ export function afficher(ctx) {
   if (!zone || !a) return;
   const d = dossier(), P = a.personne, date = new Date().toLocaleDateString(etat.langue + '-CH', { day: 'numeric', month: 'long', year: 'numeric' });
   const personne = d.cible === 'conjoint' && d.avecConjoint ? d.conjoint : d.personne;
-  const pied = n => h('footer', {}, h('span', {}, `${t('titre')} · ${d.nom || t('sansNom')}`), h('span', {}, `${date} · ${n}`));
-  const entete = titre => h('header', {}, h('h2', {}, titre), h('span', {}, t('titre')));
+  // marque du rapport : le logo et le nom de l'intermédiaire quand ils sont saisis, sinon le nom de l'application
+  const marque = etat.intermediaire ?? {};
+  const signature = marque.nom?.trim() || t('titre');
+  const pied = n => h('footer', {}, h('span', {}, `${signature} · ${d.nom || t('sansNom')}`), h('span', {}, `${date} · ${n}`));
+  const entete = titre => h('header', {}, h('h2', {}, titre), marque.logo ? h('img', { class: 'r-logo', src: marque.logo, alt: signature }) : h('span', {}, signature));
   const bloc = x => { const e = h('div', { class: 'r-detail' }, h('h3', {}, t(x.cle)), ...detailRisque(ctx, x)); for (const i of e.querySelectorAll('.pile i')) i.style.width = `${(+(i.dataset.part ?? 0) * 100).toFixed(2)}%`; return e; };
 
   const outils = h('div', { class: 'rapport-outils carte' },
@@ -43,6 +46,7 @@ export function afficher(ctx) {
   // ---- 1. couverture
   const couverture = page('couverture',
     h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
+    marque.logo ? h('img', { class: 'r-logo r-logo-couverture', src: marque.logo, alt: signature }) : null,
     h('div', {}, h('p', { class: 'surtitre' }, t('rp_surtitre', { a: a.annee })), h('h1', {}, t('rp_h1')), h('p', { class: 'r-client' }, d.nom || t('sansNom'))),
     h('table', { class: 'r-fiche' },
       ligne(t('rp_date'), date), ligne(t('rp_conseiller'), h('span', { class: 'r-conseiller' }, etat.conseiller || '—')),

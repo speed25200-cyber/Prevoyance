@@ -16,7 +16,7 @@
  *            lpp?: {affilie?: boolean, avoir?: number, renteVieillesse?: number, capitalRetraite?: number, tauxConversion?: number,
  *                   renteInvalidite?: number, renteConjoint?: number, renteEnfant?: number, capitalDeces?: number, rachatPossible?: number},
  *            laa?: {assure?: boolean}, ijm?: {assure?: boolean, taux?: number, jours?: number},
- *            pilier3?: Contrat3[], fortune?: number, tauxMarginal?: number}} Personne
+ *            pilier3?: Contrat3[], fortune?: number, tauxMarginal?: number, anciennete?: number, lacune3a?: number}} Personne
  * @typedef {{dateAnalyse?: string, canton?: string, personne: Personne, conjoint?: Personne|null,
  *            etatCivil?: 'celibataire'|'marie'|'partenariat'|'concubin'|'divorce'|'veuf',
  *            enfants?: {dateNaissance: string, formationJusqua?: number}[],
@@ -73,7 +73,8 @@ function profil(regles, p, { quand, hyp, marie, enfants }) {
   const manquantes = Math.max(0, p.avs?.anneesManquantes ?? 0);
   const echelle = AVS.echelle(regles, regles.avs.dureeCotisationComplete - manquantes);
   const lpp = prestationsLPP(regles, { age, salaireAVS: p.statut === 'salarie' ? revenu : (p.lpp?.affilie ? revenu : 0),
-                                      ageRetraite, croissanceSalaire: hyp.croissanceSalaire, interet: hyp.interetLPP, lpp: p.lpp });
+                                      ageRetraite, croissanceSalaire: hyp.croissanceSalaire, interet: hyp.interetLPP, lpp: p.lpp,
+                                      decalageAge: Math.max(0, +String(quand).slice(0, 4) - anneeNaissance(p.dateNaissance) - age) });
   const anneesRestantes = Math.max(0, ageRetraite - age);
   const contrats = (p.pilier3 ?? []).map(c => ({
     ...c,
@@ -124,9 +125,13 @@ export function analyser(dossier, regles, contexte = {}) {
   // Âge de départ et AVS : la rente peut être anticipée de deux ans au plus (réduite à vie) ou ajournée (majorée).
   // Avant, il n'y a pas de rente : `pontAVS` compte les années à financer soi-même.
   const refAVS = P.ref.ans + P.ref.mois / 12;
-  const ecartAVS = hyp.flexibilisationAVS ?? borne(P.ageRetraite - refAVS, -regles.avs.anticipationMaxAnnees, 5);
-  const flex = AVS.facteurFlexibilisation(regles, ecartAVS);
-  const debutAVS = Math.max(P.ageRetraite, Math.ceil(refAVS - regles.avs.anticipationMaxAnnees));
+  // Femmes nées de 1961 à 1969 (AVS 21) : anticipation dès 62 ans à taux réduits, ou supplément de rente sans anticipation.
+  const transitoire = AVS.generationTransitoire(regles, P.sexe, P.naissance, P.ramd);
+  const anticipationMax = transitoire?.anticipationMax ?? regles.avs.anticipationMaxAnnees;
+  const ecartAVS = hyp.flexibilisationAVS ?? borne(P.ageRetraite - refAVS, -anticipationMax, 5);
+  const flex = transitoire && ecartAVS < 0 ? 1 - transitoire.reductions[Math.min(3, Math.ceil(-ecartAVS))] : AVS.facteurFlexibilisation(regles, ecartAVS);
+  const supplementAVS = transitoire && ecartAVS >= 0 ? transitoire.supplementMensuel * 12 : 0;
+  const debutAVS = Math.max(P.ageRetraite, Math.ceil(refAVS - anticipationMax));
   const pontAVS = Math.max(0, debutAVS - P.ageRetraite);
   let avsMensuelle = AVS.renteVieillesse(regles, P.ramd, P.echelle);
   let avsConjointMensuelle = C ? AVS.renteVieillesse(regles, C.ramd, C.echelle) : 0;
@@ -142,10 +147,13 @@ export function analyser(dossier, regles, contexte = {}) {
   const capital3a = somme(P.contrats.filter(c => c.type === '3a').map(c => c.capitalRetraite));
   const capital3b = somme(P.contrats.filter(c => c.type === '3b').map(c => c.capitalRetraite));
   const enRente = capital => renteDepuisCapital(capital, dureeRente, hyp.rendementFortune);
+  // le 3a est imposé une fois à son retrait (barème des prestations en capital) : seul le net finance la retraite
+  const impot3a = capital3a > 0 && dossier.canton && contexte.impots ? Impots.impotCapital(contexte.impots, dossier.canton, marie, capital3a) ?? 0 : 0;
   const retraite = risque('retraite', P.revenu * besoins.retraite, [
     { cle: 'avs', pilier: 1, montant: avsAnnuelle },
+    { cle: 'avsSupplement', pilier: 1, montant: supplementAVS },
     { cle: 'lpp', pilier: 2, montant: P.lpp.renteVieillesse, estime: P.lpp.estime },
-    { cle: 'pilier3a', pilier: 3, montant: enRente(capital3a), capital: capital3a },
+    { cle: 'pilier3a', pilier: 3, montant: enRente(capital3a - impot3a), capital: capital3a, impotRetrait: impot3a },
     { cle: 'pilier3b', pilier: 3, montant: enRente(capital3b), capital: capital3b },
     { cle: 'fortune', pilier: 3, montant: enRente(P.fortuneRetraite), capital: P.fortuneRetraite },
   ], { annees: dureeRente, escompte: hyp.escompte });
@@ -287,10 +295,19 @@ export function analyser(dossier, regles, contexte = {}) {
     : Math.min(regles.pilier3a.plafondSansLPP, arrondi(P.revenu * regles.pilier3a.tauxSansLPP));
   const verse3a = somme(P.contrats.filter(c => c.type === '3a').map(c => c.versementAnnuel ?? 0));
   const potentiel3a = Math.max(0, plafond3a - verse3a);
+  // Rachat rétroactif 3a (OPP 3, dès 2026) : les lacunes de cotisation depuis 2025 se rattrapent pendant dix ans, à
+  // raison d'un petit plafond par an au plus, en plus de la cotisation ordinaire entière de l'année. La lacune vient du
+  // dossier si elle est connue ; sinon elle est estimée (même versement les années passées qu'aujourd'hui).
+  const rr = regles.pilier3a.rachatRetroactif;
+  const anneesOuvertes = rr && P.statut !== 'sans' ? borne(regles.annee - rr.depuisAnnee, 0, rr.maxAnneesArriere) : 0;
+  const lacune3a = Math.max(0, dossier.personne.lacune3a ?? potentiel3a * anneesOuvertes);
+  const retro3a = anneesOuvertes > 0 ? Math.min(lacune3a, rr.plafondParRachat) : 0;
   const potentiels = {
     tauxMarginal: marginal, tauxMarginalEstime: P.tauxMarginal === undefined && !fiscal, canton: fiscal ? dossier.canton : null,
     impotRevenu: fiscal?.impot ?? null,
     pilier3a: { plafond: plafond3a, verse: verse3a, potentiel: potentiel3a, economieImpot: economie(potentiel3a),
+                retroactif: { possible: retro3a, lacune: lacune3a, estime: dossier.personne.lacune3a === undefined, anneesOuvertes,
+                              economieImpot: Math.max(0, economie(potentiel3a + retro3a) - economie(potentiel3a)) },
                 capitalSupplementaire: arrondi(valeurFuture(0, potentiel3a, P.anneesRestantes, hyp.rendement3a), 100) },
     rachatLPP: { possible: P.lpp.rachatPossible, economieImpot: economie(P.lpp.rachatPossible),
                  renteSupplementaire: arrondi(P.lpp.rachatPossible * regles.lpp.tauxConversion) },
@@ -309,13 +326,14 @@ export function analyser(dossier, regles, contexte = {}) {
   if (P.revenu > regles.laa.gainAssureMax) alerte('revenuAuDessusLAA', 'attention', { plafond: regles.laa.gainAssureMax, excedent: P.revenu - regles.laa.gainAssureMax });
   if (P.statut === 'salarie' && P.revenu > 0 && P.revenu < regles.lpp.seuilEntree) alerte('sousSeuilLPP', 'critique', { seuil: regles.lpp.seuilEntree });
   if (plafonne) alerte('plafonnementCouple', 'info', { plafond: regles.avs.renteMaxMensuelle * regles.avs.plafondCoupleFacteur });
+  if (retro3a > 0) alerte('rachat3a', 'opportunite', { montant: retro3a, economie: potentiels.pilier3a.retroactif.economieImpot });
   if (potentiel3a > 0) alerte('potentiel3a', 'opportunite', { montant: potentiel3a, economie: potentiels.pilier3a.economieImpot });
   if (P.lpp.rachatPossible > 0) alerte('rachatLPP', 'opportunite', { montant: P.lpp.rachatPossible, economie: potentiels.rachatLPP.economieImpot });
   if (invaliditeMaladie.lacune > invaliditeAccident.lacune + 1000) alerte('ecartMaladieAccident', 'attention',
     { ecart: invaliditeMaladie.lacune - invaliditeAccident.lacune });
   if (P.sexe === 'f' && P.ref.mois > 0) alerte('generationTransitoire', 'info', { ans: P.ref.ans, mois: P.ref.mois });
   // femmes nées de 1961 à 1969 : supplément de rente ou taux d'anticipation réduits (AVS 21), non chiffrés ici
-  if (P.sexe === 'f' && P.naissance >= 1961 && P.naissance <= 1969) alerte('supplementTransitoire', 'info');
+  if (transitoire) alerte('supplementTransitoire', 'info', { supplement: transitoire.supplementMensuel, anticipe: ecartAVS < 0 ? 1 : 0 });
   if (pontAVS > 0) alerte('pontAVS', 'attention', { annees: pontAVS, age: debutAVS });
   if (P.anneesRestantes <= 10 && P.lpp.affilie) alerte('choixRenteCapital', 'info', { annees: P.anneesRestantes });
 
@@ -327,12 +345,12 @@ export function analyser(dossier, regles, contexte = {}) {
 
   return {
     annee: regles.annee, dateAnalyse: quand, etatCivil, marie, canton: dossier.canton ?? null,
-    personne: { age: P.age, ageReference: P.ref, ageRetraite: P.ageRetraite, debutAVS, pontAVS, facteurAVS: flex, revenu: P.revenu, ramd: arrondi(P.ramd), ramdEstime: P.ramdEstime,
+    personne: { age: P.age, ageReference: P.ref, ageRetraite: P.ageRetraite, debutAVS, pontAVS, facteurAVS: flex, supplementAVS, revenu: P.revenu, ramd: arrondi(P.ramd), ramdEstime: P.ramdEstime,
                 echelle: P.echelle, lpp: P.lpp, capital3a, capital3b },
     conjoint: C ? { age: C.age, revenu: C.revenu, avsMensuelle: avsConjointMensuelle, lppRente: C.lpp.renteVieillesse } : null,
     enfantsACharge: nombreEnfants,
     risques, potentiels, alertes, score,
-    chronologie: chronologie(regles, { P, hyp, avsAnnuelle, debutAVS, retraite, invaliditeMaladie, invaliditeAccident }),
+    chronologie: chronologie(regles, { P, hyp, avsAnnuelle: avsAnnuelle + supplementAVS, debutAVS, retraite, invaliditeMaladie, invaliditeAccident }),
     hypotheses: hyp, besoins,
   };
 }
