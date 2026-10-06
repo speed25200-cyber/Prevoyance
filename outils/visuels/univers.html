@@ -61,6 +61,29 @@
   .risque:last-child { border-bottom: 0; }
   .risque p { display: flex; justify-content: space-between; font-size: 16px; } .risque p b { font-weight: 600; }
   .risque div { height: 4px; border-radius: 2px; background: var(--filet); margin-top: 9px; overflow: hidden; } .risque div i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+
+  /* ---------- autres dispositions de menu (paramètre m) */
+  /* étapes : le rendez-vous comme un parcours, en haut de l'écran ; le pas suivant en bas */
+  .etapes { display: flex; align-items: center; gap: 0; margin: 2px 0 18px; font: 600 11px -apple-system, "Segoe UI", sans-serif; color: var(--discret); }
+  .etapes span { display: grid; justify-items: center; gap: 6px; flex: none; width: 56px; }
+  .etapes span i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--filet); font-style: normal; font-size: 12px; background: var(--fond); }
+  .etapes span.fait i { background: var(--encre); border-color: var(--encre); color: var(--fond); }
+  .etapes span.ici { color: var(--encre); } .etapes span.ici i { background: var(--accent); border-color: var(--accent); color: var(--actif-encre); }
+  .etapes em { flex: 1; height: 1.5px; background: var(--filet); margin-bottom: 18px; } .etapes em.fait { background: var(--encre); }
+  .suivant { position: absolute; left: 22px; right: 22px; bottom: 30px; display: flex; gap: 10px; }
+  .suivant .cta { flex: 1; } .suivant .cta.second { flex: none; width: 56px; padding: 0; }
+  /* tuiles : pas de barre ; l'accueil est un sommaire, chaque écran revient à l'accueil */
+  .tuiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 12px; font-family: -apple-system, "Segoe UI", sans-serif; }
+  .tuiles div { padding: 14px 16px; min-height: 84px; display: grid; align-content: space-between; }
+  .tuiles div b { font-size: 16px; } .tuiles div span { font-size: 12.5px; color: var(--discret); }
+  .tuiles div.large { grid-column: 1 / -1; min-height: 0; display: flex; justify-content: space-between; align-items: center; }
+  .retour { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px 8px 10px; margin-bottom: 14px; border-radius: var(--rayon-bouton); background: var(--second); border: var(--second-bord, 0);
+    font: 600 14px -apple-system, "Segoe UI", sans-serif; color: var(--encre); }
+  /* socle : une barre basse avec le geste principal au centre */
+  .socle { position: absolute; left: 0; right: 0; bottom: 0; height: 96px; padding: 0 26px 22px; display: flex; justify-content: space-between; align-items: center; background: var(--barre); border-top: var(--panneau-bord);
+    font: 600 11px -apple-system, "Segoe UI", sans-serif; color: var(--discret); z-index: 4; }
+  .socle span { width: 58px; text-align: center; } .socle span.ici { color: var(--encre); }
+  .socle b { width: 68px; height: 68px; margin-top: -34px; border-radius: 50%; display: grid; place-items: center; background: var(--cta); color: var(--cta-encre); font-size: 13px; box-shadow: 0 14px 28px -10px rgba(0, 0, 0, .5); border: 4px solid var(--fond-uni, var(--barre)); }
 </style>
 <body>
 <header><b id="nom"></b><span id="phrase"></span></header>
@@ -119,7 +142,53 @@
       'heure-scene': '#f3ead7', voile: voile('rgba(11,9,6,X)', .86), 'titre-police': `400 38px ${SERIF}`, 'titre-espace': '-.015em', 'nombre-police': `400 56px ${SERIF}`, nombre: '#e7cd8e', panneau: 'rgba(214,180,106,.07)', 'panneau-bord': '1px solid rgba(214,180,106,.28)', rayon: '6px', 'rayon-bouton': '4px', 'rayon-barre': '6px',
       cta: 'linear-gradient(180deg,#e7cd8e,#b8923f)', 'cta-encre': '#15120c', second: 'transparent', 'second-bord': '1px solid rgba(214,180,106,.5)', barre: '#14110b', actif: '#d6b46a', 'actif-encre': '#15120c' }],
   };
-  const v = new URLSearchParams(location.search).get('v') ?? 'nuit', [nom, phrase, jetons] = UNIVERS[v] ?? UNIVERS.nuit;
+  Object.assign(UNIVERS, {
+    g: ['G — Brume', 'Lac dans la brume, béton clair, cuivre patiné et verre dépoli. Calme, digne de confiance.', { menu: 'etapes', scene: 'variante-g.png', planche: '#dfe3e0', legende: '#1c2a27', police: SANS, fond: '#eef1ee', encre: '#1c2a27', discret: '#6f7d79', filet: '#d5dcd8', accent: '#b5673a',
+      'heure-scene': '#1c2a27', voile: voile('rgba(238,241,238,X)'), 'titre-police': `600 34px ${SANS}`, 'titre-espace': '-.035em', 'nombre-police': `300 54px ${SANS}`, panneau: '#f8faf8', 'panneau-bord': '1px solid #d5dcd8', rayon: '20px', 'rayon-bouton': '14px', 'rayon-barre': '20px',
+      cta: '#1c2a27', 'cta-encre': '#f8faf8', second: '#f8faf8', 'second-bord': '1px solid #c9d2cd', barre: '#f8faf8', actif: '#b5673a', 'actif-encre': '#fff' }],
+    h: ['H — Encre', 'Papier washi, bois clair, pierre d’encre et indigo. Équilibré, précis, beaucoup de vide.', { menu: 'tuiles', scene: 'variante-h.png', planche: '#e4e0d8', legende: '#17171a', police: SERIF, fond: '#f4f1ea', encre: '#17171a', discret: '#84807a', filet: '#dcd6ca', accent: '#27348b',
+      'heure-scene': '#17171a', voile: voile('rgba(244,241,234,X)'), 'titre-police': `400 36px ${SERIF}`, 'titre-espace': '-.02em', 'nombre-police': `400 56px ${SERIF}`, panneau: '#fbf9f4', 'panneau-bord': '1px solid #dcd6ca', rayon: '2px', 'rayon-bouton': '2px', 'rayon-barre': '2px',
+      cta: '#27348b', 'cta-encre': '#fbf9f4', second: '#fbf9f4', 'second-bord': '1px solid #17171a', barre: '#fbf9f4', actif: '#17171a', 'actif-encre': '#fbf9f4' }],
+    i: ['I — Aurore', 'Au-dessus des nuages à l’aube, chrome, or rose et cristal. Ambitieux, lumineux.', { menu: 'socle', scene: 'variante-i.png', planche: '#e6dfe9', legende: '#241a3a', police: SANS, fond: 'linear-gradient(170deg, #f7f1fb, #fdf3ee)', 'fond-uni': '#fbf3f6', encre: '#241a3a', discret: '#857a99', filet: '#eadff0', accent: '#e0567a',
+      'heure-scene': '#fff', voile: voile('rgba(250,243,247,X)'), 'titre-police': `700 34px ${SANS}`, 'nombre-police': `700 50px ${SANS}`, nombre: '#5b3fd6', panneau: 'rgba(255,255,255,.85)', 'panneau-bord': '1px solid #fff', 'panneau-ombre': '0 20px 40px -24px rgba(91,63,214,.4)', rayon: '26px', 'rayon-bouton': '26px', 'rayon-barre': '0',
+      cta: 'linear-gradient(120deg,#5b3fd6,#e0567a 70%,#f6a26b)', 'cta-encre': '#fff', 'cta-ombre': '0 14px 28px -12px rgba(224,86,122,.6)', second: '#fff', 'second-bord': '1px solid #eadff0', barre: '#fff', actif: '#241a3a', 'actif-encre': '#fff' }],
+  });
+  const parametres = new URLSearchParams(location.search);
+  const v = parametres.get('v') ?? 'nuit', [nom, phrase, jetons] = UNIVERS[v] ?? UNIVERS.nuit;
+  // disposition du menu : celle de l'univers, ou celle demandée (m=barre|etapes|tuiles|socle)
+  const menu = parametres.get('m') ?? jetons.menu ?? 'barre';
+  const NOMS_MENU = { barre: 'barre d’onglets flottante', etapes: 'parcours en cinq étapes', tuiles: 'sommaire en tuiles, sans barre', socle: 'socle avec le geste principal au centre' };
+  addEventListener('DOMContentLoaded', () => {
+    document.getElementById('phrase').textContent += ` Menu : ${NOMS_MENU[menu]}.`;
+    const ETAPES = ['Dossier', 'Analyse', 'Scénarios', 'Conseil', 'Rapport'];
+    for (const ecran of document.querySelectorAll('.dossier, .analyse')) {
+      const ici = ecran.classList.contains('dossier') ? 0 : 1, barre = ecran.querySelector('.barre');
+      if (menu === 'barre') continue;
+      barre.remove();
+      if (menu === 'etapes') {
+        const parcours = document.createElement('div');
+        parcours.className = 'etapes';
+        parcours.innerHTML = ETAPES.map((e, i) => `${i ? `<em class="${i <= ici ? 'fait' : ''}"></em>` : ''}<span class="${i < ici ? 'fait' : i === ici ? 'ici' : ''}"><i>${i < ici ? '✓' : i + 1}</i>${e}</span>`).join('');
+        ecran.querySelector('.sur').after(parcours);
+        ecran.querySelector('.rubriques')?.remove();
+        for (const cta of ecran.querySelectorAll(':scope > .cta, .tete .cta')) cta.remove();
+        ecran.insertAdjacentHTML('beforeend', `<div class="suivant"><div class="cta second">‹</div><div class="cta">Suivant : ${ETAPES[ici + 1]} →</div></div>`);
+      } else if (menu === 'tuiles') {
+        ecran.querySelector('.sur').insertAdjacentHTML('beforebegin', '<div class="retour">‹ Sommaire</div>');
+      } else if (menu === 'socle') {
+        ecran.insertAdjacentHTML('beforeend', `<div class="socle"><span class="${ici === 0 ? 'ici' : ''}">Dossier</span><span>Scénarios</span><b>Analyse</b><span>Conseil</span><span>Rapport</span></div>`);
+      }
+    }
+    if (menu === 'tuiles') {
+      const bas = document.querySelector('.accueil .bas');
+      bas.querySelector('.duo').remove();
+      bas.querySelector('.titre').style.cssText = 'font-size:32px;margin:10px 0 16px';
+      bas.insertAdjacentHTML('beforeend', `<div class="tuiles" style="margin-top:10px"><div class="panneau"><b>Dossier</b><span>10 rubriques</span></div><div class="panneau"><b>Analyse</b><span>score 92</span></div>
+        <div class="panneau"><b>Scénarios</b><span>7 simulations</span></div><div class="panneau"><b>Conseil</b><span>5 mesures</span></div><div class="panneau large"><b>Rapport PDF</b><span>10 pages ›</span></div></div>`);
+      bas.style.bottom = '26px';
+    }
+    if (menu === 'etapes') document.querySelector('.accueil .duo .cta').textContent = 'Commencer →';
+  });
   document.getElementById('nom').textContent = nom; document.getElementById('phrase').textContent = phrase;
   for (const [cle, valeur] of Object.entries(jetons)) document.body.style.setProperty('--' + cle, cle === 'scene' ? `url(${valeur})` : valeur);
 </script>
