@@ -52,9 +52,12 @@ struct OutilsEcran: ToolbarContent {
 struct DossierNatif: View {
     @ObservedObject var navigation: Navigation
     @State private var choisie: String?
+    /// Sur iPad, la liste et la rubrique restent côte à côte, en portrait comme en paysage.
+    @State private var colonnes = NavigationSplitViewVisibility.all
+    @Environment(\.horizontalSizeClass) private var largeur
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $colonnes) {
             List(selection: $choisie) {
                 Section {
                     ForEach(Array(navigation.rubriques.enumerated()), id: \.element.id) { rang, rubrique in
@@ -85,9 +88,11 @@ struct DossierNatif: View {
                 FondApp()
             }
         }
-        .onAppear {
-            // sur iPad, la première rubrique est ouverte d'emblée ; sur iPhone, on commence par la liste
-            if choisie == nil, UIDevice.current.userInterfaceIdiom == .pad { choisie = navigation.rubriques.first?.id }
+        .navigationSplitViewStyle(.balanced)
+        // écran large : une rubrique est toujours ouverte (la première d'emblée) ; iPhone : on commence par la liste
+        .task(id: "\(navigation.versionSchema)-\(largeur == .regular)") {
+            guard largeur == .regular else { return }
+            if choisie == nil || !navigation.rubriques.contains(where: { $0.id == choisie }) { choisie = navigation.rubriques.first?.id }
         }
     }
 }
