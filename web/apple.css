@@ -6,7 +6,7 @@
    - Police du système (SF Pro sur les appareils Apple), Inter ailleurs. Le rapport imprimé garde sa serif. */
 
 :root {
-  --fond: #f2f2f7; --surface: #ffffff; --creux: #efeff4; --encre: #1c1c1e; --encre-2: #6e6e73; --encre-3: #a1a1a8;
+  --fond: #f2f1ee; --surface: #ffffff; --creux: #efeeeb; --encre: #1c1c1e; --encre-2: #6e6e73; --encre-3: #a1a1a8;
   --filet: rgba(60, 60, 67, .14); --ombre: none;
   --p1: #0a7aff; --p2: #5e5ce6; --p3: #28a745; --salaire: #d1d1d6; --attente: #ff9500; --lacune: #ff3b30;
   --critique: #ff3b30; --attention: #ff9500; --opportunite: #28a745; --info: #6e6e73; --accent: #0a7aff;
@@ -272,3 +272,19 @@ svg .axe { font: 500 13px var(--police); }
 }
 @media (min-width: 641px) and (max-width: 1100px) { .risques { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .risques { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ---------- le fond : un mur où la lumière glisse lentement (boucle vidéo, voir src/fond.js), sous des cartes
+   légèrement translucides comme les matières du système */
+.fond { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--fond); contain: strict; }
+.fond img, .fond video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transform: translate3d(var(--fx, 0px), var(--fy, 0px), 0) scale(var(--fz, 1.08)); will-change: transform; }
+.fond video { opacity: 0; transition: opacity 1.6s var(--aise); }
+.fond.pret video { opacity: 1; }
+.fond i { position: absolute; inset: 0; background: color-mix(in srgb, var(--fond) 62%, transparent); }
+@media (prefers-color-scheme: dark) { .fond i { background: color-mix(in srgb, var(--fond) 50%, transparent); } }
+.carte, .bloc, .risque { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+@media (min-width: 1000px) {
+  .barre { background: color-mix(in srgb, var(--surface) 62%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(28px); backdrop-filter: saturate(1.6) blur(28px); }
+}
+@media (max-width: 999.98px) { .barre { background: none; } }
+@media print { .fond { display: none !important; } }

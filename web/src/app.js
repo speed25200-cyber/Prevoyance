@@ -19,6 +19,9 @@ import * as VuePlan from './vues/plan.js';
 import * as VueRapport from './vues/rapport.js';
 import * as VueDonnees from './vues/donnees.js';
 import { h, $ } from './ui.js';
+import { installerFond } from './fond.js';
+
+installerFond();
 
 /** Icônes de la navigation (traits simples, comme celles du système). */
 const ICONES = {'dossier': '<path d="M12 12a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2z"/><path d="M4.8 19.6c.9-3.1 3.7-4.9 7.2-4.9s6.3 1.8 7.2 4.9"/>',
