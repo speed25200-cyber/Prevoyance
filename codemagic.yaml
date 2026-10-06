@@ -17,6 +17,14 @@ definitions:
       brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
       xcodegen generate
 
+  essais: &essais
+    name: Essais du moteur de calcul
+    script: |
+      set -e
+      # Les cas de test du moteur (montants officiels, calculs faits à la main) : s'ils échouent, rien n'est construit ni envoyé.
+      node --version
+      node moteur/tests/run.mjs
+
 workflows:
   ios-controle:
     name: Prévoyance iOS — contrôle
@@ -25,6 +33,7 @@ workflows:
     environment:
       xcode: latest
     scripts:
+      - *essais
       - *projet
       - name: Construire pour le simulateur
         working_directory: ios
@@ -60,6 +69,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: ch.prevoyance.app
     scripts:
+      - *essais
       - *projet
       - name: Signature
         working_directory: ios

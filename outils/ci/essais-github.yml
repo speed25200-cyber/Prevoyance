@@ -1,0 +1,23 @@
+# À copier dans .github/workflows/essais.yml (depuis GitHub ou un accès avec le droit « workflow ») pour l'activer.
+# Les cas de test du moteur tournent à chaque envoi : une règle de calcul cassée ne peut pas partir sans se voir.
+name: Essais du moteur
+
+on:
+  push:
+    paths: ['moteur/**', '.github/workflows/essais.yml']
+  pull_request:
+    paths: ['moteur/**']
+
+permissions:
+  contents: read
+
+jobs:
+  moteur:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cas de test (montants officiels, calculs à la main)
+        run: node moteur/tests/run.mjs
