@@ -148,10 +148,30 @@
     body::after { background: linear-gradient(0deg, color-mix(in srgb, var(--fond) 70%, transparent) 10%, color-mix(in srgb, var(--fond) 0%, transparent)); height: calc(96px + env(safe-area-inset-bottom, 0px)); }
   }
 
-  /* sombre, grand écran : la scène remplit l'écran derrière l'analyse ; sa carte ne doit porter ni verre ni flou
-     (un flou sur le parent enfermerait la scène, fixée à l'écran, dans la carte) */
-  @media (prefers-color-scheme: dark) and (min-width: 640.02px) {
-    .tete, .tete.carte { -webkit-backdrop-filter: none; backdrop-filter: none; border: 0; box-shadow: none; }
+  /* ---------- tablette et ordinateur : l'analyse s'ouvre sur un panneau en deux parties, dans les deux thèmes.
+     À gauche le chiffre et ses trois repères, à droite la scène des trois piliers, en bas ce que verse chaque pilier.
+     Aucun texte n'est posé sur l'image : tout reste lisible, quel que soit l'éclairage de la scène. */
+  @media (min-width: 640.02px) {
+    body[data-vue="analyse"][data-panneau="analyse"] .fond { opacity: 1; }
+    .tete, .tete.carte { position: relative; display: flex !important; flex-direction: column; align-items: stretch; gap: 0; overflow: hidden; isolation: isolate;
+      min-height: clamp(430px, 56vh, 600px) !important; padding: 0 !important; border-radius: 32px; background: var(--verre) !important;
+      border: 1px solid var(--verre-bord); box-shadow: var(--verre-ombre), var(--verre-reflet); }
+    .tete .resume { position: relative; z-index: 2; flex: 1 1 auto; align-self: flex-start; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+      width: 56%; max-width: none; padding: clamp(28px, 4vw, 56px); }
+    .tete .scene-toile { position: absolute !important; inset: 0 0 0 auto !important; width: 48% !important; height: 100% !important; z-index: 0; border-radius: 0;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 26%); mask-image: linear-gradient(90deg, transparent, #000 26%); }
+    .tete .scene-voile { display: none !important; }
+    .tete .grand { font: 200 clamp(60px, 8.4vw, 112px)/.95 var(--titre); letter-spacing: -.055em; }
+    .cles { gap: clamp(20px, 3vw, 40px); margin-top: 22px; }
+    .cles b { font: 400 clamp(22px, 2.3vw, 30px)/1.15 var(--titre); letter-spacing: -.03em; }
+    .scene-piliers { position: relative !important; inset: auto !important; z-index: 2; flex: none; display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0;
+      margin: 0; padding: 0; text-align: left; border-top: 1px solid var(--filet); background: color-mix(in srgb, var(--fond) 78%, transparent); }
+    .scene-puce, .scene-puce:hover, .scene-puce.actif, .scene-puce:focus-visible { background: none !important; border: 0; border-radius: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .scene-puce { display: grid; gap: 4px; justify-items: start; text-align: left; padding: 16px clamp(20px, 3vw, 40px) 18px; }
+    .scene-puce + .scene-puce { border-left: 1px solid var(--filet); }
+    .scene-puce small { font: 500 11.5px/1.3 var(--police); letter-spacing: .14em; text-transform: uppercase; color: var(--encre-2); }
+    .scene-puce b { font: 500 clamp(19px, 2vw, 24px)/1.2 var(--titre); letter-spacing: -.02em; white-space: nowrap; }
+    .scene-puce.actif b, .scene-puce:hover b { color: var(--bleu); }
   }
 
   /* ---------- écrans tactiles (iPhone, iPad) : fluidité d'abord.
@@ -169,6 +189,28 @@
   }
   @media (pointer: coarse) and (prefers-color-scheme: light) {
     .onglets { background: linear-gradient(135deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .5) 46%, rgba(255, 255, 255, .62)); }
+  }
+
+  /* ---------- dossier sur tablette et ordinateur : la liste des rubriques à gauche, la rubrique choisie à droite */
+  .rubriques { display: none; }
+  @media (min-width: 760px) {
+    .saisie { display: grid !important; grid-template-columns: minmax(240px, 310px) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; gap: 16px 22px; align-items: start; }
+    .saisie .ecran-titre { grid-column: 1 / -1; grid-row: 1; }
+    .saisie .portefeuille { grid-column: 1; grid-row: 2; }
+    .rubriques { grid-column: 1; grid-row: 3; display: grid; gap: 2px; padding: 8px; border-radius: 26px; background: var(--verre); border: 1px solid var(--verre-bord);
+      box-shadow: var(--verre-ombre), var(--verre-reflet); }
+    .rubriques button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 9px 12px; border: 0; border-radius: 18px; background: none;
+      font: 500 16px/1.25 var(--police); color: var(--encre-2); text-align: left; transition: background .3s var(--aise), color .25s; }
+    .rubriques button:hover { color: var(--encre); }
+    .rubriques button[aria-current="true"] { background: var(--bulle); box-shadow: var(--bulle-ombre); color: var(--encre); font-weight: 600; }
+    .rubriques i { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font: 600 13.5px/1 var(--police); font-style: normal;
+      background: var(--puits); color: var(--encre-2); }
+    .rubriques button[aria-current="true"] i { background: linear-gradient(180deg, #5a9bff, var(--bleu)); color: #fff; }
+    .saisie .voir-analyse { grid-column: 1; grid-row: 4; width: 100%; min-height: 52px; }
+    .saisie .bloc[data-bloc] { grid-column: 2; grid-row: 2 / 6; padding: clamp(18px, 2.4vw, 30px); }
+    .saisie .bloc[data-bloc]:not([open]) { display: none; }
+    .saisie .bloc[data-bloc] > summary { pointer-events: none; padding: 0 0 14px; font: 700 clamp(24px, 2.6vw, 30px)/1.15 var(--titre); letter-spacing: -.025em; }
+    .saisie .bloc[data-bloc] > summary::before, .saisie .bloc[data-bloc] > summary::after { display: none; }
   }
 
   /* ---------- dans l'app iPhone / iPad : le menu est la barre native (vrai verre du système), la page retire le sien */

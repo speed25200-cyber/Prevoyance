@@ -155,7 +155,8 @@ function portefeuille() {
       importer));
 }
 
-let premiere = true;
+/** Rubrique du dossier affichée (elle reste la même quand le formulaire est reconstruit). */
+let rubriqueOuverte = '';
 
 export function construire() {
   const { t } = ctx, d = dossier();
@@ -191,25 +192,34 @@ export function construire() {
     bloc('sv_securite', ouvert('sv_securite', false), ...EcranVerrou.champs(ctx, construire)),
   ];
   blocs.forEach((b, i) => b.style.setProperty('--i', String(i)));
-  // téléphone : une seule rubrique ouverte à la fois (les autres se referment), la première au départ
-  if (matchMedia('(max-width: 640px)').matches) {
-    const rubriques = blocs.filter(b => b.dataset.bloc);
-    const gardee = premiere ? rubriques[0] : rubriques.find(b => /** @type {HTMLDetailsElement} */ (b).open) ?? null;
-    let pret = false;
-    setTimeout(() => { pret = true; }, 400);                     // les rubriques créées ouvertes signalent leur état : on l'ignore
-    for (const b of rubriques) {
-      /** @type {HTMLDetailsElement} */ (b).open = b === gardee;
-      b.addEventListener('toggle', () => {
-        if (!pret || !/** @type {HTMLDetailsElement} */ (b).open) return;
-        for (const autre of rubriques) if (autre !== b) /** @type {HTMLDetailsElement} */ (autre).open = false;
-        requestAnimationFrame(() => b.scrollIntoView({ block: 'start', behavior: 'smooth' }));
-      });
-    }
-    premiere = false;
+  // Une seule rubrique ouverte à la fois. Téléphone : un accordéon. Tablette et ordinateur : la liste des rubriques
+  // à gauche, la rubrique choisie à droite (comme les réglages du système).
+  const rubriques = /** @type {HTMLDetailsElement[]} */ (blocs.filter(b => b.dataset.bloc));
+  if (!rubriques.some(b => b.dataset.bloc === rubriqueOuverte)) rubriqueOuverte = /** @type {string} */ (rubriques[0].dataset.bloc);
+  const etroit = matchMedia('(max-width: 759.98px)');
+  const liste = h('nav', { class: 'rubriques', 'aria-label': t('dossier') }, ...rubriques.map((b, i) => h('button', { type: 'button', 'data-rubrique': b.dataset.bloc,
+    onclick: () => ouvrir(/** @type {string} */ (b.dataset.bloc)) }, h('i', { 'aria-hidden': 'true' }, String(i + 1)), h('span', {}, t(/** @type {string} */ (b.dataset.bloc))))));
+  const ouvrir = cle => {
+    rubriqueOuverte = cle;
+    for (const b of rubriques) b.open = b.dataset.bloc === cle;
+    for (const bouton of liste.children) bouton.setAttribute('aria-current', String(/** @type {HTMLElement} */ (bouton).dataset.rubrique === cle));
+  };
+  let pret = false;
+  setTimeout(() => { pret = true; }, 400);                       // les rubriques créées ouvertes signalent leur état : on l'ignore
+  for (const b of rubriques) {
+    b.addEventListener('toggle', () => {
+      if (!pret) return;
+      const cle = /** @type {string} */ (b.dataset.bloc);
+      if (b.open) {
+        if (rubriqueOuverte !== cle) ouvrir(cle);
+        if (etroit.matches) requestAnimationFrame(() => b.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+      } else if (rubriqueOuverte === cle && !etroit.matches) b.open = true;   // à droite, la rubrique affichée ne se replie pas
+    });
   }
+  ouvrir(rubriqueOuverte);
   $('saisie').replaceChildren(
     h('div', { class: 'ecran-titre' }, h('div', {}, h('h1', {}, t('dossier')), h('p', {}, t('dossierAide')))),
-    ...blocs,
+    blocs[0], liste, ...rubriques,
     h('button', { type: 'button', class: 'bouton voir-analyse', onclick: () => /** @type {HTMLElement|null} */ (document.querySelector('#onglets [data-vue=analyse]'))?.click() }, t('voirAnalyse')));
 }
 
