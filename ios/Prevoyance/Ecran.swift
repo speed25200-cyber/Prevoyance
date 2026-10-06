@@ -59,10 +59,10 @@ struct Ecran: View {
                 .transition(.opacity)
             }
             if navigation.barreVisible && !navigation.accueil {
-                BarreOnglets(navigation: navigation)
+                BarreParcours(navigation: navigation)
                     .frame(maxWidth: 560)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, -10)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 4)
                     .transition(.opacity)
                     // le clavier passe par-dessus la barre : elle ne remonte pas sur le formulaire
                     .ignoresSafeArea(.keyboard, edges: .bottom)
@@ -304,6 +304,86 @@ final class Navigation: ObservableObject {
         if autotest, barreVisible, !autotestLance {
             autotestLance = true
             Task { await lancerAutotest() }
+        }
+    }
+}
+
+/// Le rendez-vous comme un parcours : Dossier, Analyse, Scénarios, Conseil, Rapport.
+enum Etapes {
+    static let liste = ["dossier", "analyse", "scenarios", "plan", "rapport"]
+}
+
+/// Les cinq étapes, dans la barre du système : faites (cochées), en cours (accent), à venir. Toucher une étape y mène.
+struct Parcours: View {
+    @ObservedObject var navigation: Navigation
+
+    var body: some View {
+        let ici = Etapes.liste.firstIndex(of: navigation.onglet) ?? -1
+        HStack(spacing: 0) {
+            ForEach(Array(Etapes.liste.enumerated()), id: \.offset) { rang, etape in
+                if rang > 0 {
+                    Rectangle().fill(rang <= ici ? Teinte.bouton : Teinte.glace.opacity(0.22)).frame(width: 14, height: 1.5)
+                }
+                Button {
+                    navigation.choisir(etape)
+                } label: {
+                    ZStack {
+                        Circle().fill(rang == ici ? Teinte.accent : rang < ici ? Teinte.bouton : Color.clear)
+                        Circle().strokeBorder(rang > ici ? Teinte.glace.opacity(0.35) : Color.clear, lineWidth: 1.5)
+                        if rang < ici {
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Teinte.boutonEncre)
+                        } else {
+                            Text(String(rang + 1)).font(.system(size: 12, weight: .semibold)).foregroundStyle(rang == ici ? Color.white : Color.secondary)
+                        }
+                    }
+                    .frame(width: 26, height: 26)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(navigation.noms[etape] ?? etape))
+            }
+        }
+    }
+}
+
+/// En bas : revenir d'un pas, et le pas suivant du rendez-vous, nommé. Au bout du parcours, retour à l'accueil.
+struct BarreParcours: View {
+    @ObservedObject var navigation: Navigation
+
+    var body: some View {
+        let ici = Etapes.liste.firstIndex(of: navigation.onglet)
+        HStack(spacing: 10) {
+            Button {
+                if let ici, ici > 0 { navigation.choisir(Etapes.liste[ici - 1]) } else if ici == nil { navigation.choisir("analyse") } else { navigation.montrerAccueil() }
+            } label: {
+                Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
+                    .frame(width: 56, height: 56)
+                    .background(Teinte.nuitBasse, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Teinte.glace.opacity(0.24), lineWidth: 1))
+            }
+            .buttonStyle(Appui())
+            if let ici {
+                Button {
+                    if ici + 1 < Etapes.liste.count { navigation.choisir(Etapes.liste[ici + 1]) } else { navigation.montrerAccueil() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(ici + 1 < Etapes.liste.count
+                             ? "\(navigation.textes["suivant"] ?? "Suivant") : \(navigation.noms[Etapes.liste[ici + 1]] ?? "")"
+                             : (navigation.textes["terminer"] ?? "Terminer"))
+                            .font(.system(size: 17, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Image(systemName: ici + 1 < Etapes.liste.count ? "arrow.right" : "checkmark").font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundStyle(Teinte.boutonEncre)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Teinte.bouton, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.35), radius: 14, y: 8)
+                }
+                .buttonStyle(Appui())
+            } else {
+                Spacer()
+            }
         }
     }
 }

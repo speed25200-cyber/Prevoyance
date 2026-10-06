@@ -107,7 +107,7 @@ struct BlocVue: View {
         case "remarque":
             Text(bloc.s("texte")).font(.system(size: 15, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Teinte.bleu.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(Teinte.accent.opacity(0.16), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         case "chiffres":
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
                 ForEach(Array(bloc.liste("elements").enumerated()), id: \.offset) { _, e in
@@ -126,7 +126,7 @@ struct BlocVue: View {
                 ForEach(Array(bloc.liste("elements").enumerated()), id: \.offset) { _, e in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack { Text(texte(e, "nom")); Spacer(); Text(texte(e, "valeur")).fontWeight(.semibold).monospacedDigit() }.font(.system(size: 16))
-                        barre(nombre(e, "part"), couleur: texte(e, "ton") == "moins" ? Teinte.lacune : Teinte.bleu)
+                        barre(nombre(e, "part"), couleur: texte(e, "ton") == "moins" ? Teinte.lacune : Teinte.accent)
                     }
                 }
             }
@@ -139,7 +139,7 @@ struct BlocVue: View {
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.primary.opacity(bloc.b("meilleure") ? 0.12 : 0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(bloc.b("meilleure") ? Teinte.bleu : Color.clear, lineWidth: 1.5))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(bloc.b("meilleure") ? Teinte.accent : Color.clear, lineWidth: 1.5))
         case "levier":
             VStack(alignment: .leading, spacing: 4) {
                 Text(bloc.s("titre")).font(.system(size: 17, weight: .semibold))
@@ -154,7 +154,7 @@ struct BlocVue: View {
                 }
                 .font(.system(size: 16))
                 barre(bloc.n("avant"), couleur: Color.secondary.opacity(0.6))
-                barre(bloc.n("apres"), couleur: Teinte.bleu)
+                barre(bloc.n("apres"), couleur: Teinte.accent)
                 Text(bloc.s("note")).font(.system(size: 12)).foregroundStyle(Color.secondary)
             }
         case "points":
@@ -163,7 +163,7 @@ struct BlocVue: View {
                     HStack(alignment: .top, spacing: 12) {
                         Text(texte(p, "rang")).font(.system(size: 14, weight: .semibold))
                             .frame(width: 28, height: 28)
-                            .background(texte(p, "urgence") == "maintenant" ? Teinte.bleu : Color.primary.opacity(0.1), in: Circle())
+                            .background(texte(p, "urgence") == "maintenant" ? Teinte.accent : Color.primary.opacity(0.1), in: Circle())
                             .foregroundStyle(texte(p, "urgence") == "maintenant" ? Color.white : Color.primary)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(texte(p, "nom").uppercased()).font(.system(size: 10.5, weight: .semibold)).tracking(1.2).foregroundStyle(Color.secondary)
@@ -220,9 +220,9 @@ struct BlocVue: View {
                 navigation.agir(bloc.s("id"), true)
             } label: {
                 if bloc.b("principal") {
-                    Text(bloc.s("texte")).font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.white)
+                    Text(bloc.s("texte")).font(.system(size: 17, weight: .semibold)).foregroundStyle(Teinte.boutonEncre)
                         .frame(maxWidth: .infinity).frame(height: 52)
-                        .background(LinearGradient(colors: [Color(red: 0.35, green: 0.61, blue: 1), Color(red: 0.08, green: 0.34, blue: 0.84)], startPoint: .top, endPoint: .bottom), in: Capsule())
+                        .background(LinearGradient(colors: [Teinte.bouton, Teinte.bouton.opacity(0.9)], startPoint: .top, endPoint: .bottom), in: Capsule())
                 } else {
                     Text(bloc.s("texte")).font(.system(size: 15, weight: .medium)).foregroundStyle(Color.primary)
                         .padding(.horizontal, 16).frame(height: 40)
@@ -295,7 +295,7 @@ struct BlocVue: View {
         return Chart {
             ForEach(Array(donnees.enumerated()), id: \.offset) { _, x in
                 BarMark(x: .value("nom", texte(x, "libelle")), y: .value("part", nombre(x, "part")))
-                    .foregroundStyle(vrai(x, "actif") ? Teinte.bleu : Color.secondary.opacity(0.45))
+                    .foregroundStyle(vrai(x, "actif") ? Teinte.accent : Color.secondary.opacity(0.45))
                     .cornerRadius(4)
             }
         }
@@ -338,7 +338,7 @@ struct BlocVue: View {
                                 }
                                 .foregroundStyle(vrai(colonne, "actif") ? Color.white : Color.primary)
                                 .frame(minWidth: 52).padding(.vertical, 8).padding(.horizontal, 6)
-                                .background(vrai(colonne, "actif") ? Teinte.bleu : Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .background(vrai(colonne, "actif") ? Teinte.accent : Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                             .buttonStyle(Appui())
                         }
@@ -354,9 +354,9 @@ struct BlocVue: View {
         return Chart {
             ForEach(Array(points.enumerated()), id: \.offset) { _, p in
                 AreaMark(x: .value("âge", depart + nombre(p, "annee")), yStart: .value("prudent", nombre(p, "p10")), yEnd: .value("favorable", nombre(p, "p90")))
-                    .foregroundStyle(Teinte.bleu.opacity(0.22))
+                    .foregroundStyle(Teinte.accent.opacity(0.22))
                 LineMark(x: .value("âge", depart + nombre(p, "annee")), y: .value("médian", nombre(p, "p50")), series: .value("série", "médiane"))
-                    .foregroundStyle(Teinte.bleu)
+                    .foregroundStyle(Teinte.accent)
                     .lineStyle(StrokeStyle(lineWidth: 2.5))
                 LineMark(x: .value("âge", depart + nombre(p, "annee")), y: .value("versé", nombre(p, "verse")), series: .value("série", "versé"))
                     .foregroundStyle(Color.secondary)

@@ -1,13 +1,19 @@
 import Charts
 import SwiftUI
 
-/// Couleurs des sources de revenu, les mêmes sur tous les écrans.
+/// La palette « Alpin — Nuit » : une nuit de montagne, la glace, l'acier et le granit, un seul accent rouge.
+/// Les sources de revenu gardent les mêmes couleurs sur tous les écrans.
 enum Teinte {
-    static let bleu = Color(red: 0.18, green: 0.49, blue: 0.96)
-    static let salaire = Color(red: 0.36, green: 0.42, blue: 0.54)
-    static let pilier1 = Color(red: 0.49, green: 0.69, blue: 0.96)
-    static let pilier2 = Color(red: 0.22, green: 0.43, blue: 0.80)
-    static let pilier3 = Color(red: 0.78, green: 0.87, blue: 0.99)
+    static let accent = Color(red: 0.886, green: 0.227, blue: 0.267)
+    static let nuit = Color(red: 0.043, green: 0.082, blue: 0.133)
+    static let nuitBasse = Color(red: 0.055, green: 0.106, blue: 0.173)
+    static let glace = Color(red: 0.745, green: 0.824, blue: 0.922)
+    static let bouton = Color(red: 0.933, green: 0.953, blue: 0.973)
+    static let boutonEncre = Color(red: 0.043, green: 0.082, blue: 0.133)
+    static let salaire = Color(red: 0.33, green: 0.40, blue: 0.50)
+    static let pilier1 = Color(red: 0.60, green: 0.65, blue: 0.72)
+    static let pilier2 = Color(red: 0.38, green: 0.52, blue: 0.70)
+    static let pilier3 = Color(red: 0.66, green: 0.86, blue: 0.99)
     static let lacune = Color(red: 0.94, green: 0.46, blue: 0.33)
 
     static func pilier(_ numero: Int) -> Color {
@@ -105,12 +111,12 @@ struct AnalyseNatif: View {
                     Text(a.bouton).font(.system(size: 17, weight: .semibold))
                     Image(systemName: "arrow.right").font(.system(size: 15, weight: .semibold))
                 }
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Teinte.boutonEncre)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
-                .background(LinearGradient(colors: [Color(red: 0.35, green: 0.61, blue: 1), Color(red: 0.08, green: 0.34, blue: 0.84)], startPoint: .top, endPoint: .bottom), in: Capsule())
+                .background(LinearGradient(colors: [Teinte.bouton, Teinte.bouton.opacity(0.9)], startPoint: .top, endPoint: .bottom), in: Capsule())
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.8))
-                .shadow(color: Teinte.bleu.opacity(0.5), radius: 16, y: 9)
+                .shadow(color: Color.black.opacity(0.35), radius: 16, y: 9)
             }
             .buttonStyle(Appui())
             HStack(spacing: 0) {
@@ -153,7 +159,7 @@ struct AnalyseNatif: View {
                         GeometryReader { cadre in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(Color.primary.opacity(0.1))
-                                Capsule().fill(LinearGradient(colors: [Teinte.bleu, Teinte.pilier1], startPoint: .leading, endPoint: .trailing))
+                                Capsule().fill(Teinte.accent)
                                     .frame(width: cadre.size.width * Swift.max(0, Swift.min(1, risque.couverture)))
                             }
                         }

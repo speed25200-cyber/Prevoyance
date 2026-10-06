@@ -9,6 +9,9 @@ struct PrevoyanceApp: App {
             Ecran()
                 .background(Color("FondLancement").ignoresSafeArea())
                 .persistentSystemOverlays(.hidden)
+                // « Alpin — Nuit » : l'app est une scène de nuit, quel que soit le thème de l'appareil
+                .preferredColorScheme(.dark)
+                .tint(Teinte.accent)
         }
     }
 }

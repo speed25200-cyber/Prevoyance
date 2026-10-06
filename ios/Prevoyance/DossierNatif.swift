@@ -1,18 +1,12 @@
 import PhotosUI
 import SwiftUI
 
-/// Le fond des écrans natifs : bleu nuit (ou clair), avec un halo de lumière en haut.
+/// Le fond des écrans : la nuit de montagne, du bleu profond vers un bleu ardoise, avec une lueur de glace en haut.
 struct FondApp: View {
-    @Environment(\.colorScheme) private var theme
-
     var body: some View {
-        let sombre = theme == .dark
         ZStack {
-            (sombre ? Color(red: 0.016, green: 0.035, blue: 0.075) : Color(red: 0.93, green: 0.95, blue: 0.98))
-            RadialGradient(colors: [Color(red: 0.18, green: 0.49, blue: 0.96).opacity(sombre ? 0.42 : 0.22), .clear],
-                           center: .topLeading, startRadius: 0, endRadius: 620)
-            RadialGradient(colors: [Color(red: 0.33, green: 0.27, blue: 0.86).opacity(sombre ? 0.3 : 0.12), .clear],
-                           center: .bottomTrailing, startRadius: 0, endRadius: 560)
+            LinearGradient(colors: [Teinte.nuit, Teinte.nuitBasse], startPoint: .top, endPoint: .bottom)
+            RadialGradient(colors: [Teinte.pilier3.opacity(0.16), .clear], center: .topTrailing, startRadius: 0, endRadius: 560)
         }
         .ignoresSafeArea()
     }
@@ -31,6 +25,9 @@ struct OutilsEcran: ToolbarContent {
             }
             .accessibilityLabel(Text(navigation.textes["accueil"] ?? "Accueil"))
         }
+        ToolbarItem(placement: .principal) {
+            Parcours(navigation: navigation)
+        }
         ToolbarItem(placement: .topBarTrailing) {
             MenuOutils(navigation: navigation)
         }
@@ -43,6 +40,11 @@ struct MenuOutils: View {
 
     var body: some View {
         Menu {
+            Button {
+                navigation.choisir("donnees")
+            } label: {
+                Label(navigation.noms["donnees"] ?? "Données", systemImage: "cylinder.split.1x2")
+            }
             Picker("", selection: Binding(get: { navigation.annee }, set: { navigation.regler(annee: $0) })) {
                 ForEach(navigation.annees, id: \.self) { an in Text(String(an)).tag(an) }
             }

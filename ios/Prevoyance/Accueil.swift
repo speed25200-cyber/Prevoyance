@@ -68,15 +68,15 @@ struct Accueil: View {
                         } label: {
                             Label(navigation.textes["nouveau"] ?? "", systemImage: "plus")
                                 .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Color.white)
+                                .foregroundStyle(Teinte.boutonEncre)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 56)
                                 .background(
-                                    LinearGradient(colors: [Color(red: 0.35, green: 0.61, blue: 1), Color(red: 0.08, green: 0.34, blue: 0.84)],
+                                    LinearGradient(colors: [Teinte.bouton, Teinte.bouton.opacity(0.9)],
                                                    startPoint: .top, endPoint: .bottom),
                                     in: Capsule())
                                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.8))
-                                .shadow(color: Color(red: 0.12, green: 0.39, blue: 0.91).opacity(0.55), radius: 18, y: 10)
+                                .shadow(color: Color.black.opacity(0.4), radius: 18, y: 10)
                         }
                         .buttonStyle(Appui())
                         Button {
@@ -116,7 +116,7 @@ struct Accueil: View {
     /// Le fond : le film des trois piliers (émergence à la première ouverture, puis boucle), sur son image fixe, sous
     /// un voile qui laisse lire le texte. Il se décale légèrement avec l'inclinaison de l'appareil.
     private var fond: some View {
-        let nuit = Color(red: 0.008, green: 0.02, blue: 0.045)
+        let nuit = Teinte.nuit
         return ZStack {
             nuit
             GeometryReader { cadre in
@@ -146,7 +146,7 @@ struct Accueil: View {
             ZStack {
                 Circle().stroke(Color.primary.opacity(0.12), lineWidth: 4)
                 Circle().trim(from: 0, to: arrive ? CGFloat(max(0, min(100, dossier.score))) / 100 : 0)
-                    .stroke(Color(red: 0.18, green: 0.49, blue: 0.96), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .stroke(Teinte.accent, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(.easeOut(duration: 1.1).delay(0.3), value: arrive)
                 Text(String(dossier.score)).font(.system(size: 15, weight: .semibold)).foregroundStyle(Color.primary)
@@ -193,26 +193,15 @@ struct Appui: ButtonStyle {
     }
 }
 
-/// Verre d'un panneau arrondi : « Liquid Glass » d'iOS 26, matériau translucide avant.
+/// Panneau « Alpin » : une plaque nette, à peine teintée de glace, bordée d'un filet. Les angles restent sobres.
 struct VerreArrondi: ViewModifier {
     let rayon: CGFloat
 
-    #if compiler(>=6.2)
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: rayon, style: .continuous))
-        } else {
-            ancien(content)
-        }
-    }
-    #else
-    func body(content: Content) -> some View { ancien(content) }
-    #endif
-
-    private func ancien(_ content: Content) -> some View {
-        content
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: rayon, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: rayon, style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6))
+        let forme = RoundedRectangle(cornerRadius: min(rayon, 16), style: .continuous)
+        return content
+            .background(Teinte.glace.opacity(0.07), in: forme)
+            .overlay(forme.strokeBorder(Teinte.glace.opacity(0.16), lineWidth: 1))
     }
 }
 
