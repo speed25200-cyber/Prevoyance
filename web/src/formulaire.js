@@ -8,6 +8,7 @@
 import { h, $ } from './ui.js';
 import * as Scan from './scan.js';
 import * as Conformite from './conformite.js';
+import * as EcranVerrou from './verrou-ecran.js';
 import { etat, garder, dossier, nouveauDossier, supprimerDossier, dupliquerDossier, dossierVide, dossierExemple, CANTONS, aujourdhui } from './etat.js';
 
 /** @type {{t: (c: string, v?: any) => string, f: any, apresChangement: () => void, reconstruire: () => void}} */
@@ -185,6 +186,7 @@ export function construire() {
     // conformité : procès-verbal de conseil du dossier, puis fiche de l'intermédiaire (une fois pour tous les dossiers)
     bloc('lg_conseil', ouvert('lg_conseil', true), ...Conformite.champsConseil(ctx, construire)),
     bloc('lg_intermediaire', ouvert('lg_intermediaire', false), ...Conformite.champsIntermediaire(ctx, construire)),
+    bloc('sv_securite', ouvert('sv_securite', false), ...EcranVerrou.champs(ctx, construire)),
   ];
   blocs.forEach((b, i) => b.style.setProperty('--i', String(i)));
   $('saisie').replaceChildren(

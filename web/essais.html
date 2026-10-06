@@ -50,6 +50,27 @@
     const titres = [...d.querySelectorAll('.page header h2')].map(x => x.textContent);
     noter('rapport : informations de l’intermédiaire et procès-verbal de conseil', titres.includes('Informations de l’intermédiaire') && titres.at(-1) === 'Procès-verbal de conseil', titres.slice(-2).join(' | '));
     noter('rapport : le bandeau signale ce qui manque', /sur \d+/.test(d.querySelector('.conformite h2')?.textContent ?? '') && d.querySelectorAll('.page .a-completer').length > 0, d.querySelector('.conformite h2')?.textContent);
+    // verrouillage : chiffrement des dossiers avec un code (dans un stockage d'essai, sans toucher à celui de l'application)
+    const Verrou = await import('./src/verrou.js');
+    const boite = new Map(), faux = { getItem: k => boite.get(k) ?? null, setItem: (k, v) => boite.set(k, v), removeItem: k => boite.delete(k) };
+    const secret = { dossiers: [{ id: 'a', nom: 'Dupont Marie', personne: { revenu: 91000 } }], conseiller: 'Jean Conseiller' };
+    await Verrou.creer('code-essai-42', secret, faux, 2000);
+    const brut = [...boite.values()].join(' ');
+    noter('verrou : rien de lisible dans le coffre', !brut.includes('Dupont') && !brut.includes('91000') && !brut.includes('code-essai'), `${brut.length} caractères`);
+    Verrou.fermer();
+    noter('verrou : un mauvais code n’ouvre pas', await Verrou.ouvrir('code-essai-43', faux) === null && !Verrou.ouvert());
+    const rendu = await Verrou.ouvrir('code-essai-42', faux);
+    noter('verrou : le bon code rend les dossiers', rendu?.dossiers[0].nom === 'Dupont Marie' && rendu.conseiller === 'Jean Conseiller' && Verrou.ouvert());
+    const avant = boite.get('prevoyance.coffre.v1');
+    await Verrou.enregistrer({ ...secret, conseiller: 'Autre' }, faux);
+    noter('verrou : chaque enregistrement change de vecteur', JSON.parse(avant).iv !== JSON.parse(boite.get('prevoyance.coffre.v1')).iv);
+    const abime = JSON.parse(boite.get('prevoyance.coffre.v1')); abime.donnees = abime.donnees.slice(0, -4) + 'AAAA'; boite.set('prevoyance.coffre.v1', JSON.stringify(abime));
+    Verrou.fermer();
+    noter('verrou : un contenu altéré est refusé', await Verrou.ouvrir('code-essai-42', faux) === null);
+    let refus = false; try { await Verrou.creer('court', secret, faux, 2000); } catch { refus = true; }
+    noter('verrou : un code trop court est refusé', refus);
+    Verrou.supprimer(faux);
+    noter('verrou : coffre supprimé', !Verrou.actif(faux) && !Verrou.ouvert());
     const conf = await import('./src/conformite.js');
     noter('conformité : une fiche vide n’est pas complète, les signatures sont sur la dernière page', conf.controle().some(x => !x.ok) && !!d.querySelector('.page:last-child .r-signatures'));
     // langues

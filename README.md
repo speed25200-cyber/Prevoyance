@@ -33,6 +33,12 @@ procès-verbal de conseil avec la vérification d'une assurance sur la vie quali
 terminent le rapport ; un bandeau signale ce qui reste à compléter. L'application ne remplace ni l'enregistrement
 auprès de la FINMA, ni les documents de l'assureur, ni un avis juridique.
 
+**Verrouillage.** Dans le dossier, la carte « Sécurité » protège l'application par un code : les dossiers, la fiche de
+l'intermédiaire et le nom du conseiller sont alors chiffrés sur l'appareil (AES-GCM 256 bits, clé dérivée du code par
+PBKDF2-SHA-256, 600 000 itérations). Le code est demandé à l'ouverture et après cinq minutes en arrière-plan. Il n'est
+enregistré nulle part : oublié, les dossiers sont perdus. Le chiffrement demande une adresse https ou locale ; dans
+l'app native (adresse interne `prevoyance://`), sa disponibilité reste à vérifier à la première compilation.
+
 S'y ajoutent aussi : un portefeuille de dossiers (créer, dupliquer, exporter, importer), l'analyse de chacun des deux
 membres d'un couple, un mode présentation plein écran, le clair et le sombre selon l'appareil.
 
@@ -103,7 +109,8 @@ python -m http.server 8790                       # depuis la racine du dépôt
 ```
 
 - Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (145 cas).
-- Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (23 essais : parcours, quatre langues complètes, largeur de téléphone).
+- Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (35 essais : parcours, quatre langues complètes, largeur de téléphone,
+  pages légales du rapport, chiffrement).
 - Vitesse : une analyse complète prend environ 0,06 ms sur un PC de bureau (mesure dans un navigateur ouvert).
 
 ## Limites connues

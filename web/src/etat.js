@@ -2,6 +2,9 @@
 /**
  * État de l'application : le portefeuille de dossiers du conseiller, le dossier ouvert, les réglages d'affichage.
  * Tout reste dans le navigateur (localStorage) : aucune donnée de client ne quitte l'appareil.
+ * Quand le verrouillage est activé, les données sensibles (dossiers, fiche de l'intermédiaire, nom du conseiller) ne
+ * sont plus écrites en clair : elles vont dans le coffre chiffré de verrou.js, et seuls les réglages d'affichage
+ * restent lisibles.
  *
  * Le dossier de l'interface est « plat » (un champ par case du formulaire) ; `versDossier` le convertit dans la
  * forme attendue par le moteur.
@@ -9,8 +12,11 @@
 
 import { ANNEES } from '../../moteur/src/index.js';
 import { LANGUES } from './i18n.js';
+import * as Verrou from './verrou.js';
 
 const CLE = 'prevoyance.etat.v2';
+/** Ce qui est chiffré quand le verrouillage est actif. */
+const SENSIBLES = ['dossiers', 'ouvert', 'conseiller', 'intermediaire'];
 export const CANTONS = ['AG', 'AI', 'AR', 'BE', 'BL', 'BS', 'FR', 'GE', 'GL', 'GR', 'JU', 'LU', 'NE', 'NW', 'OW', 'SG', 'SH', 'SO', 'SZ', 'TG', 'TI', 'UR', 'VD', 'VS', 'ZG', 'ZH'];
 export const VUES = ['analyse', 'scenarios', 'plan', 'rapport', 'donnees'];
 
@@ -48,7 +54,44 @@ function charger() {
 export const etat = charger();
 
 export function garder() {
-  try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch { /* navigation privée : rien n'est gardé */ }
+  try {
+    if (!Verrou.actif()) { localStorage.setItem(CLE, JSON.stringify(etat)); return; }
+    if (!Verrou.ouvert()) return;                                   // verrouillé : rien ne s'écrit avant le code
+    localStorage.setItem(CLE, JSON.stringify(Object.fromEntries(Object.entries(etat).filter(([cle]) => !SENSIBLES.includes(cle)))));
+    Verrou.enregistrer(Object.fromEntries(SENSIBLES.map(cle => [cle, etat[cle]])));
+  } catch { /* navigation privée : rien n'est gardé */ }
+}
+
+function reprendre(donnees) {
+  Object.assign(etat, donnees, { dossiers: (donnees.dossiers?.length ? donnees.dossiers : [dossierVide()]).map(d => ({ ...dossierVide(), ...d })) });
+  if (!etat.dossiers.some(d => d.id === etat.ouvert)) etat.ouvert = etat.dossiers[0].id;
+}
+
+/** Ouvre le coffre avec le code : les dossiers reviennent en mémoire. `false` si le code est faux. */
+export async function deverrouiller(code) {
+  const donnees = await Verrou.ouvrir(code);
+  if (!donnees) return false;
+  reprendre(donnees);
+  return true;
+}
+
+/** Active le verrouillage : les données sensibles passent dans le coffre et disparaissent du stockage en clair. */
+export async function activerVerrou(code) {
+  await Verrou.creer(code, Object.fromEntries(SENSIBLES.map(cle => [cle, etat[cle]])));
+  garder();
+}
+
+/** Retire le verrouillage (coffre ouvert) : les données reviennent en clair sur l'appareil. */
+export function retirerVerrou() {
+  if (!Verrou.ouvert()) return;
+  Verrou.supprimer();
+  garder();
+}
+
+/** Code oublié : efface le coffre et les réglages de cet appareil. */
+export function effacerTout() {
+  Verrou.supprimer();
+  try { localStorage.removeItem(CLE); } catch { /* stockage indisponible */ }
 }
 
 /** Le dossier ouvert. */

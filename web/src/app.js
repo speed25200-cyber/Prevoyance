@@ -20,6 +20,8 @@ import * as VueRapport from './vues/rapport.js';
 import * as VueDonnees from './vues/donnees.js';
 import { h, $ } from './ui.js';
 import { installerFond } from './fond.js';
+import * as Verrou from './verrou.js';
+import * as EcranVerrou from './verrou-ecran.js';
 
 installerFond();
 
@@ -144,6 +146,13 @@ $('presentation').addEventListener('click', () => {
 });
 
 document.body.dataset.panneau = demandee === 'dossier' ? 'dossier' : 'analyse';
+// verrouillage : rien ne s'affiche avant le code ; après cinq minutes en arrière-plan, le code est redemandé
+if (Verrou.actif()) { document.body.classList.add('pret'); await EcranVerrou.demander(ctx.t); }
+let masqueDepuis = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) masqueDepuis = Date.now();
+  else if (Verrou.actif() && masqueDepuis && Date.now() - masqueDepuis > 5 * 60_000) { Verrou.fermer(); location.reload(); }
+});
 await calculer();
 traduire();
 document.body.classList.add('pret');
