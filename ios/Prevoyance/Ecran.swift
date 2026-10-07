@@ -268,6 +268,10 @@ final class Navigation: ObservableObject {
         // capture en paysage (PREVOYANCE_PAYSAGE=1) : l'iPad tourné, comme on le tient en rendez-vous
         if ProcessInfo.processInfo.environment["PREVOYANCE_PAYSAGE"] == "1", let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
             scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+            // le simulateur de l'intégration continue n'obéit pas toujours à la demande : on tourne aussi l'appareil lui-même
+            UIDevice.current.setValue(UIInterfaceOrientation.landscapeRight.rawValue, forKey: "orientation")
+            scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
         }
         try? await Task.sleep(nanoseconds: 2_500_000_000)
         let demandee = ProcessInfo.processInfo.environment["PREVOYANCE_VUE"] ?? "analyse"

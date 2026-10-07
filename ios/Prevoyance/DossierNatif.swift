@@ -8,7 +8,7 @@ struct FondApp: View {
         ZStack {
             Teinte.nuit
             Panorama(ancrage: .topTrailing)
-            LinearGradient(stops: [.init(color: Teinte.nuit.opacity(0.30), location: 0), .init(color: Teinte.nuit.opacity(0.62), location: 0.38),
+            LinearGradient(stops: [.init(color: Teinte.nuit.opacity(0.10), location: 0), .init(color: Teinte.nuit.opacity(0.52), location: 0.40),
                                    .init(color: Teinte.nuit.opacity(0.90), location: 1)], startPoint: .top, endPoint: .bottom)
         }
         .ignoresSafeArea()
@@ -57,8 +57,10 @@ struct MenuOutils: View {
             HStack(spacing: 6) {
                 if navigation.presentation { Image(systemName: "person.2.wave.2").font(.system(size: 13, weight: .semibold)).foregroundStyle(Teinte.accent) }
                 Text("\(String(navigation.annee)) · \(navigation.langue.uppercased())")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             }
         }
     }
