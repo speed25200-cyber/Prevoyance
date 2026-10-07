@@ -136,8 +136,11 @@ final class Navigation: ObservableObject {
     /// Un écran apparaît : la page se met sur la vue correspondante, pour le décrire et le tenir à jour.
     func choisir(_ cible: String) {
         guard Navigation.vues.contains(cible) else { return }
+        // la page est déjà sur cette vue mais l'app n'en a plus la description (langue, année ou dossier changés) : la redemander
+        let aDecrire = onglet == cible && ecrans[cible] == nil && cible != "analyse" && cible != "dossier"
         onglet = cible
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.aller && window.__prevoyance.aller('\(cible)')")
+        if aDecrire { vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.action && window.__prevoyance.action('', null)") }
     }
 
     // MARK: écrans natifs
@@ -176,11 +179,19 @@ final class Navigation: ObservableObject {
     func ouvrir(dossier id: String) {
         guard id.allSatisfy({ $0.isLetter || $0.isNumber }) else { return }
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.ouvrirDossier && window.__prevoyance.ouvrirDossier('\(id)')")
+        oublier()
         chemin = [.client]
+    }
+
+    /// Un autre dossier s'ouvre : rien de l'ancien (analyse, écrans décrits) ne doit rester à l'écran.
+    private func oublier() {
+        analyse = nil
+        ecrans = [:]
     }
 
     func creerDossier(exemple: Bool) {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.creerDossier && window.__prevoyance.creerDossier(\(exemple))")
+        oublier()
         // un dossier vide s'ouvre sur sa saisie ; l'exemple, sur sa synthèse
         chemin = exemple ? [.client] : [.client, .dossier]
     }
@@ -203,12 +214,14 @@ final class Navigation: ObservableObject {
     func regler(langue nouvelle: String) {
         guard langues.contains(nouvelle) else { return }
         langue = nouvelle
+        ecrans = [:]
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.regler && window.__prevoyance.regler({ langue: '\(nouvelle)' })")
     }
 
     func regler(annee nouvelle: Int) {
         guard annees.contains(nouvelle) else { return }
         annee = nouvelle
+        ecrans = [:]
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.regler && window.__prevoyance.regler({ annee: \(nouvelle) })")
     }
 
@@ -273,9 +286,9 @@ final class Navigation: ObservableObject {
             versionEcran += 1
         }
         if let libelles = message["noms"] as? [String: String] { noms = libelles }
-        if let valeur = message["langue"] as? String, valeur != langue { langue = valeur }
+        if let valeur = message["langue"] as? String, valeur != langue { langue = valeur; ecrans = [:] }
         if let valeurs = message["langues"] as? [String], valeurs != langues { langues = valeurs }
-        if let valeur = message["annee"] as? Int, valeur != annee { annee = valeur }
+        if let valeur = message["annee"] as? Int, valeur != annee { annee = valeur; ecrans = [:] }
         if let valeurs = message["annees"] as? [Int], valeurs != annees { annees = valeurs }
         if let libelles = message["textes"] as? [String: String], libelles != textes { textes = libelles }
         if let liste = message["dossiers"] as? [[String: Any]] {
