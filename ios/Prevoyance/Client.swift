@@ -217,7 +217,7 @@ enum Sections {
         let noms = navigation.noms
         // le dernier champ marque les outils du conseiller, retirés en présentation client
         let toutes: [(Lieu?, String, String, Bool)] = [
-            (nil, noms["analyse"] ?? "", "square.grid.2x2", false),
+            (nil, navigation.textes["synthese"] ?? noms["analyse"] ?? "", "square.grid.2x2", false),
             (.risques, navigation.textes["risques"] ?? "Risques", "shield.lefthalf.filled", false),
             (.conseil, noms["plan"] ?? "", "lightbulb", false),
             (.scenarios, noms["scenarios"] ?? "", "arrow.triangle.branch", false),
@@ -237,6 +237,8 @@ enum Sections {
 /// iPad : la barre latérale des sections, en verre, toujours visible.
 struct RailSections: View {
     @ObservedObject var navigation: Navigation
+    /// Écran étroit : pictogrammes seuls, pour laisser la place au contenu.
+    var reduite = false
 
     var body: some View {
         let ici = Sections.courante(navigation)
@@ -247,13 +249,16 @@ struct RailSections: View {
                     navigation.section(section.lieu)
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: section.symbole).font(.system(size: 17, weight: .medium)).frame(width: 24)
-                        Text(section.nom).font(.system(size: 15, weight: actif ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.8)
-                        Spacer(minLength: 0)
+                        Image(systemName: section.symbole).font(.system(size: reduite ? 19 : 17, weight: .medium)).frame(width: 24)
+                        if !reduite {
+                            Text(section.nom).font(.system(size: 15, weight: actif ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.8)
+                            Spacer(minLength: 0)
+                        }
                     }
                     .foregroundStyle(actif ? Color.white : Color.secondary)
                     .padding(.horizontal, 12)
-                    .frame(height: 46)
+                    .frame(maxWidth: reduite ? .infinity : nil)
+                    .frame(height: reduite ? 50 : 46)
                     .background {
                         if actif {
                             RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Teinte.accent.opacity(0.2))
@@ -263,12 +268,13 @@ struct RailSections: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(section.nom))
                 .accessibilityAddTraits(actif ? .isSelected : [])
             }
             Spacer(minLength: 0)
         }
         .padding(10)
-        .frame(width: 168)
+        .frame(width: reduite ? 72 : 168)
         .frame(maxHeight: .infinity)
         .background(Teinte.glace.opacity(0.06))
         .overlay(alignment: .trailing) { Rectangle().fill(Teinte.glace.opacity(0.14)).frame(width: 1) }
@@ -319,7 +325,10 @@ struct CadreSections: ViewModifier {
 
     func body(content: Content) -> some View {
         if classe == .regular {
-            content.safeAreaInset(edge: .leading, spacing: 0) { RailSections(navigation: navigation) }
+            GeometryReader { cadre in
+                // iPad en portrait : la barre se réduit aux pictogrammes, le contenu garde deux vraies colonnes
+                content.safeAreaInset(edge: .leading, spacing: 0) { RailSections(navigation: navigation, reduite: cadre.size.width < 1000) }
+            }
         } else {
             content.safeAreaInset(edge: .top, spacing: 0) { OngletsSections(navigation: navigation) }
         }
@@ -423,6 +432,7 @@ struct RisquesNatif: View {
             Spacer(minLength: 8)
             if risque.lacune {
                 Text(risque.montant).font(.system(size: 17, weight: .semibold)).monospacedDigit().foregroundStyle(Color.primary).lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false).layoutPriority(1)
             } else if risque.montant != "—" {
                 Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Teinte.accent)
             }
@@ -532,12 +542,12 @@ struct ClientNatif: View {
                             .monospacedDigit()
                             .contentTransition(.numericText())
                             .animation(.easeInOut(duration: 0.4), value: a.score)
-                        Text(a.scoreNom).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.secondary).multilineTextAlignment(.center).frame(maxWidth: 110)
+                        Text(a.scoreNom).font(.system(size: 11, weight: .medium)).foregroundStyle(Color.secondary).multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.8).frame(maxWidth: 104)
                     }
                 }
                 .frame(width: 168, height: 168)
                 if a.suivi.count >= 2 {
-                    HStack(spacing: 10) {
+                    VStack(spacing: 4) {
                         // le chemin parcouru d'un rendez-vous à l'autre
                         Chart(a.suivi) { jour in
                             LineMark(x: .value("jour", jour.id), y: .value("score", jour.score))
@@ -552,8 +562,8 @@ struct ClientNatif: View {
                         .chartYAxis(.hidden)
                         // échelle resserrée autour des scores vus : la pente se lit, même sur quelques points
                         .chartYScale(domain: Swift.max(0, (a.suivi.map(\.score).min() ?? 0) - 6)...Swift.min(100, (a.suivi.map(\.score).max() ?? 100) + 6))
-                        .frame(width: 84, height: 30)
-                        Text(a.suiviTexte).font(.system(size: 13, weight: .medium)).foregroundStyle(Teinte.accent)
+                        .frame(width: 120, height: 28)
+                        Text(a.suiviTexte).font(.system(size: 13, weight: .medium)).foregroundStyle(Teinte.accent).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 }
             }
