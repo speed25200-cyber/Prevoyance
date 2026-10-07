@@ -132,6 +132,8 @@ struct AnalyseModele: Equatable {
     /// Repère de la ligne de vie : l'âge de la retraite et son libellé (0 : pas de repère).
     let repereAge: Double
     let repereTexte: String
+    /// Libellés du relevé de la ligne de vie (revenu, écart, ans, aide).
+    let lecture: [String: String]
 
     init?(_ d: [String: Any]) {
         guard d["risques"] != nil else { return nil }
@@ -163,6 +165,7 @@ struct AnalyseModele: Equatable {
         let repere = d["repere"] as? [String: Any]
         repereAge = (repere?["age"] as? NSNumber)?.doubleValue ?? 0
         repereTexte = repere?["texte"] as? String ?? ""
+        lecture = d["lecture"] as? [String: String] ?? [:]
         colonnes = liste("colonnes").enumerated().map { Colonne(id: $0.offset, nom: $0.element["nom"] as? String ?? "", montant: $0.element["montant"] as? String ?? "", part: n($0.element, "part"), pourcent: $0.element["pourcent"] as? String ?? "") }
         if let e = d["prochaine"] as? [String: Any] {
             prochaine = Echeance(titre: e["titre"] as? String ?? "", annee: e["annee"] as? String ?? "", texte: e["texte"] as? String ?? "")

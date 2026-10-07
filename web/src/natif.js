@@ -62,6 +62,8 @@ export function analyse(ctx) {
       return [1, 2, 3].map(n => ({ nom: t(n === 3 ? 'pilier3c' : 'pilier' + n), montant: f.chf(de(n)), part: de(n) / plus, pourcent: f.pourcent(de(n) / tout) }));
     })(),
     prochaine: prochaine(ctx),
+    // lecture de la ligne de vie au doigt : libellés du relevé
+    lecture: { revenu: t('vi_revenu'), ecart: t('vi_ecart'), ans: t('ans'), aide: t('vi_glisser') },
     // repère de la ligne de vie : l'âge de la retraite (seulement sur la ligne de la retraite)
     repere: x.cle === 'retraite' ? { age: a.personne.ageRetraite, texte: `${t('retraite')} · ${a.personne.ageRetraite} ${t('ans')}` } : null,
     suivi: evolution ? d.suivi.map(p => ({ jour: p.j, score: p.s })) : [],

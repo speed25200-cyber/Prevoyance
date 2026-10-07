@@ -226,7 +226,7 @@ struct VerreCarte: ViewModifier {
     #if compiler(>=6.2)
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.tint(Teinte.nuit.opacity(0.42)), in: RoundedRectangle(cornerRadius: rayon, style: .continuous))
+            content.glassEffect(.regular.tint(Teinte.nuit.opacity(0.62)), in: RoundedRectangle(cornerRadius: rayon, style: .continuous))
         } else {
             ancien(content)
         }
@@ -239,7 +239,7 @@ struct VerreCarte: ViewModifier {
         let forme = RoundedRectangle(cornerRadius: rayon, style: .continuous)
         return content
             .background(.ultraThinMaterial, in: forme)
-            .background(Teinte.nuit.opacity(0.35), in: forme)
+            .background(Teinte.nuit.opacity(0.55), in: forme)
             .overlay(forme.strokeBorder(LinearGradient(colors: [Color.white.opacity(0.28), Color.white.opacity(0.06)], startPoint: .top, endPoint: .bottom), lineWidth: 0.8))
     }
 }

@@ -124,7 +124,8 @@ struct DossierNatif: View {
                     }
                     .padding(.vertical, 6)
                 }
-                .listRowBackground(Teinte.glace.opacity(0.07))
+                // des lignes en matière sombre : le fond ne transperce pas le texte
+                .listRowBackground(Rectangle().fill(.ultraThinMaterial).overlay(Teinte.nuit.opacity(0.5)))
             }
         }
         .scrollContentBackground(.hidden)

@@ -211,6 +211,7 @@ struct TitreSection: View {
 
     var body: some View {
         Text(titre).font(.system(size: 28, weight: .semibold)).foregroundStyle(Color.primary).padding(.top, 4)
+            .shadow(color: Teinte.nuit.opacity(0.9), radius: 10)
     }
 }
 
@@ -527,13 +528,56 @@ extension View {
 struct LigneDeVie: View {
     let a: AnalyseModele
     var hauteur: CGFloat = 240
+    /// L'âge sous le doigt pendant que l'on parcourt le graphique.
+    @State private var sousLeDoigt: Double?
+
+    /// Le point lu : celui sous le doigt, sinon l'âge de la retraite, sinon le dernier.
+    private var lu: AnalyseModele.Point? {
+        let cible = sousLeDoigt ?? (a.repereAge > 0 ? a.repereAge : Double(a.ligne.last?.id ?? 0))
+        return a.ligne.min(by: { abs(Double($0.id) - cible) < abs(Double($1.id) - cible) })
+    }
+
+    private static let nombres: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.groupingSeparator = "\u{2019}"
+        f.usesGroupingSeparator = true
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    private static func chf(_ montant: Double) -> String {
+        (montant < 0 ? "− " : "") + "CHF " + (nombres.string(from: NSNumber(value: abs(montant.rounded()))) ?? "0")
+    }
+
+    private func releve(_ nom: String, _ montant: Double) -> some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(nom.uppercased()).font(.system(size: 9.5, weight: .semibold)).tracking(0.8).foregroundStyle(Color.secondary).lineLimit(1)
+            Text(LigneDeVie.chf(montant)).font(.system(size: 13.5, weight: .semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+        }
+    }
 
     var body: some View {
         let noms = a.legende
         return VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 TitreCarte(titre: a.ligneTitre, symbole: "chart.xyaxis.line")
-                Text(a.ligneNote).font(.system(size: 13)).foregroundStyle(Color.secondary)
+                Text(sousLeDoigt == nil ? (a.lecture["aide"] ?? a.ligneNote) : a.ligneNote).font(.system(size: 13)).foregroundStyle(Color.secondary)
+            }
+            if let lu {
+                // le relevé de l'âge lu : revenu total, besoin, écart
+                let revenu = lu.salaire + lu.p1 + lu.p2 + lu.p3
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("\(lu.id) \(a.lecture["ans"] ?? "")").font(.system(size: 20, weight: .semibold)).monospacedDigit().contentTransition(.numericText())
+                    Spacer(minLength: 0)
+                    releve(a.lecture["revenu"] ?? "", revenu)
+                    releve(noms[4], lu.besoin)
+                    releve(a.lecture["ecart"] ?? "", revenu - lu.besoin)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 9)
+                .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .animation(.snappy(duration: 0.18), value: lu.id)
             }
             Chart {
                 // quatre nappes empilées, du salaire au 3e pilier : la couleur fait la série
@@ -550,7 +594,17 @@ struct LigneDeVie: View {
                         .lineStyle(StrokeStyle(lineWidth: 1.6, dash: [5, 4]))
                         .foregroundStyle(Color.white.opacity(0.85))
                 }
-                if a.repereAge > 0 {
+                if sousLeDoigt != nil, let lu {
+                    // le curseur : un trait à l'âge lu, un point sur le revenu et un sur le besoin
+                    RuleMark(x: .value("âge", Double(lu.id)))
+                        .lineStyle(StrokeStyle(lineWidth: 1.4))
+                        .foregroundStyle(Color.white.opacity(0.9))
+                    PointMark(x: .value("âge", Double(lu.id)), y: .value("revenu", lu.salaire + lu.p1 + lu.p2 + lu.p3))
+                        .foregroundStyle(Color.white).symbolSize(70)
+                    PointMark(x: .value("âge", Double(lu.id)), y: .value("besoin", lu.besoin))
+                        .foregroundStyle(Teinte.eclat).symbolSize(46)
+                }
+                if a.repereAge > 0, sousLeDoigt == nil {
                     RuleMark(x: .value("âge", a.repereAge))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                         .foregroundStyle(Teinte.accent.opacity(0.8))
@@ -574,6 +628,9 @@ struct LigneDeVie: View {
             }
             // la légende sous le graphique : le haut reste au repère de la retraite
             .chartLegend(position: .bottom, alignment: .leading)
+            // parcourir le graphique du doigt : l'âge touché devient l'âge lu
+            .chartXSelection(value: $sousLeDoigt)
+            .sensoryFeedback(.selection, trigger: lu?.id)
             .frame(height: hauteur)
             // la place du repère de la retraite, au-dessus du graphique
             .padding(.top, 16)
@@ -676,7 +733,7 @@ struct ClientNatif: View {
             let trois = classe == .regular && cadre.size.width >= 900
             Feuille(large: true, montagne: true) {
                 if let a = navigation.analyse {
-                    if classe == .regular { bandeau(a) } else { Text(navigation.nomDossier).font(.system(size: 24, weight: .semibold)).padding(.top, 2) }
+                    if classe == .regular { bandeau(a) } else { Text(navigation.nomDossier).font(.system(size: 24, weight: .semibold)).padding(.top, 2).shadow(color: Teinte.nuit.opacity(0.9), radius: 10) }
                     if trois {
                         HStack(alignment: .top, spacing: 16) {
                             VStack(spacing: 14) {
@@ -1007,7 +1064,9 @@ struct RisqueNatif: View {
                 .contentTransition(.numericText())
             Text(a.parMois).font(.system(size: 16)).foregroundStyle(Color.secondary)
         }
-        .padding(.top, 10)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .tuileBord()
     }
 
     private func sources(_ a: AnalyseModele) -> some View {
@@ -1235,13 +1294,31 @@ struct ContenuCarte: View {
     let carte: CarteEcran
 
     var body: some View {
+        // chaque intertitre ouvre une carte de verre : rien n'est posé à nu sur le fond
         VStack(alignment: .leading, spacing: 14) {
-            ForEach(carte.blocs) { bloc in
-                BlocVue(navigation: navigation, bloc: bloc)
-                    .id("\(navigation.versionEcran)-\(carte.id)-\(bloc.id)")
+            ForEach(Array(ContenuCarte.groupes(carte.blocs).enumerated()), id: \.offset) { rang, groupe in
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(groupe) { bloc in
+                        BlocVue(navigation: navigation, bloc: bloc)
+                            .id("\(navigation.versionEcran)-\(carte.id)-\(bloc.id)")
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .tuileBord()
+                .apparition(rang)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Les blocs d'une carte, regroupés : un groupe commence à chaque intertitre.
+    static func groupes(_ blocs: [BlocEcran]) -> [[BlocEcran]] {
+        var groupes: [[BlocEcran]] = []
+        for bloc in blocs {
+            if bloc.type == "titre" || groupes.isEmpty { groupes.append([bloc]) } else { groupes[groupes.count - 1].append(bloc) }
+        }
+        return groupes
     }
 }
 
@@ -1290,12 +1367,14 @@ struct CarteNative: View {
         Feuille {
             if let carte = (navigation.ecrans[vue] ?? []).first(where: { $0.id == rang }) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(carte.titre).font(.system(size: 28, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+                    Text(carte.titre).font(.system(size: 26, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                     if !carte.sousTitre.isEmpty {
-                        Text(carte.sousTitre).font(.system(size: 15)).foregroundStyle(Color.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(carte.sousTitre).font(.system(size: 15)).foregroundStyle(Color.primary.opacity(0.72)).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .padding(.top, 6)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .tuileBord()
                 ContenuCarte(navigation: navigation, carte: carte)
             } else {
                 Attente()
