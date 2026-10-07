@@ -92,6 +92,9 @@ struct AnalyseModele: Equatable {
     struct Point: Equatable, Identifiable { let id: Int; let besoin: Double; let salaire: Double; let p1: Double; let p2: Double; let p3: Double }
     struct Alerte: Equatable, Identifiable { let id: Int; let gravite: String; let texte: String }
     struct Jour: Equatable, Identifiable { let id: Int; let jour: String; let score: Double }
+    /// Un pilier à la retraite, pour les colonnes du tableau de bord (part : hauteur relative, de 0 à 1).
+    struct Colonne: Equatable, Identifiable { let id: Int; let nom: String; let montant: String; let part: Double }
+    struct Echeance: Equatable { let titre: String; let annee: String; let texte: String }
     /// Le ménage à la retraite : les deux conjoints additionnés (parts : premier, second, ce qui manque).
     struct Menage: Equatable { let titre: String; let note: String; let verdict: String; let lacune: Bool; let parts: [Double]; let lignes: [Cle]; let plafond: String }
 
@@ -123,6 +126,9 @@ struct AnalyseModele: Equatable {
     let suivi: [Jour]
     let suiviTexte: String
     let menage: Menage?
+    let colonnesTitre: String
+    let colonnes: [Colonne]
+    let prochaine: Echeance?
 
     init?(_ d: [String: Any]) {
         guard d["risques"] != nil else { return nil }
@@ -150,6 +156,13 @@ struct AnalyseModele: Equatable {
         legende = ["salaire", "p1", "p2", "p3", "besoin"].map { l[$0] as? String ?? $0 }
         suivi = liste("suivi").enumerated().map { Jour(id: $0.offset, jour: $0.element["jour"] as? String ?? "", score: n($0.element, "score")) }
         suiviTexte = s("suiviTexte")
+        colonnesTitre = s("colonnesTitre")
+        colonnes = liste("colonnes").enumerated().map { Colonne(id: $0.offset, nom: $0.element["nom"] as? String ?? "", montant: $0.element["montant"] as? String ?? "", part: n($0.element, "part")) }
+        if let e = d["prochaine"] as? [String: Any] {
+            prochaine = Echeance(titre: e["titre"] as? String ?? "", annee: e["annee"] as? String ?? "", texte: e["texte"] as? String ?? "")
+        } else {
+            prochaine = nil
+        }
         if let m = d["menage"] as? [String: Any] {
             menage = Menage(titre: m["titre"] as? String ?? "", note: m["note"] as? String ?? "", verdict: m["verdict"] as? String ?? "", lacune: b(m, "lacune"),
                             parts: (m["parts"] as? [NSNumber] ?? []).map(\.doubleValue),

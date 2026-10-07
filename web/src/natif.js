@@ -10,6 +10,7 @@
 import { etat, dossier } from './etat.js';
 import { RISQUES, texteAlerte, pointsDuGraphique } from './vues/analyse.js';
 import * as Suivi from './suivi.js';
+import { Vie } from '../../moteur/src/index.js';
 
 const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
 
@@ -52,10 +53,29 @@ export function analyse(ctx) {
     alertes: [...a.alertes].sort((p, q) => GRAVITES.indexOf(p.gravite) - GRAVITES.indexOf(q.gravite)).map(al => ({ gravite: al.gravite, texte: texteAlerte(ctx, al) })),
     avertissement: t('avertissement'),
     menage: menage(ctx),
+    // les trois piliers à la retraite (quel que soit le risque affiché), pour les colonnes du tableau de bord
+    colonnesTitre: t('vi_piliers'),
+    colonnes: (() => {
+      const sources = a.risques.retraite.sources, de = n => sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0);
+      const plus = Math.max(de(1), de(2), de(3), 1);
+      return [1, 2, 3].map(n => ({ nom: t(n === 3 ? 'pilier3c' : 'pilier' + n), montant: f.chf(de(n)), part: de(n) / plus }));
+    })(),
+    prochaine: prochaine(ctx),
     suivi: evolution ? d.suivi.map(p => ({ jour: p.j, score: p.s })) : [],
     suiviTexte: !evolution ? '' : evolution.ecart === 0 ? t('vi_suiviStable', { d: jour(evolution.depuis) })
       : t(evolution.ecart > 0 ? 'vi_suiviPlus' : 'vi_suiviMoins', { n: Math.abs(evolution.ecart), d: jour(evolution.depuis) }),
   };
+}
+
+/** La prochaine échéance légale de la personne (première ligne de sa feuille de route). */
+function prochaine(ctx) {
+  const { t, f } = ctx;
+  let etape = null;
+  try { etape = Vie.feuilleDeRoute(ctx.dossierMoteur, ctx.regles, { impots: ctx.impots })[0] ?? null; } catch { /* dossier incomplet : pas d'échéance */ }
+  if (!etape) return null;
+  const v = etape.v;
+  return { titre: t('vi_prochaine'), annee: String(etape.annee),
+    texte: t('vr_' + etape.cle, { m: f.chf(v.montant ?? 0), e: f.chf(v.economie ?? 0), a: v.depart ?? '', d: v.mois ? `${String(v.mois).padStart(2, '0')}.${v.anneeRente}` : '' }) };
 }
 
 /** Le ménage à la retraite : les revenus des deux conjoints additionnés, face à leur besoin commun. `null` pour une personne seule. */

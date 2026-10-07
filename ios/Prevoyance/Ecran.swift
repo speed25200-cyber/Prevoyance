@@ -230,6 +230,14 @@ final class Navigation: ObservableObject {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.annoncer && window.__prevoyance.annoncer()")
     }
 
+    /// Changer de section d'un client (barre du bas) : Synthèse (`nil`), Conseil, Scénarios, Rapport. Sans glissement :
+    /// ce sont des écrans voisins, pas un écran dans lequel on entre.
+    func section(_ lieu: Lieu?) {
+        var sansAnimation = Transaction()
+        sansAnimation.disablesAnimations = true
+        withTransaction(sansAnimation) { chemin = lieu.map { [.client, $0] } ?? [.client] }
+    }
+
     /// Entrer dans un écran.
     func entrer(_ lieu: Lieu) {
         chemin.append(lieu)

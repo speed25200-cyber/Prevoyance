@@ -149,13 +149,15 @@ extension View {
 
 /// La montagne de l'accueil, en filigrane derrière le score.
 struct Montagne: View {
+    /// Présence de l'image (0 : invisible, 1 : pleine).
+    var force = 0.34
     private static let image: UIImage? = FilmAccueil.fichier("accueil.jpg").flatMap { UIImage(contentsOfFile: $0.path) }
 
     var body: some View {
         Color.clear
             .overlay {
                 if let image = Montagne.image {
-                    Image(uiImage: image).resizable().scaledToFill().opacity(0.34)
+                    Image(uiImage: image).resizable().scaledToFill().opacity(force)
                 }
             }
             .clipped()
@@ -166,8 +168,90 @@ struct Montagne: View {
 
 // MARK: synthèse du client
 
-/// Le point de départ d'un client : son score, puis ses risques sur un fil, du plus proche au plus lointain.
-/// Un seul geste principal : le conseil. Le dossier, les scénarios et le rapport sont à portée, en dessous.
+/// Un anneau de couverture : la part couverte s'allume, le reste reste en creux.
+struct Anneau: View {
+    let part: Double
+    var epaisseur: CGFloat = 6
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Teinte.glace.opacity(0.16), lineWidth: epaisseur)
+            Circle().trim(from: 0, to: CGFloat(Swift.max(0.004, Swift.min(1, part))))
+                .stroke(LinearGradient(colors: [Teinte.pilier2, Teinte.accent, Color.white], startPoint: .bottomLeading, endPoint: .topTrailing),
+                        style: StrokeStyle(lineWidth: epaisseur, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .shadow(color: Teinte.accent.opacity(0.55), radius: epaisseur)
+        }
+    }
+}
+
+/// Une tuile du tableau de bord : plaque de glace aux angles doux, plus marquée que les panneaux courants.
+struct TuileBord: ViewModifier {
+    func body(content: Content) -> some View {
+        let forme = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        return content
+            .background(LinearGradient(colors: [Teinte.glace.opacity(0.13), Teinte.glace.opacity(0.05)], startPoint: .top, endPoint: .bottom), in: forme)
+            .overlay(forme.strokeBorder(LinearGradient(colors: [Color.white.opacity(0.28), Teinte.glace.opacity(0.08)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+            .clipShape(forme)
+    }
+}
+
+extension View {
+    func tuileBord() -> some View { modifier(TuileBord()) }
+}
+
+/// Les quatre sections d'un client, dans une barre de verre flottante : Synthèse, Conseil, Scénarios, Rapport.
+struct BarreSections: View {
+    @ObservedObject var navigation: Navigation
+    @Namespace private var espace
+    private static let sections: [(Lieu?, String, String)] = [(nil, "analyse", "square.grid.2x2"), (.conseil, "plan", "lightbulb"),
+                                                              (.scenarios, "scenarios", "arrow.triangle.branch"), (.rapport, "rapport", "doc.text")]
+
+    var body: some View {
+        // en présentation client, le rapport (outil du conseiller) se retire
+        let visibles = BarreSections.sections.filter { !(navigation.presentation && $0.1 == "rapport") }
+        let ici: Lieu? = navigation.chemin.count > 1 ? navigation.chemin[1] : nil
+        Verre {
+            HStack(spacing: 0) {
+                ForEach(Array(visibles.enumerated()), id: \.offset) { _, section in
+                    let actif = section.0 == ici
+                    Button {
+                        navigation.section(section.0)
+                    } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: section.2).font(.system(size: 18, weight: .medium)).frame(height: 22)
+                            Text(navigation.noms[section.1] ?? "").font(.system(size: 10.5, weight: actif ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.75)
+                        }
+                        .foregroundStyle(actif ? Color.white : Color.secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background {
+                            if actif { Capsule().fill(Teinte.accent.opacity(0.22)).matchedGeometryEffect(id: "bulle", in: espace) }
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(actif ? .isSelected : [])
+                }
+            }
+            .padding(5)
+        }
+        .frame(maxWidth: 440)
+        .padding(.horizontal, 22)
+        .padding(.bottom, 4)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+extension View {
+    /// La barre des sections, en bas des quatre écrans principaux d'un client.
+    func barreSections(_ navigation: Navigation) -> some View {
+        safeAreaInset(edge: .bottom) { BarreSections(navigation: navigation) }
+    }
+}
+
+/// Le tableau de bord d'un client : le score dans son anneau, les trois piliers en colonnes de glace, chaque risque
+/// avec sa couverture, la prochaine échéance et le ménage. Tout se lit d'un regard ; chaque tuile ouvre son détail.
 struct ClientNatif: View {
     @ObservedObject var navigation: Navigation
     @Environment(\.horizontalSizeClass) private var classe
@@ -184,13 +268,24 @@ struct ClientNatif: View {
                         .pickerStyle(.segmented)
                     }
                     score(a)
-                    if classe == .regular { acces(a) }
+                    HStack(alignment: .top, spacing: 12) {
+                        if !a.colonnes.isEmpty { piliers(a) }
+                        VStack(spacing: 12) {
+                            ForEach(a.risques.prefix(2)) { risque in tuile(risque) }
+                        }
+                    }
                     if classe == .regular, let menage = a.menage { foyer(menage) }
                 } droite: {
-                    fil(a)
-                    if classe != .regular {
-                        if let menage = a.menage { foyer(menage) }
-                        acces(a)
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(a.risques.dropFirst(2)) { risque in tuile(risque, compacte: true) }
+                    }
+                    if let prochaine = a.prochaine { echeance(prochaine) }
+                    if classe != .regular, let menage = a.menage { foyer(menage) }
+                    if !a.alertes.isEmpty {
+                        NavigationLink(value: Lieu.alertes) {
+                            Tuile(titre: a.alertesTitre, note: String(a.alertes.count), symbole: "exclamationmark.circle")
+                        }
+                        .buttonStyle(Appui())
                     }
                 }
             } else {
@@ -199,33 +294,171 @@ struct ClientNatif: View {
         }
         .navigationTitle(navigation.nomDossier)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { OutilsEcran(navigation: navigation) }
-        .boutonBas(navigation.analyse?.bouton ?? "") { navigation.entrer(.conseil) }
+        .toolbar {
+            if !navigation.presentation {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        navigation.entrer(.dossier)
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .tint(Color.primary)
+                    .accessibilityLabel(Text(navigation.noms["dossier"] ?? "Dossier"))
+                }
+            }
+            OutilsEcran(navigation: navigation)
+        }
+        .barreSections(navigation)
     }
 
-    /// Points d'attention, dossier, scénarios, rapport.
-    @ViewBuilder private func acces(_ a: AnalyseModele) -> some View {
-        if !a.alertes.isEmpty {
-            NavigationLink(value: Lieu.alertes) {
-                Tuile(titre: a.alertesTitre, note: String(a.alertes.count), symbole: "exclamationmark.circle")
+    // MARK: le score
+
+    private func score(_ a: AnalyseModele) -> some View {
+        ZStack(alignment: .bottomTrailing) {
+            Montagne(force: 0.6)
+            VStack(spacing: 10) {
+                ZStack {
+                    Anneau(part: Double(a.score) / 100, epaisseur: 10)
+                    VStack(spacing: 0) {
+                        Text(String(a.score))
+                            .font(.system(size: 62, weight: .thin))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                            .animation(.easeInOut(duration: 0.4), value: a.score)
+                        Text(a.scoreNom).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.secondary).multilineTextAlignment(.center).frame(maxWidth: 110)
+                    }
+                }
+                .frame(width: 168, height: 168)
+                if a.suivi.count >= 2 {
+                    HStack(spacing: 10) {
+                        // le chemin parcouru d'un rendez-vous à l'autre
+                        Chart(a.suivi) { jour in
+                            LineMark(x: .value("jour", jour.id), y: .value("score", jour.score))
+                                .interpolationMethod(.monotone)
+                                .foregroundStyle(Teinte.accent)
+                                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
+                            if jour.id == a.suivi.count - 1 {
+                                PointMark(x: .value("jour", jour.id), y: .value("score", jour.score)).foregroundStyle(Color.white).symbolSize(40)
+                            }
+                        }
+                        .chartXAxis(.hidden)
+                        .chartYAxis(.hidden)
+                        // échelle resserrée autour des scores vus : la pente se lit, même sur quelques points
+                        .chartYScale(domain: Swift.max(0, (a.suivi.map(\.score).min() ?? 0) - 6)...Swift.min(100, (a.suivi.map(\.score).max() ?? 100) + 6))
+                        .frame(width: 84, height: 30)
+                        Text(a.suiviTexte).font(.system(size: 13, weight: .medium)).foregroundStyle(Teinte.accent)
+                    }
+                }
             }
-            .buttonStyle(Appui())
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 22)
         }
-        HStack(spacing: 10) {
-            // en présentation client, la saisie et le rapport (outils du conseiller) se retirent
-            if !navigation.presentation { lien(.dossier, "dossier", "person.text.rectangle") }
-            lien(.scenarios, "scenarios", "arrow.triangle.branch")
-            if !navigation.presentation { lien(.rapport, "rapport", "doc.text") }
-        }
+        .tuileBord()
     }
+
+    // MARK: les trois piliers
+
+    /// Les trois piliers à la retraite : trois colonnes de glace, hautes selon ce que chacun verse.
+    private func piliers(_ a: AnalyseModele) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(a.colonnesTitre, systemImage: "building.columns").font(.system(size: 14, weight: .semibold)).labelStyle(.titleAndIcon)
+            HStack(alignment: .bottom, spacing: 10) {
+                ForEach(a.colonnes) { colonne in
+                    VStack(spacing: 6) {
+                        Spacer(minLength: 0)
+                        ColonneGlace(rang: colonne.id).frame(height: Swift.max(14, 104 * colonne.part))
+                        Text(colonne.nom).font(.system(size: 11, weight: .medium)).foregroundStyle(Color.secondary).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(colonne.montant).font(.system(size: 12.5, weight: .semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .frame(height: 160)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .tuileBord()
+    }
+
+    // MARK: les risques
+
+    /// Un risque : son nom, ce qu'il manque par mois (ou la coche), et l'anneau de sa couverture.
+    private func tuile(_ risque: AnalyseModele.Risque, compacte: Bool = false) -> some View {
+        NavigationLink(value: Lieu.risque(risque.id)) {
+            VStack(alignment: .leading, spacing: compacte ? 8 : 6) {
+                HStack(spacing: 6) {
+                    Image(systemName: ClientNatif.symbole(risque.id)).font(.system(size: 13, weight: .medium)).foregroundStyle(Teinte.accent)
+                    Text(risque.nom).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.primary).lineLimit(compacte ? 2 : 1).minimumScaleFactor(0.75)
+                        .multilineTextAlignment(.leading)
+                }
+                HStack(alignment: .center, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        if risque.lacune {
+                            Text(risque.montant).font(.system(size: compacte ? 14 : 16, weight: .semibold)).monospacedDigit().foregroundStyle(Color.primary).lineLimit(1).minimumScaleFactor(0.6)
+                        } else {
+                            Image(systemName: risque.montant == "—" ? "minus" : "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Teinte.accent)
+                        }
+                        Text(risque.note).font(.system(size: 11)).foregroundStyle(Color.secondary).lineLimit(1).minimumScaleFactor(0.7)
+                    }
+                    Spacer(minLength: 0)
+                    if !compacte {
+                        ZStack {
+                            Anneau(part: risque.couverture, epaisseur: 5)
+                            Text("\(Int((risque.couverture * 100).rounded()))").font(.system(size: 12, weight: .semibold)).monospacedDigit()
+                        }
+                        .frame(width: 44, height: 44)
+                    }
+                }
+                if compacte {
+                    GeometryReader { cadre in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Teinte.glace.opacity(0.16))
+                            Capsule().fill(Teinte.accent).frame(width: cadre.size.width * Swift.max(0, Swift.min(1, risque.couverture)))
+                        }
+                    }
+                    .frame(height: 4)
+                }
+            }
+            .padding(13)
+            .frame(maxWidth: .infinity, minHeight: compacte ? 96 : 0, alignment: .topLeading)
+            .tuileBord()
+        }
+        .buttonStyle(Appui())
+    }
+
+    // MARK: la prochaine échéance
+
+    private func echeance(_ prochaine: AnalyseModele.Echeance) -> some View {
+        NavigationLink(value: Lieu.scenarios) {
+            HStack(spacing: 14) {
+                VStack(spacing: 0) {
+                    Image(systemName: "calendar").font(.system(size: 15, weight: .medium)).foregroundStyle(Teinte.accent)
+                    Text(prochaine.annee).font(.system(size: 17, weight: .semibold)).monospacedDigit().foregroundStyle(Color.primary)
+                }
+                .frame(width: 54)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(prochaine.titre.uppercased()).font(.system(size: 10.5, weight: .semibold)).tracking(1.2).foregroundStyle(Teinte.accent)
+                    Text(prochaine.texte).font(.system(size: 14)).foregroundStyle(Color.primary).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.secondary)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .tuileBord()
+        }
+        .buttonStyle(Appui())
+    }
+
+    // MARK: le ménage
 
     /// Le ménage à la retraite : ce que les deux conjoints touchent ensemble, face à leur besoin commun.
     private func foyer(_ m: AnalyseModele.Menage) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text(m.titre).font(.system(size: 17, weight: .semibold))
+                Label(m.titre, systemImage: "person.2").font(.system(size: 14, weight: .semibold)).labelStyle(.titleAndIcon)
                 Spacer(minLength: 8)
-                Text(m.verdict).font(.system(size: 16, weight: .semibold)).monospacedDigit().foregroundStyle(m.lacune ? Color.primary : Teinte.accent)
+                Text(m.verdict).font(.system(size: 15, weight: .semibold)).monospacedDigit().foregroundStyle(m.lacune ? Color.primary : Teinte.accent)
             }
             GeometryReader { cadre in
                 HStack(spacing: 2) {
@@ -254,90 +487,8 @@ struct ClientNatif: View {
             }
             if !m.plafond.isEmpty { Text(m.plafond).font(.system(size: 12)).foregroundStyle(Color.secondary).fixedSize(horizontal: false, vertical: true) }
         }
-        .padding(16)
-        .verreArrondi(rayon: 16)
-    }
-
-    private func score(_ a: AnalyseModele) -> some View {
-        VStack(spacing: 2) {
-            Text(String(a.score))
-                .font(.system(size: 96, weight: .thin))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .animation(.easeInOut(duration: 0.4), value: a.score)
-            Text(a.scoreNom.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(2.4).foregroundStyle(Color.secondary)
-            if a.suivi.count >= 2 {
-                // le chemin parcouru d'un rendez-vous à l'autre
-                Chart(a.suivi) { jour in
-                    LineMark(x: .value("jour", jour.id), y: .value("score", jour.score))
-                        .interpolationMethod(.monotone)
-                        .foregroundStyle(Teinte.accent)
-                        .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
-                    if jour.id == a.suivi.count - 1 {
-                        PointMark(x: .value("jour", jour.id), y: .value("score", jour.score)).foregroundStyle(Teinte.accent).symbolSize(50)
-                    }
-                }
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                // échelle resserrée autour des scores vus : la pente se lit, même sur quelques points
-                .chartYScale(domain: Swift.max(0, (a.suivi.map(\.score).min() ?? 0) - 6)...Swift.min(100, (a.suivi.map(\.score).max() ?? 100) + 6))
-                .frame(width: 180, height: 38)
-                .padding(.top, 10)
-                Text(a.suiviTexte).font(.system(size: 13)).foregroundStyle(Color.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 22)
-        .background { Montagne() }
-    }
-
-    private func fil(_ a: AnalyseModele) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(a.risques.enumerated()), id: \.element.id) { rang, risque in
-                NavigationLink(value: Lieu.risque(risque.id)) {
-                    HStack(spacing: 14) {
-                        ZStack {
-                            Circle().fill(risque.lacune ? Teinte.accent : Teinte.glace.opacity(0.14))
-                            Image(systemName: ClientNatif.symbole(risque.id))
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(risque.lacune ? Teinte.boutonEncre : Color.primary)
-                        }
-                        .frame(width: 40, height: 40)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(risque.nom).font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary).lineLimit(1).minimumScaleFactor(0.8)
-                            Text(risque.note).font(.system(size: 13)).foregroundStyle(Color.secondary).lineLimit(1)
-                        }
-                        Spacer(minLength: 8)
-                        if risque.lacune {
-                            Text(risque.montant).font(.system(size: 18, weight: .semibold)).monospacedDigit().foregroundStyle(Color.primary).lineLimit(1)
-                        } else if risque.montant != "—" {
-                            Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Teinte.accent)
-                        }
-                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.secondary)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 66)
-                    .verreArrondi(rayon: 16)
-                }
-                .buttonStyle(Appui())
-                if rang + 1 < a.risques.count {
-                    Rectangle().fill(Teinte.glace.opacity(0.3)).frame(width: 1.5, height: 10).padding(.leading, 35)
-                }
-            }
-        }
-    }
-
-    private func lien(_ lieu: Lieu, _ vue: String, _ symbole: String) -> some View {
-        NavigationLink(value: lieu) {
-            VStack(spacing: 7) {
-                Image(systemName: symbole).font(.system(size: 19, weight: .medium)).foregroundStyle(Teinte.accent)
-                Text(navigation.noms[vue] ?? "").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.primary).lineLimit(1).minimumScaleFactor(0.7)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 72)
-            .verreArrondi(rayon: 16)
-        }
-        .buttonStyle(Appui())
+        .padding(14)
+        .tuileBord()
     }
 
     static func symbole(_ risque: String) -> String {
@@ -348,6 +499,24 @@ struct ClientNatif: View {
         case "decesMaladie": return "heart"
         default: return "shield"
         }
+    }
+}
+
+/// Une colonne de glace : un pilier lumineux, plus clair en haut, avec un reflet sur l'arête.
+struct ColonneGlace: View {
+    let rang: Int
+
+    var body: some View {
+        let teinte = rang == 0 ? Teinte.pilier1 : rang == 1 ? Teinte.pilier2 : Teinte.pilier3
+        let forme = RoundedRectangle(cornerRadius: 7, style: .continuous)
+        return forme
+            .fill(LinearGradient(colors: [Color.white.opacity(0.92), teinte, teinte.opacity(0.55)], startPoint: .top, endPoint: .bottom))
+            .overlay(alignment: .leading) {
+                LinearGradient(colors: [Color.white.opacity(0.55), Color.white.opacity(0)], startPoint: .leading, endPoint: .trailing).frame(width: 9).clipShape(forme)
+            }
+            .overlay(forme.strokeBorder(Color.white.opacity(0.5), lineWidth: 0.8))
+            .shadow(color: teinte.opacity(0.7), radius: 12, y: 2)
+            .frame(maxWidth: 46)
     }
 }
 
@@ -565,7 +734,7 @@ struct ConseilNatif: View {
         .navigationTitle(navigation.noms["plan"] ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .boutonBas(navigation.presentation ? "" : (navigation.noms["rapport"] ?? "")) { navigation.entrer(.rapport) }
+        .barreSections(navigation)
     }
 
     private func mesures(_ bloc: BlocEcran) -> some View {
@@ -633,6 +802,10 @@ struct EcranCartes: View {
         .navigationTitle(navigation.noms[vue] ?? "")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { OutilsEcran(navigation: navigation) }
+        .safeAreaInset(edge: .bottom) {
+            // Scénarios et Rapport sont des sections du client : la barre les relie aux autres
+            if vue == "scenarios" || vue == "rapport" { BarreSections(navigation: navigation) }
+        }
     }
 }
 
