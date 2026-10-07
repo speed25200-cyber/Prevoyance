@@ -7,6 +7,8 @@ enum Lieu: Hashable {
     case client
     case risque(String)
     case alertes
+    /// Section « Risques » : tous les risques et la ligne de vie.
+    case risques
     case conseil
     case scenarios
     case rapport
@@ -25,6 +27,7 @@ struct Destination: View {
     var body: some View {
         switch lieu {
         case .client: ClientNatif(navigation: navigation)
+        case .risques: RisquesNatif(navigation: navigation)
         case .risque(let cle): RisqueNatif(navigation: navigation, cle: cle)
         case .alertes: AlertesNatif(navigation: navigation)
         case .conseil: ConseilNatif(navigation: navigation)
@@ -200,87 +203,195 @@ extension View {
     func tuileBord() -> some View { modifier(TuileBord()) }
 }
 
-/// Les quatre sections d'un client, dans une barre de verre flottante : Synthèse, Conseil, Scénarios, Rapport.
-struct BarreSections: View {
+/// Les sections d'un client : Synthèse, Risques, Conseil, Scénarios, Rapport, Dossier.
+/// Sur iPad, une barre latérale ; sur iPhone, des onglets qui défilent en haut de l'écran.
+enum Sections {
+    struct Section: Identifiable {
+        let id: Int
+        let lieu: Lieu?
+        let nom: String
+        let symbole: String
+    }
+
+    @MainActor static func liste(_ navigation: Navigation) -> [Section] {
+        let noms = navigation.noms
+        // le dernier champ marque les outils du conseiller, retirés en présentation client
+        let toutes: [(Lieu?, String, String, Bool)] = [
+            (nil, noms["analyse"] ?? "", "square.grid.2x2", false),
+            (.risques, navigation.textes["risques"] ?? "Risques", "shield.lefthalf.filled", false),
+            (.conseil, noms["plan"] ?? "", "lightbulb", false),
+            (.scenarios, noms["scenarios"] ?? "", "arrow.triangle.branch", false),
+            (.rapport, noms["rapport"] ?? "", "doc.text", true),
+            (.dossier, noms["dossier"] ?? "", "folder", true),
+        ]
+        return toutes.enumerated().filter { !(navigation.presentation && $0.element.3) }
+            .map { Section(id: $0.offset, lieu: $0.element.0, nom: $0.element.1, symbole: $0.element.2) }
+    }
+
+    /// La section affichée : le deuxième écran du chemin (rien : la synthèse).
+    @MainActor static func courante(_ navigation: Navigation) -> Lieu? {
+        navigation.chemin.count > 1 ? navigation.chemin[1] : nil
+    }
+}
+
+/// iPad : la barre latérale des sections, en verre, toujours visible.
+struct RailSections: View {
     @ObservedObject var navigation: Navigation
-    @Namespace private var espace
-    private static let sections: [(Lieu?, String, String)] = [(nil, "analyse", "square.grid.2x2"), (.conseil, "plan", "lightbulb"),
-                                                              (.scenarios, "scenarios", "arrow.triangle.branch"), (.rapport, "rapport", "doc.text")]
 
     var body: some View {
-        // en présentation client, le rapport (outil du conseiller) se retire
-        let visibles = BarreSections.sections.filter { !(navigation.presentation && $0.1 == "rapport") }
-        let ici: Lieu? = navigation.chemin.count > 1 ? navigation.chemin[1] : nil
-        Verre {
-            HStack(spacing: 0) {
-                ForEach(Array(visibles.enumerated()), id: \.offset) { _, section in
-                    let actif = section.0 == ici
-                    Button {
-                        navigation.section(section.0)
-                    } label: {
-                        VStack(spacing: 3) {
-                            Image(systemName: section.2).font(.system(size: 18, weight: .medium)).frame(height: 22)
-                            Text(navigation.noms[section.1] ?? "").font(.system(size: 10.5, weight: actif ? .semibold : .medium)).lineLimit(1).minimumScaleFactor(0.75)
-                        }
-                        .foregroundStyle(actif ? Color.white : Color.secondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background {
-                            if actif { Capsule().fill(Teinte.accent.opacity(0.22)).matchedGeometryEffect(id: "bulle", in: espace) }
-                        }
-                        .contentShape(Rectangle())
+        let ici = Sections.courante(navigation)
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Sections.liste(navigation)) { section in
+                let actif = section.lieu == ici
+                Button {
+                    navigation.section(section.lieu)
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: section.symbole).font(.system(size: 17, weight: .medium)).frame(width: 24)
+                        Text(section.nom).font(.system(size: 15, weight: actif ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(actif ? .isSelected : [])
+                    .foregroundStyle(actif ? Color.white : Color.secondary)
+                    .padding(.horizontal, 12)
+                    .frame(height: 46)
+                    .background {
+                        if actif {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Teinte.accent.opacity(0.2))
+                                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Teinte.accent.opacity(0.45), lineWidth: 1))
+                        }
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(actif ? .isSelected : [])
             }
-            .padding(5)
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: 440)
-        .padding(.horizontal, 22)
-        .padding(.bottom, 4)
-        .frame(maxWidth: .infinity)
+        .padding(10)
+        .frame(width: 168)
+        .frame(maxHeight: .infinity)
+        .background(Teinte.glace.opacity(0.06))
+        .overlay(alignment: .trailing) { Rectangle().fill(Teinte.glace.opacity(0.14)).frame(width: 1) }
+    }
+}
+
+/// iPhone : les sections en onglets, sur une ligne qui défile ; l'onglet ouvert est plein.
+struct OngletsSections: View {
+    @ObservedObject var navigation: Navigation
+
+    var body: some View {
+        let ici = Sections.courante(navigation), sections = Sections.liste(navigation)
+        ScrollViewReader { defile in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(sections) { section in
+                        let actif = section.lieu == ici
+                        Button {
+                            navigation.section(section.lieu)
+                        } label: {
+                            Text(section.nom).font(.system(size: 14, weight: actif ? .semibold : .medium))
+                                .foregroundStyle(actif ? Teinte.boutonEncre : Color.primary.opacity(0.82))
+                                .padding(.horizontal, 15)
+                                .frame(height: 34)
+                                .background(actif ? Teinte.accent : Teinte.glace.opacity(0.1), in: Capsule())
+                                .overlay(Capsule().strokeBorder(Teinte.glace.opacity(actif ? 0 : 0.18), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                        .id(section.id)
+                        .accessibilityAddTraits(actif ? .isSelected : [])
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
+            }
+            .onAppear {
+                if let ouverte = sections.first(where: { $0.lieu == ici }) { defile.scrollTo(ouverte.id, anchor: .center) }
+            }
+        }
+        .background(Teinte.nuit.opacity(0.88))
+    }
+}
+
+/// Le cadre des écrans de section : la barre latérale sur iPad, les onglets du haut sur iPhone.
+struct CadreSections: ViewModifier {
+    @ObservedObject var navigation: Navigation
+    @Environment(\.horizontalSizeClass) private var classe
+
+    func body(content: Content) -> some View {
+        if classe == .regular {
+            content.safeAreaInset(edge: .leading, spacing: 0) { RailSections(navigation: navigation) }
+        } else {
+            content.safeAreaInset(edge: .top, spacing: 0) { OngletsSections(navigation: navigation) }
+        }
     }
 }
 
 extension View {
-    /// La barre des sections, en bas des quatre écrans principaux d'un client.
-    func barreSections(_ navigation: Navigation) -> some View {
-        safeAreaInset(edge: .bottom) { BarreSections(navigation: navigation) }
+    func cadreSections(_ navigation: Navigation) -> some View { modifier(CadreSections(navigation: navigation)) }
+}
+
+/// La ligne de vie : par âge, ce que versent le salaire et chaque pilier, face au besoin (en pointillé).
+struct LigneDeVie: View {
+    let a: AnalyseModele
+    var hauteur: CGFloat = 240
+
+    var body: some View {
+        let noms = a.legende
+        return VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(a.ligneTitre, systemImage: "chart.bar.xaxis").font(.system(size: 14, weight: .semibold)).labelStyle(.titleAndIcon)
+                Text(a.ligneNote).font(.system(size: 13)).foregroundStyle(Color.secondary)
+            }
+            Chart {
+                ForEach(a.ligne) { point in
+                    let age = Double(point.id), bas = [0, point.salaire, point.salaire + point.p1, point.salaire + point.p1 + point.p2]
+                    let hauts = [point.salaire, point.salaire + point.p1, point.salaire + point.p1 + point.p2, point.salaire + point.p1 + point.p2 + point.p3]
+                    ForEach(0..<4, id: \.self) { rang in
+                        if hauts[rang] > bas[rang] {
+                            RectangleMark(xStart: .value("âge", age - 0.5), xEnd: .value("âge", age + 0.5),
+                                          yStart: .value("revenu", bas[rang]), yEnd: .value("revenu", hauts[rang]))
+                                .foregroundStyle(by: .value("source", noms[rang]))
+                        }
+                    }
+                }
+                ForEach(a.ligne) { point in
+                    LineMark(x: .value("âge", Double(point.id)), y: .value("besoin", point.besoin), series: .value("série", noms[4]))
+                        .interpolationMethod(.stepCenter)
+                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                        .foregroundStyle(Color.white)
+                }
+            }
+            .chartXScale(domain: (Double(a.ligne.first?.id ?? 0) - 0.5)...(Double(a.ligne.last?.id ?? 100) + 0.5))
+            .chartForegroundStyleScale(domain: Array(noms.prefix(4)), range: [Teinte.salaire, Teinte.pilier1, Teinte.pilier2, Teinte.pilier3])
+            .chartYAxis {
+                AxisMarks(position: .leading) { valeur in
+                    AxisGridLine().foregroundStyle(Color.primary.opacity(0.08))
+                    AxisValueLabel {
+                        if let montant = valeur.as(Double.self) { Text(montant >= 1000 ? "\(Int(montant / 1000))k" : "\(Int(montant))") }
+                    }
+                }
+            }
+            .chartLegend(position: .bottom, alignment: .leading)
+            .frame(height: hauteur)
+        }
+        .padding(14)
+        .tuileBord()
     }
 }
 
-/// Le tableau de bord d'un client : le score dans son anneau, les trois piliers en colonnes de glace, chaque risque
-/// avec sa couverture, la prochaine échéance et le ménage. Tout se lit d'un regard ; chaque tuile ouvre son détail.
-struct ClientNatif: View {
+/// Les risques d'un client, un par ligne, avec l'anneau de sa couverture ; à côté, la ligne de vie.
+struct RisquesNatif: View {
     @ObservedObject var navigation: Navigation
-    @Environment(\.horizontalSizeClass) private var classe
 
     var body: some View {
         Feuille(large: true) {
             if let a = navigation.analyse {
                 Colonnes {
-                    if let choix = a.cibleChoix {
-                        Picker("", selection: Binding(get: { choix }, set: { navigation.appeler("cible", $0) })) {
-                            Text(a.ciblePersonne).tag("personne")
-                            Text(a.cibleConjoint).tag("conjoint")
-                        }
-                        .pickerStyle(.segmented)
+                    ForEach(a.risques) { risque in
+                        NavigationLink(value: Lieu.risque(risque.id)) { ligne(risque) }.buttonStyle(Appui())
                     }
-                    score(a)
-                    HStack(alignment: .top, spacing: 12) {
-                        if !a.colonnes.isEmpty { piliers(a) }
-                        VStack(spacing: 12) {
-                            ForEach(a.risques.prefix(2)) { risque in tuile(risque) }
-                        }
-                    }
-                    if classe == .regular, let menage = a.menage { foyer(menage) }
                 } droite: {
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach(a.risques.dropFirst(2)) { risque in tuile(risque, compacte: true) }
-                    }
-                    if let prochaine = a.prochaine { echeance(prochaine) }
-                    if classe != .regular, let menage = a.menage { foyer(menage) }
+                    LigneDeVie(a: a, hauteur: 260)
                     if !a.alertes.isEmpty {
                         NavigationLink(value: Lieu.alertes) {
                             Tuile(titre: a.alertesTitre, note: String(a.alertes.count), symbole: "exclamationmark.circle")
@@ -292,23 +403,119 @@ struct ClientNatif: View {
                 Attente()
             }
         }
-        .navigationTitle(navigation.nomDossier)
+        .navigationTitle(navigation.textes["risques"] ?? "Risques")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if !navigation.presentation {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        navigation.entrer(.dossier)
-                    } label: {
-                        Image(systemName: "square.and.pencil")
+        .toolbar { OutilsEcran(navigation: navigation) }
+        .cadreSections(navigation)
+    }
+
+    private func ligne(_ risque: AnalyseModele.Risque) -> some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Anneau(part: risque.couverture, epaisseur: 5)
+                Text("\(Int((risque.couverture * 100).rounded()))").font(.system(size: 13, weight: .semibold)).monospacedDigit().foregroundStyle(Color.primary)
+            }
+            .frame(width: 48, height: 48)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(risque.nom).font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.primary).lineLimit(1).minimumScaleFactor(0.8)
+                Text(risque.note).font(.system(size: 13)).foregroundStyle(Color.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            if risque.lacune {
+                Text(risque.montant).font(.system(size: 17, weight: .semibold)).monospacedDigit().foregroundStyle(Color.primary).lineLimit(1)
+            } else if risque.montant != "—" {
+                Image(systemName: "checkmark").font(.system(size: 15, weight: .semibold)).foregroundStyle(Teinte.accent)
+            }
+            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.secondary)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .tuileBord()
+    }
+}
+
+/// Le tableau de bord d'un client : le score dans son anneau, les trois piliers en colonnes de glace, chaque risque
+/// avec sa couverture, la prochaine échéance et le ménage. Tout se lit d'un regard ; chaque tuile ouvre son détail.
+struct ClientNatif: View {
+    @ObservedObject var navigation: Navigation
+    @Environment(\.horizontalSizeClass) private var classe
+
+    var body: some View {
+        GeometryReader { cadre in
+            // trois colonnes quand la place le permet (iPad en paysage), deux sur iPad en portrait, une sur iPhone
+            let trois = classe == .regular && cadre.size.width >= 900
+            Feuille(large: true) {
+                if let a = navigation.analyse {
+                    if trois {
+                        HStack(alignment: .top, spacing: 18) {
+                            VStack(spacing: 14) {
+                                cible(a)
+                                score(a)
+                                if let menage = a.menage { foyer(menage) }
+                            }
+                            .frame(maxWidth: .infinity)
+                            VStack(spacing: 14) {
+                                LigneDeVie(a: a, hauteur: 300)
+                                if !a.colonnes.isEmpty { piliers(a) }
+                            }
+                            .frame(maxWidth: .infinity)
+                            VStack(spacing: 12) {
+                                ForEach(a.risques) { risque in tuile(risque) }
+                                if let prochaine = a.prochaine { echeance(prochaine) }
+                                alertes(a)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    } else {
+                        Colonnes {
+                            cible(a)
+                            score(a)
+                            HStack(alignment: .top, spacing: 12) {
+                                if !a.colonnes.isEmpty { piliers(a) }
+                                VStack(spacing: 12) {
+                                    ForEach(a.risques.prefix(2)) { risque in tuile(risque) }
+                                }
+                            }
+                            if classe == .regular, let menage = a.menage { foyer(menage) }
+                        } droite: {
+                            HStack(alignment: .top, spacing: 12) {
+                                ForEach(a.risques.dropFirst(2)) { risque in tuile(risque, compacte: true) }
+                            }
+                            if classe == .regular { LigneDeVie(a: a, hauteur: 220) }
+                            if let prochaine = a.prochaine { echeance(prochaine) }
+                            if classe != .regular, let menage = a.menage { foyer(menage) }
+                            alertes(a)
+                        }
                     }
-                    .tint(Color.primary)
-                    .accessibilityLabel(Text(navigation.noms["dossier"] ?? "Dossier"))
+                } else {
+                    Attente()
                 }
             }
-            OutilsEcran(navigation: navigation)
         }
-        .barreSections(navigation)
+        .navigationTitle(navigation.nomDossier)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { OutilsEcran(navigation: navigation) }
+        .cadreSections(navigation)
+    }
+
+    /// Couple : la personne analysée.
+    @ViewBuilder private func cible(_ a: AnalyseModele) -> some View {
+        if let choix = a.cibleChoix {
+            Picker("", selection: Binding(get: { choix }, set: { navigation.appeler("cible", $0) })) {
+                Text(a.ciblePersonne).tag("personne")
+                Text(a.cibleConjoint).tag("conjoint")
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    @ViewBuilder private func alertes(_ a: AnalyseModele) -> some View {
+        if !a.alertes.isEmpty {
+            NavigationLink(value: Lieu.alertes) {
+                Tuile(titre: a.alertesTitre, note: String(a.alertes.count), symbole: "exclamationmark.circle")
+            }
+            .buttonStyle(Appui())
+        }
     }
 
     // MARK: le score
@@ -538,7 +745,7 @@ struct RisqueNatif: View {
                     if !a.attente.isEmpty {
                         Text(a.attente).font(.system(size: 14)).foregroundStyle(Color.secondary).fixedSize(horizontal: false, vertical: true)
                     }
-                    ligneDeVie(a)
+                    LigneDeVie(a: a)
                 }
             } else {
                 Attente()
@@ -547,7 +754,7 @@ struct RisqueNatif: View {
         .navigationTitle(navigation.analyse?.risques.first(where: { $0.id == cle })?.nom ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .boutonBas(navigation.analyse?.bouton ?? "") { navigation.entrer(.conseil) }
+        .boutonBas(navigation.analyse?.bouton ?? "") { navigation.section(.conseil) }
     }
 
     private func tete(_ a: AnalyseModele) -> some View {
@@ -610,48 +817,6 @@ struct RisqueNatif: View {
         }
     }
 
-    private func ligneDeVie(_ a: AnalyseModele) -> some View {
-        let noms = a.legende
-        return VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(a.ligneTitre).font(.system(size: 20, weight: .semibold))
-                Text(a.ligneNote).font(.system(size: 14)).foregroundStyle(Color.secondary)
-            }
-            Chart {
-                ForEach(a.ligne) { point in
-                    let age = Double(point.id), bas = [0, point.salaire, point.salaire + point.p1, point.salaire + point.p1 + point.p2]
-                    let hauts = [point.salaire, point.salaire + point.p1, point.salaire + point.p1 + point.p2, point.salaire + point.p1 + point.p2 + point.p3]
-                    ForEach(0..<4, id: \.self) { rang in
-                        if hauts[rang] > bas[rang] {
-                            RectangleMark(xStart: .value("âge", age - 0.5), xEnd: .value("âge", age + 0.5),
-                                          yStart: .value("revenu", bas[rang]), yEnd: .value("revenu", hauts[rang]))
-                                .foregroundStyle(by: .value("source", noms[rang]))
-                        }
-                    }
-                }
-                ForEach(a.ligne) { point in
-                    LineMark(x: .value("âge", Double(point.id)), y: .value("besoin", point.besoin), series: .value("série", noms[4]))
-                        .interpolationMethod(.stepCenter)
-                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
-                        .foregroundStyle(Color.primary)
-                }
-            }
-            .chartXScale(domain: (Double(a.ligne.first?.id ?? 0) - 0.5)...(Double(a.ligne.last?.id ?? 100) + 0.5))
-            .chartForegroundStyleScale(domain: Array(noms.prefix(4)), range: [Teinte.salaire, Teinte.pilier1, Teinte.pilier2, Teinte.pilier3])
-            .chartYAxis {
-                AxisMarks(position: .leading) { valeur in
-                    AxisGridLine().foregroundStyle(Color.primary.opacity(0.08))
-                    AxisValueLabel {
-                        if let montant = valeur.as(Double.self) { Text(montant >= 1000 ? "\(Int(montant / 1000))k" : "\(Int(montant))") }
-                    }
-                }
-            }
-            .chartLegend(position: .bottom, alignment: .leading)
-            .frame(height: 240)
-        }
-        .padding(18)
-        .verreArrondi(rayon: 16)
-    }
 }
 
 // MARK: points d'attention
@@ -734,7 +899,7 @@ struct ConseilNatif: View {
         .navigationTitle(navigation.noms["plan"] ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .barreSections(navigation)
+        .cadreSections(navigation)
     }
 
     private func mesures(_ bloc: BlocEcran) -> some View {
@@ -802,10 +967,17 @@ struct EcranCartes: View {
         .navigationTitle(navigation.noms[vue] ?? "")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .safeAreaInset(edge: .bottom) {
-            // Scénarios et Rapport sont des sections du client : la barre les relie aux autres
-            if vue == "scenarios" || vue == "rapport" { BarreSections(navigation: navigation) }
-        }
+        .modifier(CadreSiSection(navigation: navigation, section: vue == "scenarios" || vue == "rapport"))
+    }
+}
+
+/// Scénarios et Rapport sont des sections du client (cadre) ; Données n'en est pas une.
+struct CadreSiSection: ViewModifier {
+    @ObservedObject var navigation: Navigation
+    let section: Bool
+
+    func body(content: Content) -> some View {
+        if section { content.cadreSections(navigation) } else { content }
     }
 }
 

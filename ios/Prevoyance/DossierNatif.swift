@@ -82,8 +82,9 @@ struct DossierNatif: View {
         .scrollContentBackground(.hidden)
         .background(FondApp())
         .navigationTitle(navigation.noms["dossier"] ?? "")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
+        .cadreSections(navigation)
     }
 }
 

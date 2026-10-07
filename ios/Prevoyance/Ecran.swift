@@ -145,7 +145,11 @@ final class Navigation: ObservableObject {
     private func suivre() {
         guard let lieu = chemin.last else { return }
         switch lieu {
-        case .client, .alertes: choisir("analyse")
+        case .client, .risques:
+            // la synthèse et les risques montrent la ligne de vie de la retraite
+            choisir("analyse")
+            appeler("risque", "retraite")
+        case .alertes: choisir("analyse")
         case .risque(let cle):
             choisir("analyse")
             appeler("risque", cle)
@@ -230,7 +234,7 @@ final class Navigation: ObservableObject {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.annoncer && window.__prevoyance.annoncer()")
     }
 
-    /// Changer de section d'un client (barre du bas) : Synthèse (`nil`), Conseil, Scénarios, Rapport. Sans glissement :
+    /// Changer de section d'un client : Synthèse (`nil`), Risques, Conseil, Scénarios, Rapport, Dossier. Sans glissement :
     /// ce sont des écrans voisins, pas un écran dans lequel on entre.
     func section(_ lieu: Lieu?) {
         var sansAnimation = Transaction()
@@ -294,7 +298,7 @@ final class Navigation: ObservableObject {
         guard ProcessInfo.processInfo.environment["PREVOYANCE_TOUR"] == "1" else { return }
         try? await Task.sleep(nanoseconds: 7_000_000_000)
         let tour: [(String, [Lieu])] = [
-            ("client", [.client]), ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]), ("offres", [.client, .conseil, .carte("plan", 4)]),
+            ("client", [.client]), ("risques", [.client, .risques]), ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]), ("offres", [.client, .conseil, .carte("plan", 4)]),
             ("scenarios", [.client, .scenarios]), ("question", [.client, .scenarios, .carte("scenarios", 0)]),
             ("rapport", [.client, .rapport]), ("dossier", [.client, .dossier]),
             ("rubrique", [.client, .dossier, .rubrique(rubriques.first?.id ?? "client")]), ("donnees", [.client, .donnees]), ("accueil", []),
