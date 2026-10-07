@@ -236,7 +236,8 @@ struct ClientNatif: View {
                 }
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
-                .chartYScale(domain: 0...100)
+                // échelle resserrée autour des scores vus : la pente se lit, même sur quelques points
+                .chartYScale(domain: Swift.max(0, (a.suivi.map(\.score).min() ?? 0) - 6)...Swift.min(100, (a.suivi.map(\.score).max() ?? 100) + 6))
                 .frame(width: 180, height: 38)
                 .padding(.top, 10)
                 Text(a.suiviTexte).font(.system(size: 13)).foregroundStyle(Color.secondary)
