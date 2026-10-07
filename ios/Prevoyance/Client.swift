@@ -1292,11 +1292,13 @@ struct ConseilNatif: View {
 struct ContenuCarte: View {
     @ObservedObject var navigation: Navigation
     let carte: CarteEcran
+    /// Les blocs d'avant le premier intertitre sont déjà montrés avec le titre de l'écran.
+    var sansTete = false
 
     var body: some View {
         // chaque intertitre ouvre une carte de verre : rien n'est posé à nu sur le fond
         VStack(alignment: .leading, spacing: 14) {
-            ForEach(Array(ContenuCarte.groupes(carte.blocs).enumerated()), id: \.offset) { rang, groupe in
+            ForEach(Array(ContenuCarte.groupes(carte.blocs).enumerated().filter { !(sansTete && $0.offset == 0 && $0.element.first?.type != "titre") }), id: \.offset) { rang, groupe in
                 VStack(alignment: .leading, spacing: 14) {
                     ForEach(groupe) { bloc in
                         BlocVue(navigation: navigation, bloc: bloc)
@@ -1371,11 +1373,17 @@ struct CarteNative: View {
                     if !carte.sousTitre.isEmpty {
                         Text(carte.sousTitre).font(.system(size: 15)).foregroundStyle(Color.primary.opacity(0.72)).fixedSize(horizontal: false, vertical: true)
                     }
+                    // ce qui précède le premier intertitre (un bouton, une phrase) reste avec le titre
+                    if let tete = ContenuCarte.groupes(carte.blocs).first, tete.first?.type != "titre" {
+                        ForEach(tete) { bloc in
+                            BlocVue(navigation: navigation, bloc: bloc).id("\(navigation.versionEcran)-\(carte.id)-\(bloc.id)").padding(.top, 6)
+                        }
+                    }
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .tuileBord()
-                ContenuCarte(navigation: navigation, carte: carte)
+                ContenuCarte(navigation: navigation, carte: carte, sansTete: true)
             } else {
                 Attente()
             }
