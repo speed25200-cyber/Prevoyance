@@ -46,8 +46,9 @@ extension Navigation {
         try? await Task.sleep(nanoseconds: 2_500_000_000)
         let images = (await page("return document.querySelectorAll('#vue img[src^=data]').length;", [:]) as? NSNumber)?.intValue ?? -1
         noter("rapport : logo et signatures repris", images >= 1, "\(images) image(s) dans le rapport")
+        let feuilles = (await page("return document.querySelectorAll('#vue .page').length;", [:]) as? NSNumber)?.intValue ?? -1
         let (pages, octets) = pdfDuRapport()
-        noter("rapport : PDF produit", pages >= 2 && octets > 20_000, "\(pages) pages, \(octets) octets")
+        noter("rapport : PDF produit, une page par feuille, sans page vide", feuilles >= 2 && pages == feuilles && octets > 20_000, "\(pages) pages pour \(feuilles) feuilles, \(octets) octets")
 
         guard let donnees = try? JSONSerialization.data(withJSONObject: essais), let json = String(data: donnees, encoding: .utf8) else { return "[]" }
         return json
@@ -57,7 +58,7 @@ extension Navigation {
     private func pdfDuRapport() -> (Int, Int) {
         let rendu = UIPrintPageRenderer()
         rendu.addPrintFormatter(vue.viewPrintFormatter(), startingAtPageAt: 0)
-        let feuille = CGRect(x: 0, y: 0, width: 595.2, height: 841.8)
+        let feuille = CGRect(x: 0, y: 0, width: 595.28, height: 841.89)   // A4, en points
         rendu.setValue(NSValue(cgRect: feuille), forKey: "paperRect")
         rendu.setValue(NSValue(cgRect: feuille), forKey: "printableRect")
         let donnees = NSMutableData()
