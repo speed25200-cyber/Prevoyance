@@ -66,7 +66,7 @@ extension Navigation {
         rendu.prepare(forDrawingPages: NSRange(location: 0, length: nombre))
         for numero in 0..<nombre {
             UIGraphicsBeginPDFPage()
-            rendu.drawPage(at: numero, in: UIGraphicsGetPDFBounds())
+            rendu.drawPage(at: numero, in: UIGraphicsGetPDFContextBounds())
         }
         UIGraphicsEndPDFContext()
         let pages = CGDataProvider(data: donnees as CFData).flatMap { CGPDFDocument($0) }?.numberOfPages ?? 0
