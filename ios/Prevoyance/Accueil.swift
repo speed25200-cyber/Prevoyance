@@ -109,6 +109,7 @@ struct Accueil: View {
             Accueil.jamaisVu = false
             withAnimation(.spring(response: 0.9, dampingFraction: 0.86).delay(attente)) { arrive = true }
             inclinaison.demarrer()
+            navigation.rafraichirAccueil()
         }
         .onDisappear { inclinaison.arreter() }
     }

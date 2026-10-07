@@ -32,49 +32,6 @@ private func texte(_ d: [String: Any], _ cle: String) -> String { d[cle] as? Str
 private func nombre(_ d: [String: Any], _ cle: String) -> Double { (d[cle] as? NSNumber)?.doubleValue ?? 0 }
 private func vrai(_ d: [String: Any], _ cle: String) -> Bool { (d[cle] as? NSNumber)?.boolValue ?? false }
 
-/// Scénarios, Conseil, Rapport, Données : la page décrit ce qu'elle affiche, l'app le dessine avec ses composants
-/// (cartes de verre, graphiques du système, curseurs, interrupteurs). Les chiffres viennent du moteur, par la page.
-struct EcranDecrit: View {
-    @ObservedObject var navigation: Navigation
-    let vue: String
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 18) {
-                    ForEach(navigation.ecrans[vue] ?? []) { carte in
-                        VStack(alignment: .leading, spacing: 14) {
-                            if !carte.titre.isEmpty {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(carte.titre).font(.system(size: 21, weight: .semibold))
-                                    if !carte.sousTitre.isEmpty { Text(carte.sousTitre).font(.system(size: 14)).foregroundStyle(Color.secondary) }
-                                }
-                            }
-                            ForEach(carte.blocs) { bloc in
-                                BlocVue(navigation: navigation, bloc: bloc)
-                                    .id("\(navigation.versionEcran)-\(carte.id)-\(bloc.id)")
-                            }
-                        }
-                        .padding(20)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .verreArrondi(rayon: 26)
-                    }
-                    if (navigation.ecrans[vue] ?? []).isEmpty { ProgressView().frame(maxWidth: .infinity).padding(.top, 120) }
-                }
-                .padding(.horizontal, 18)
-                .padding(.top, 8)
-                .frame(maxWidth: 860)
-                .frame(maxWidth: .infinity)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 84) }
-            .background(FondApp())
-            .navigationTitle(navigation.noms[vue] ?? "")
-            .toolbar { OutilsEcran(navigation: navigation) }
-        }
-    }
-}
-
 /// Un bloc, dessiné selon sa nature.
 struct BlocVue: View {
     @ObservedObject var navigation: Navigation
@@ -164,7 +121,7 @@ struct BlocVue: View {
                         Text(texte(p, "rang")).font(.system(size: 14, weight: .semibold))
                             .frame(width: 28, height: 28)
                             .background(texte(p, "urgence") == "maintenant" ? Teinte.accent : Color.primary.opacity(0.1), in: Circle())
-                            .foregroundStyle(texte(p, "urgence") == "maintenant" ? Color.white : Color.primary)
+                            .foregroundStyle(texte(p, "urgence") == "maintenant" ? Teinte.boutonEncre : Color.primary)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(texte(p, "nom").uppercased()).font(.system(size: 10.5, weight: .semibold)).tracking(1.2).foregroundStyle(Color.secondary)
                             Text(texte(p, "texte")).font(.system(size: 16)).fixedSize(horizontal: false, vertical: true)
@@ -334,9 +291,9 @@ struct BlocVue: View {
                             } label: {
                                 VStack(spacing: 2) {
                                     Text(texte(colonne, "libelle")).font(.system(size: 15, weight: .semibold))
-                                    Text(texte(colonne, "note")).font(.system(size: 10)).foregroundStyle(vrai(colonne, "actif") ? Color.white.opacity(0.85) : Color.secondary)
+                                    Text(texte(colonne, "note")).font(.system(size: 10)).foregroundStyle(vrai(colonne, "actif") ? Teinte.boutonEncre.opacity(0.75) : Color.secondary)
                                 }
-                                .foregroundStyle(vrai(colonne, "actif") ? Color.white : Color.primary)
+                                .foregroundStyle(vrai(colonne, "actif") ? Teinte.boutonEncre : Color.primary)
                                 .frame(minWidth: 52).padding(.vertical, 8).padding(.horizontal, 6)
                                 .background(vrai(colonne, "actif") ? Teinte.accent : Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }

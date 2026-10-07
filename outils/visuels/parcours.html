@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Prévoyance — nouvelle organisation</title>
+<!-- Proposition de nouvelle organisation de l'app (Alpin — Nuit) : un écran = une idée, on avance en poussant des écrans
+     (retour par glissement), plus de barre à six onglets ni de murs de cartes. Planche rendue en image par Edge. -->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 2440px; height: 1250px; background: #d5dae2; font-family: -apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif; display: grid; grid-template-rows: auto 1fr; padding-top: 40px; color: #101a26; }
+  header { text-align: center; } header b { display: block; font-size: 34px; letter-spacing: -.02em; } header span { font-size: 18px; opacity: .7; }
+  main { display: flex; gap: 34px; justify-content: center; align-items: center; }
+  figure { display: grid; gap: 14px; justify-items: center; }
+  figcaption { text-align: center; } figcaption b { display: block; font-size: 19px; } figcaption span { font-size: 14.5px; opacity: .65; }
+  .fleche { font-size: 34px; opacity: .35; margin-top: -60px; }
+  .tel { width: 400px; height: 866px; border-radius: 58px; padding: 13px; background: #0c0c0e; box-shadow: 0 50px 90px -40px rgba(0, 0, 0, .55); }
+  .e { position: relative; width: 100%; height: 100%; border-radius: 46px; overflow: hidden; background: linear-gradient(180deg, #0b1522, #0e1b2c); color: #eef3f8; padding: 62px 22px 0; }
+  .ile { position: absolute; left: 50%; top: 13px; width: 110px; height: 32px; margin-left: -55px; border-radius: 18px; background: #000; z-index: 5; }
+  .retour { display: flex; justify-content: space-between; align-items: center; font-size: 16px; color: #8c9bae; margin-bottom: 18px; }
+  .retour b { color: #eef3f8; font-weight: 600; }
+  .sur { font-size: 11.5px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: #8c9bae; }
+  h1 { font-size: 32px; font-weight: 600; letter-spacing: -.035em; line-height: 1.08; margin: 8px 0 6px; }
+  .note { font-size: 15px; color: #8c9bae; line-height: 1.4; }
+  .p { background: rgba(190, 210, 235, .07); border: 1px solid rgba(190, 210, 235, .16); border-radius: 16px; }
+  .cta { position: absolute; left: 22px; right: 22px; bottom: 30px; height: 56px; border-radius: 14px; background: #eef3f8; color: #0b1522; display: grid; place-items: center; font-size: 17px; font-weight: 600; }
+  .rouge { color: #a8dbfc; }
+  /* accueil */
+  .scene { position: absolute; inset: 0 0 auto 0; height: 430px; background: url(variante-j.png) center top / cover; }
+  .scene::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11, 21, 34, 0) 45%, #0b1522 96%); }
+  .client { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-top: 10px; }
+  .client svg { width: 44px; height: 44px; transform: rotate(-90deg); flex: none; }
+  .client div { flex: 1; } .client b { display: block; font-size: 17px; } .client span { font-size: 13.5px; color: #8c9bae; }
+  /* synthèse */
+  .score { display: flex; align-items: center; gap: 18px; padding: 18px; margin-top: 16px; }
+  .score svg { width: 92px; height: 92px; transform: rotate(-90deg); flex: none; }
+  .score .n { position: absolute; width: 92px; text-align: center; font-size: 30px; font-weight: 300; letter-spacing: -.04em; }
+  .score p { font-size: 15px; color: #8c9bae; line-height: 1.35; } .score p b { display: block; color: #eef3f8; font-size: 19px; font-weight: 600; letter-spacing: -.02em; margin-bottom: 3px; }
+  .risque { display: flex; align-items: center; justify-content: space-between; padding: 15px 16px; margin-top: 10px; }
+  .risque b { display: block; font-size: 17px; font-weight: 600; } .risque span { font-size: 13.5px; color: #8c9bae; }
+  .risque em { font-style: normal; font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+  .liens { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .liens div { padding: 12px 10px; text-align: center; font-size: 13px; font-weight: 600; } .liens div span { display: block; font-size: 11.5px; font-weight: 400; color: #8c9bae; margin-top: 2px; }
+  /* risque */
+  .gros { font-size: 60px; font-weight: 300; letter-spacing: -.05em; line-height: 1; margin: 6px 0 2px; } .gros small { font-size: 16px; letter-spacing: 0; color: #8c9bae; margin-left: 6px; font-weight: 400; }
+  .pile { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 18px 0 14px; }
+  .lg p { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(190, 210, 235, .13); font-size: 16px; } .lg p:last-child { border: 0; }
+  .lg p b { font-weight: 600; } .lg i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 9px; }
+  /* conseil */
+  .mesure { padding: 15px 16px; margin-top: 10px; }
+  .mesure small { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #a8dbfc; }
+  .mesure small.plus-tard { color: #8c9bae; }
+  .mesure b { display: block; font-size: 17px; font-weight: 600; margin: 4px 0 3px; } .mesure span { font-size: 14px; color: #8c9bae; line-height: 1.35; display: block; }
+  .mesure .ok { position: absolute; right: 36px; margin-top: -40px; width: 26px; height: 26px; border-radius: 50%; background: #a8dbfc; display: grid; place-items: center; font-size: 14px; color: #0b1522; }
+  .avant { display: flex; gap: 10px; margin-top: 14px; } .avant div { flex: 1; padding: 12px 14px; } .avant small { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #8c9bae; } .avant b { display: block; font-size: 26px; font-weight: 300; }
+  /* scénarios */
+  .tuile { padding: 16px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .tuile b { display: block; font-size: 17px; font-weight: 600; } .tuile span { font-size: 13.5px; color: #8c9bae; } .tuile em { font-style: normal; color: #8c9bae; font-size: 20px; }
+</style>
+<body>
+<header><b>Nouvelle organisation — un écran, une idée</b><span>On avance en entrant dans les écrans et on revient en glissant, comme dans les apps d’Apple. Plus de barre à six onglets, plus de murs de cartes.</span></header>
+<main>
+  <figure><div class="tel"><div class="e"><div class="ile"></div><div class="scene"></div>
+    <div style="position:absolute;left:22px;right:22px;bottom:104px">
+      <p class="sur">Prévoyance</p><h1>Vos clients</h1>
+      <div class="p client"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="rgba(190,210,235,.16)" stroke-width="4"/><circle cx="24" cy="24" r="20" fill="none" stroke="#a8dbfc" stroke-width="4" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="10"/></svg><div><b>Famille Rochat</b><span>Vu hier · 2 lacunes</span></div><span>›</span></div>
+      <div class="p client"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="rgba(190,210,235,.16)" stroke-width="4"/><circle cx="24" cy="24" r="20" fill="none" stroke="#a8dbfc" stroke-width="4" stroke-linecap="round" stroke-dasharray="126" stroke-dashoffset="44"/></svg><div><b>M. et Mme Favre</b><span>Il y a 3 jours · 4 lacunes</span></div><span>›</span></div>
+    </div><div class="cta">+ Nouveau client</div></div></div>
+    <figcaption><b>1 · Accueil</b><span>Les clients, rien d’autre.<br>Le film des piliers en fond.</span></figcaption></figure>
+  <div class="fleche">→</div>
+  <figure><div class="tel"><div class="e"><div class="ile"></div>
+    <div class="retour"><span>‹ Clients</span><span>2026 · FR</span></div>
+    <p class="sur">Famille Rochat</p><h1>Synthèse</h1>
+    <div class="p score"><svg viewBox="0 0 92 92"><circle cx="46" cy="46" r="40" fill="none" stroke="rgba(190,210,235,.16)" stroke-width="7"/><circle cx="46" cy="46" r="40" fill="none" stroke="#a8dbfc" stroke-width="7" stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="20"/></svg><span class="n">92</span>
+      <p><b>Bien couvert, 2 lacunes</b>La retraite et l’invalidité par maladie restent à combler.</p></div>
+    <div class="p risque"><div><b>Retraite</b><span>couvert à 83 %</span></div><em class="rouge">− 1’190 /mois</em></div>
+    <div class="p risque"><div><b>Invalidité</b><span>maladie : couvert à 91 %</span></div><em class="rouge">− 309 /mois</em></div>
+    <div class="p risque"><div><b>Décès</b><span>aucune lacune</span></div><em>✓</em></div>
+    <div class="liens"><div class="p">Dossier<span>complet à 80 %</span></div><div class="p">Scénarios<span>7 simulations</span></div><div class="p">Rapport<span>PDF, signature</span></div></div>
+    <div class="cta">Voir le conseil →</div></div></div>
+    <figcaption><b>2 · Synthèse du client</b><span>Le point de départ : un score, trois risques,<br>un seul geste principal.</span></figcaption></figure>
+  <div class="fleche">→</div>
+  <figure><div class="tel"><div class="e"><div class="ile"></div>
+    <div class="retour"><span>‹ Synthèse</span><span>Client · <b>Conjoint</b></span></div>
+    <p class="sur">Retraite — à 65 ans</p><p class="gros rouge">− 1’190<small>CHF par mois</small></p>
+    <p class="note">Il faudrait CHF 83’200 par an ; les trois piliers en versent 68’900.</p>
+    <div class="pile"><i style="flex:36;background:#99a6b8"></i><i style="flex:49;background:#6185b3"></i><i style="flex:15;background:#3d5a80"></i><i style="flex:17;background:repeating-linear-gradient(135deg,#a8dbfc 0 5px,#16263a 5px 10px)"></i></div>
+    <div class="lg"><p><span><i style="background:#99a6b8"></i>1er pilier · AVS</span><b>CHF 24’648</b></p><p><span><i style="background:#6185b3"></i>2e pilier · caisse</span><b>CHF 33’545</b></p><p><span><i style="background:#3d5a80"></i>3e pilier</span><b>CHF 10’733</b></p><p><span><i style="background:#a8dbfc"></i>Lacune</span><b class="rouge">− CHF 14’280</b></p></div>
+    <div class="p" style="padding:14px 16px;margin-top:14px"><span class="note">Capital à prévoir pour combler</span><b style="display:block;font-size:22px;font-weight:600;margin-top:2px">CHF 298’000</b></div>
+    <div class="cta">Comment combler →</div></div></div>
+    <figcaption><b>3 · Un risque</b><span>Un chiffre, d’où vient le revenu,<br>ce qu’il manque. Rien de plus.</span></figcaption></figure>
+  <div class="fleche">→</div>
+  <figure><div class="tel"><div class="e"><div class="ile"></div>
+    <div class="retour"><span>‹ Synthèse</span><span>Ajuster</span></div>
+    <p class="sur">Conseil</p><h1>3 mesures suffisent</h1>
+    <div class="avant"><div class="p"><small>Aujourd’hui</small><b>92</b></div><div class="p"><small>Avec le plan</small><b>100</b></div><div class="p"><small>Effort</small><b>430<span style="font-size:13px;color:#8c9bae"> /mois</span></b></div></div>
+    <div class="p mesure"><small>Sans attendre</small><b>Rente d’incapacité de gain</b><span>CHF 3’600 par an assurés : l’invalidité par maladie est couverte.</span><span class="ok">✓</span></div>
+    <div class="p mesure"><small>Cette année</small><b>Pilier 3a : + CHF 2’800</b><span>Environ CHF 870 d’impôt en moins par an.</span><span class="ok">✓</span></div>
+    <div class="p mesure"><small class="plus-tard">À planifier</small><b>Rachat dans la caisse : CHF 61’000</b><span>Réparti sur 4 ans : CHF 17’570 d’impôt en moins.</span><span class="ok">✓</span></div>
+    <div class="cta">Préparer le rapport →</div></div></div>
+    <figcaption><b>4 · Conseil</b><span>Les mesures, une par carte, dans l’ordre.<br>L’effet avant / après en haut.</span></figcaption></figure>
+  <div class="fleche">→</div>
+  <figure><div class="tel"><div class="e"><div class="ile"></div>
+    <div class="retour"><span>‹ Synthèse</span><span></span></div>
+    <p class="sur">Famille Rochat</p><h1>Scénarios</h1><p class="note">Une question, un écran.</p>
+    <div class="p tuile"><div><b>Partir plus tôt ou plus tard ?</b><span>De 60 à 70 ans</span></div><em>›</em></div>
+    <div class="p tuile"><div><b>Rente ou capital ?</b><span>Après impôts, jusqu’à 90 ans</span></div><em>›</em></div>
+    <div class="p tuile"><div><b>Retirer pour le logement ?</b><span>Jusqu’à CHF 201’300</span></div><em>›</em></div>
+    <div class="p tuile"><div><b>Payer moins d’impôts ?</b><span>Retraits et rachats échelonnés</span></div><em>›</em></div>
+    <div class="p tuile"><div><b>Placer le 3a ?</b><span>2000 trajectoires simulées</span></div><em>›</em></div>
+    <div class="p tuile"><div><b>Et l’hypothèque à la retraite ?</b><span>Tenue des charges</span></div><em>›</em></div></div></div>
+    <figcaption><b>5 · Scénarios</b><span>Une liste de questions ;<br>chacune ouvre son propre écran.</span></figcaption></figure>
+</main>
+</body>
+</html>

@@ -9,70 +9,24 @@ enum Adresse {
     static let accueil = URL(string: "prevoyance://app/web/index.html")!
 }
 
-/// L'écran de l'application : la page en plein écran et, par-dessus, la barre d'onglets native en verre.
+/// L'écran de l'application : la page (invisible, elle tient les données et le moteur) et, par-dessus, les écrans de
+/// l'app. On part de l'accueil et on entre dans les écrans ; on revient en glissant, comme partout dans le système.
 struct Ecran: View {
     @StateObject private var navigation = Navigation()
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             Page(vue: navigation.vue).ignoresSafeArea()
-            // écrans dessinés par l'app elle-même ; les autres onglets montrent encore la page
-            if navigation.barreVisible && !navigation.accueil {
-                if navigation.onglet == "dossier" {
-                    DossierNatif(navigation: navigation).transition(.opacity)
-                } else if navigation.onglet == "analyse" {
-                    AnalyseNatif(navigation: navigation).transition(.opacity)
-                } else {
-                    // Scénarios, Conseil, Rapport, Données : décrits par la page, dessinés par l'app
-                    EcranDecrit(navigation: navigation, vue: navigation.onglet).id(navigation.onglet).transition(.opacity)
-                }
-            }
-            if navigation.barreVisible && !navigation.accueil && !Navigation.natifs.contains(navigation.onglet) {
-                // en haut : retour à l'accueil, titre de l'écran comme un grand titre du système, menu des réglages
-                VStack {
-                    HStack(alignment: .center, spacing: 12) {
-                        Button {
-                            navigation.montrerAccueil()
-                        } label: {
-                            Verre {
-                                Image(systemName: "house")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(Color.primary)
-                                    .frame(width: 40, height: 40)
-                            }
+            // tant que la page n'est pas prête (ou montre le code d'accès), c'est elle que l'on voit
+            if navigation.barreVisible {
+                NavigationStack(path: $navigation.chemin) {
+                    Accueil(navigation: navigation)
+                        .toolbar(.hidden, for: .navigationBar)
+                        .navigationDestination(for: Lieu.self) { lieu in
+                            Destination(navigation: navigation, lieu: lieu)
                         }
-                        .buttonStyle(Appui())
-                        .accessibilityLabel(Text(navigation.textes["accueil"] ?? "Accueil"))
-                        Text(navigation.noms[navigation.onglet] ?? "")
-                            .font(.system(size: 30, weight: .bold))
-                            .foregroundStyle(Color.primary)
-                            .lineLimit(1)
-                            .id(navigation.onglet)
-                            .transition(.opacity)
-                        Spacer(minLength: 12)
-                        MenuReglages(navigation: navigation)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 6)
-                    Spacer()
                 }
                 .transition(.opacity)
-            }
-            if navigation.barreVisible && !navigation.accueil {
-                BarreParcours(navigation: navigation)
-                    .frame(maxWidth: 560)
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 4)
-                    .transition(.opacity)
-                    // le clavier passe par-dessus la barre : elle ne remonte pas sur le formulaire
-                    .ignoresSafeArea(.keyboard, edges: .bottom)
-            }
-        }
-        // l'accueil couvre tout tant qu'aucun dossier n'est ouvert ; il s'efface en fondu quand on entre dans un dossier
-        .overlay {
-            if navigation.barreVisible && navigation.accueil {
-                Accueil(navigation: navigation)
-                    .transition(.opacity.combined(with: .scale(scale: 1.04)))
             }
         }
     }
@@ -106,8 +60,9 @@ final class Navigation: ObservableObject {
     @Published var langues = ["fr", "de", "it", "en"]
     @Published var annee = 2026
     @Published var annees = [2026, 2027]
-    /// L'accueil : affiché à l'ouverture, avec les dossiers et les libellés annoncés par la page.
-    @Published var accueil = true
+    /// Où l'on est : vide à l'accueil, puis les écrans où l'on est entré, dans l'ordre.
+    @Published var chemin: [Lieu] = []
+    var accueil: Bool { chemin.isEmpty }
     @Published var dossiers: [DossierResume] = []
     @Published var textes: [String: String] = [:]
     /// Le dossier (rubriques et champs décrits par la page) et l'analyse, pour les écrans natifs.
@@ -178,10 +133,10 @@ final class Navigation: ObservableObject {
         vue.load(URLRequest(url: Adresse.accueil))
     }
 
-    /// Un onglet est touché : la bulle glisse, la page change de vue.
+    /// Un écran apparaît : la page se met sur la vue correspondante, pour le décrire et le tenir à jour.
     func choisir(_ cible: String) {
         guard Navigation.vues.contains(cible) else { return }
-        withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { onglet = cible }
+        onglet = cible
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.aller && window.__prevoyance.aller('\(cible)')")
     }
 
@@ -221,18 +176,27 @@ final class Navigation: ObservableObject {
     func ouvrir(dossier id: String) {
         guard id.allSatisfy({ $0.isLetter || $0.isNumber }) else { return }
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.ouvrirDossier && window.__prevoyance.ouvrirDossier('\(id)')")
-        withAnimation(.easeInOut(duration: 0.45)) { accueil = false }
+        chemin = [.client]
     }
 
     func creerDossier(exemple: Bool) {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.creerDossier && window.__prevoyance.creerDossier(\(exemple))")
-        withAnimation(.easeInOut(duration: 0.45)) { accueil = false }
+        // un dossier vide s'ouvre sur sa saisie ; l'exemple, sur sa synthèse
+        chemin = exemple ? [.client] : [.client, .dossier]
     }
 
     func montrerAccueil() {
-        // la page renvoie la liste à jour des dossiers (noms et scores peuvent avoir changé)
+        chemin = []
+    }
+
+    /// L'accueil réapparaît : la page renvoie la liste à jour des dossiers (noms et scores peuvent avoir changé).
+    func rafraichirAccueil() {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.annoncer && window.__prevoyance.annoncer()")
-        withAnimation(.easeInOut(duration: 0.45)) { accueil = true }
+    }
+
+    /// Entrer dans un écran.
+    func entrer(_ lieu: Lieu) {
+        chemin.append(lieu)
     }
 
     /// Réglage choisi dans le menu natif : la page l'applique, puis confirme par son message habituel.
@@ -255,12 +219,24 @@ final class Navigation: ObservableObject {
         let demandee = ProcessInfo.processInfo.environment["PREVOYANCE_VUE"] ?? "analyse"
         // « accueil » : l'autotest tourne derrière l'accueil, qui reste à l'écran pour la capture
         let finale = demandee == "accueil" ? "analyse" : demandee
-        if demandee != "accueil" { accueil = false }
         let corps = "const m = await import('prevoyance://app/web/src/autotest.js'); return JSON.stringify(await m.executer(finale));"
         var page = "{\"echecs\":1,\"total\":1,\"resultats\":[{\"nom\":\"script d'autotest\",\"ok\":false,\"detail\":\"non exécuté\"}]}"
         if let retour = try? await vue.callAsyncJavaScript(corps, arguments: ["finale": finale], in: nil, contentWorld: .page) as? String {
             page = retour
         }
+        // l'écran demandé pour la capture, une fois les contrôles passés
+        switch demandee {
+        case "accueil": break
+        case "dossier": chemin = [.client, .dossier]
+        case "plan": chemin = [.client, .conseil]
+        case "scenarios": chemin = [.client, .scenarios]
+        case "rapport": chemin = [.client, .rapport]
+        case "donnees": chemin = [.client, .donnees]
+        case "risque": chemin = [.client, .risque("retraite")]
+        default: chemin = [.client]
+        }
+        // le temps que l'écran entre et que la page le décrive
+        try? await Task.sleep(nanoseconds: 2_000_000_000)
         let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count),\"dossiers\":\(dossiers.count),\"textes\":\(textes.count),"
             + "\"rubriques\":\(rubriques.count),\"champs\":\(rubriques.reduce(0) { $0 + $1.champs.count }),\"analyse\":\(analyse != nil),\"risques\":\(analyse?.risques.count ?? 0),\"ligne\":\(analyse?.ligne.count ?? 0),"
             + "\"ecrans\":{" + ["scenarios", "plan", "rapport", "donnees"].map { "\"\($0)\":\(ecrans[$0]?.count ?? 0)" }.joined(separator: ",") + "}}"
@@ -295,9 +271,7 @@ final class Navigation: ObservableObject {
             }
             if resumes != dossiers { dossiers = resumes }
         }
-        if let actif = message["actif"] as? String, Navigation.vues.contains(actif), actif != onglet {
-            withAnimation(.spring(response: 0.36, dampingFraction: 0.8)) { onglet = actif }
-        }
+        if let actif = message["actif"] as? String, Navigation.vues.contains(actif), actif != onglet { onglet = actif }
         if let visible = message["visible"] as? Bool, visible != barreVisible {
             withAnimation(.easeOut(duration: 0.25)) { barreVisible = visible }
         }
@@ -306,157 +280,6 @@ final class Navigation: ObservableObject {
             Task { await lancerAutotest() }
         }
     }
-}
-
-/// Le rendez-vous comme un parcours : Dossier, Analyse, Scénarios, Conseil, Rapport.
-enum Etapes {
-    static let liste = ["dossier", "analyse", "scenarios", "plan", "rapport"]
-}
-
-/// Les cinq étapes, dans la barre du système : faites (cochées), en cours (accent), à venir. Toucher une étape y mène.
-struct Parcours: View {
-    @ObservedObject var navigation: Navigation
-
-    var body: some View {
-        let ici = Etapes.liste.firstIndex(of: navigation.onglet) ?? -1
-        HStack(spacing: 0) {
-            ForEach(Array(Etapes.liste.enumerated()), id: \.offset) { rang, etape in
-                if rang > 0 {
-                    Rectangle().fill(rang <= ici ? Teinte.bouton : Teinte.glace.opacity(0.22)).frame(width: 14, height: 1.5)
-                }
-                Button {
-                    navigation.choisir(etape)
-                } label: {
-                    ZStack {
-                        Circle().fill(rang == ici ? Teinte.accent : rang < ici ? Teinte.bouton : Color.clear)
-                        Circle().strokeBorder(rang > ici ? Teinte.glace.opacity(0.35) : Color.clear, lineWidth: 1.5)
-                        if rang < ici {
-                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Teinte.boutonEncre)
-                        } else {
-                            Text(String(rang + 1)).font(.system(size: 12, weight: .semibold)).foregroundStyle(rang == ici ? Color.white : Color.secondary)
-                        }
-                    }
-                    .frame(width: 26, height: 26)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text(navigation.noms[etape] ?? etape))
-            }
-        }
-    }
-}
-
-/// En bas : revenir d'un pas, et le pas suivant du rendez-vous, nommé. Au bout du parcours, retour à l'accueil.
-struct BarreParcours: View {
-    @ObservedObject var navigation: Navigation
-
-    var body: some View {
-        let ici = Etapes.liste.firstIndex(of: navigation.onglet)
-        HStack(spacing: 10) {
-            Button {
-                if let ici, ici > 0 { navigation.choisir(Etapes.liste[ici - 1]) } else if ici == nil { navigation.choisir("analyse") } else { navigation.montrerAccueil() }
-            } label: {
-                Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.primary)
-                    .frame(width: 56, height: 56)
-                    .background(Teinte.nuitBasse, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Teinte.glace.opacity(0.24), lineWidth: 1))
-            }
-            .buttonStyle(Appui())
-            if let ici {
-                Button {
-                    if ici + 1 < Etapes.liste.count { navigation.choisir(Etapes.liste[ici + 1]) } else { navigation.montrerAccueil() }
-                } label: {
-                    HStack(spacing: 8) {
-                        Text(ici + 1 < Etapes.liste.count
-                             ? "\(navigation.textes["suivant"] ?? "Suivant") : \(navigation.noms[Etapes.liste[ici + 1]] ?? "")"
-                             : (navigation.textes["terminer"] ?? "Terminer"))
-                            .font(.system(size: 17, weight: .semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        Image(systemName: ici + 1 < Etapes.liste.count ? "arrow.right" : "checkmark").font(.system(size: 15, weight: .semibold))
-                    }
-                    .foregroundStyle(Teinte.boutonEncre)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Teinte.bouton, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.35), radius: 14, y: 8)
-                }
-                .buttonStyle(Appui())
-            } else {
-                Spacer()
-            }
-        }
-    }
-}
-
-/// Le menu des réglages, en haut à droite : année des règles et langue, dans un bouton de verre.
-struct MenuReglages: View {
-    @ObservedObject var navigation: Navigation
-    private static let nomsLangues = ["fr": "Français", "de": "Deutsch", "it": "Italiano", "en": "English"]
-
-    var body: some View {
-        Menu {
-            Picker("", selection: Binding(get: { navigation.annee }, set: { navigation.regler(annee: $0) })) {
-                ForEach(navigation.annees, id: \.self) { an in Text(String(an)).tag(an) }
-            }
-            Picker("", selection: Binding(get: { navigation.langue }, set: { navigation.regler(langue: $0) })) {
-                ForEach(navigation.langues, id: \.self) { code in Text(MenuReglages.nomsLangues[code] ?? code.uppercased()).tag(code) }
-            }
-        } label: {
-            Verre {
-                HStack(spacing: 6) {
-                    Text(String(navigation.annee)).font(.system(size: 15, weight: .semibold))
-                    Text(navigation.langue.uppercased()).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.secondary)
-                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.secondary)
-                }
-                .foregroundStyle(Color.primary)
-                .padding(.horizontal, 14)
-                .frame(height: 40)
-            }
-        }
-    }
-}
-
-/// La barre d'onglets : une capsule de verre (« Liquid Glass » d'iOS 26, matériau translucide avant), une bulle
-/// qui glisse sous l'onglet ouvert.
-struct BarreOnglets: View {
-    @ObservedObject var navigation: Navigation
-    @Namespace private var espace
-
-    var body: some View {
-        Verre {
-            HStack(spacing: 0) {
-                ForEach(Navigation.vues, id: \.self) { cible in
-                    let actif = navigation.onglet == cible
-                    Button {
-                        navigation.choisir(cible)
-                    } label: {
-                        VStack(spacing: 3) {
-                            Image(systemName: Navigation.icones[cible] ?? "circle")
-                                .font(.system(size: 19, weight: .medium))
-                                .frame(height: 24)
-                            Text(navigation.noms[cible] ?? cible)
-                                .font(.system(size: 10, weight: actif ? .semibold : .medium))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                        }
-                        .foregroundStyle(actif ? Color.primary : Color.secondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background {
-                            if actif {
-                                Capsule().fill(Color.primary.opacity(0.14)).matchedGeometryEffect(id: "bulle", in: espace)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(actif ? .isSelected : [])
-                }
-            }
-            .padding(5)
-        }
-    }
-
 }
 
 /// Le verre des éléments qui flottent (barre d'onglets, menu) : « Liquid Glass » d'iOS 26, matériau translucide avant.

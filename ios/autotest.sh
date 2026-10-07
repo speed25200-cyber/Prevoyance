@@ -46,8 +46,8 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
   xcrun simctl shutdown "$udid" 2>/dev/null
 }
 
-essayer iphone '^ +iPhone [0-9]+ Pro \(' "${AUTOTEST_VUE_IPHONE:-accueil}" 520
-essayer ipad '^ +iPad Pro 11' "${AUTOTEST_VUE_IPAD:-dossier}" 500
+essayer iphone '^ +iPhone [0-9]+ Pro \(' "${AUTOTEST_VUE_IPHONE:-analyse}" 520
+essayer ipad '^ +iPad Pro 11' "${AUTOTEST_VUE_IPAD:-plan}" 500
 
 if [ "$ECHECS" -gt 0 ]; then echo "error: autotest de l'app — $ECHECS appareil(s) en échec"; exit 1; fi
 echo "==== Autotest réussi sur iPhone et iPad ===="

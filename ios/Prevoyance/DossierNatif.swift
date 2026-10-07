@@ -12,23 +12,11 @@ struct FondApp: View {
     }
 }
 
-/// Les commandes communes des écrans natifs, dans la barre du système : retour à l'accueil, année et langue.
+/// Les réglages communs des écrans, dans la barre du système : année des règles, langue, données, retour à l'accueil.
 struct OutilsEcran: ToolbarContent {
     let navigation: Navigation
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                navigation.montrerAccueil()
-            } label: {
-                Image(systemName: "house")
-            }
-            .tint(Color.primary)
-            .accessibilityLabel(Text(navigation.textes["accueil"] ?? "Accueil"))
-        }
-        ToolbarItem(placement: .principal) {
-            Parcours(navigation: navigation)
-        }
         ToolbarItem(placement: .topBarTrailing) {
             MenuOutils(navigation: navigation)
         }
@@ -41,16 +29,23 @@ struct MenuOutils: View {
 
     var body: some View {
         Menu {
-            Button {
-                navigation.choisir("donnees")
-            } label: {
-                Label(navigation.noms["donnees"] ?? "Données", systemImage: "cylinder.split.1x2")
-            }
             Picker("", selection: Binding(get: { navigation.annee }, set: { navigation.regler(annee: $0) })) {
                 ForEach(navigation.annees, id: \.self) { an in Text(String(an)).tag(an) }
             }
             Picker("", selection: Binding(get: { navigation.langue }, set: { navigation.regler(langue: $0) })) {
                 ForEach(navigation.langues, id: \.self) { code in Text(code.uppercased()).tag(code) }
+            }
+            if navigation.chemin.last != .donnees {
+                Button {
+                    navigation.entrer(.donnees)
+                } label: {
+                    Label(navigation.noms["donnees"] ?? "Données", systemImage: "cylinder.split.1x2")
+                }
+            }
+            Button {
+                navigation.montrerAccueil()
+            } label: {
+                Label(navigation.textes["accueil"] ?? "Accueil", systemImage: "house")
             }
         } label: {
             Text("\(String(navigation.annee)) · \(navigation.langue.uppercased())")
@@ -60,53 +55,30 @@ struct MenuOutils: View {
     }
 }
 
-/// Le dossier du client, en natif : la liste des rubriques, puis les champs de la rubrique choisie.
-/// Sur iPad, les deux colonnes sont côte à côte ; sur iPhone, on entre dans une rubrique et on revient.
+/// Le dossier du client : la liste des rubriques ; on entre dans une rubrique pour la remplir, on revient en glissant.
 struct DossierNatif: View {
     @ObservedObject var navigation: Navigation
-    @State private var choisie: String?
-    /// Sur iPad, la liste et la rubrique restent côte à côte, en portrait comme en paysage.
-    @State private var colonnes = NavigationSplitViewVisibility.all
-    @Environment(\.horizontalSizeClass) private var largeur
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $colonnes) {
-            List(selection: $choisie) {
-                Section {
-                    ForEach(Array(navigation.rubriques.enumerated()), id: \.element.id) { rang, rubrique in
-                        NavigationLink(value: rubrique.id) {
-                            Label {
-                                Text(rubrique.titre).font(.system(size: 17, weight: .medium))
-                            } icon: {
-                                Image(systemName: rubrique.symbole)
-                            }
-                            .padding(.vertical, 4)
-                        }
-                        .accessibilityHint(Text(String(rang + 1)))
+        List {
+            ForEach(navigation.rubriques) { rubrique in
+                NavigationLink(value: Lieu.rubrique(rubrique.id)) {
+                    Label {
+                        Text(rubrique.titre).font(.system(size: 17, weight: .medium))
+                    } icon: {
+                        Image(systemName: rubrique.symbole)
                     }
-                } header: {
-                    Text(navigation.nomDossier).font(.system(size: 13, weight: .semibold)).textCase(nil)
+                    .padding(.vertical, 6)
                 }
-            }
-            .scrollContentBackground(.hidden)
-            .background(FondApp())
-            .navigationTitle(navigation.noms["dossier"] ?? "")
-            .toolbar { if largeur != .regular { OutilsEcran(navigation: navigation) } }
-            .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 84) }
-        } detail: {
-            if let rubrique = navigation.rubriques.first(where: { $0.id == choisie }) {
-                RubriqueNative(navigation: navigation, rubrique: rubrique, outils: largeur == .regular)
-                    .id("\(rubrique.id)-\(navigation.versionSchema)")
-            } else {
-                FondApp()
+                .listRowBackground(Teinte.glace.opacity(0.07))
             }
         }
-        .navigationSplitViewStyle(.balanced)
-        // écran large : une rubrique est toujours ouverte (la première d'emblée) ; iPhone : on commence par la liste
-        .task(id: "\(navigation.versionSchema)-\(largeur == .regular)") {
-            guard largeur == .regular else { return }
-            if choisie == nil || !navigation.rubriques.contains(where: { $0.id == choisie }) { choisie = navigation.rubriques.first?.id }
-        }
+        .scrollContentBackground(.hidden)
+        .background(FondApp())
+        .navigationTitle(navigation.noms["dossier"] ?? "")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar { OutilsEcran(navigation: navigation) }
+        .onAppear { navigation.choisir("dossier") }
     }
 }
 
@@ -114,8 +86,6 @@ struct DossierNatif: View {
 struct RubriqueNative: View {
     @ObservedObject var navigation: Navigation
     let rubrique: Rubrique
-    /// Écran large : le parcours et les réglages sont dans la barre de cette colonne.
-    var outils = false
 
     var body: some View {
         Form {
@@ -128,8 +98,7 @@ struct RubriqueNative: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(rubrique.titre)
         .navigationBarTitleDisplayMode(.large)
-        .toolbar { if outils { OutilsEcran(navigation: navigation) } }
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 84) }
+        .onAppear { navigation.choisir("dossier") }
     }
 }
 
