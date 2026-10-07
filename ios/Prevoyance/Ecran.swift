@@ -61,7 +61,9 @@ final class Navigation: ObservableObject {
     @Published var annee = 2026
     @Published var annees = [2026, 2027]
     /// Où l'on est : vide à l'accueil, puis les écrans où l'on est entré, dans l'ordre.
-    @Published var chemin: [Lieu] = []
+    @Published var chemin: [Lieu] = [] {
+        didSet { if chemin != oldValue { suivre() } }
+    }
     var accueil: Bool { chemin.isEmpty }
     @Published var dossiers: [DossierResume] = []
     @Published var textes: [String: String] = [:]
@@ -73,6 +75,8 @@ final class Navigation: ObservableObject {
     /// Les autres écrans, tels que la page les décrit, par vue.
     @Published var ecrans: [String: [CarteEcran]] = [:]
     @Published var versionEcran = 0
+    /// Autotest : le plus grand nombre de cartes reçues pour chaque écran décrit.
+    private var cartesRecues: [String: Int] = [:]
 
     let vue: WKWebView
     private let pont: Pont
@@ -131,6 +135,23 @@ final class Navigation: ObservableObject {
         self.coffre = coffre
         pont.navigation = self
         vue.load(URLRequest(url: Adresse.accueil))
+    }
+
+    /// La page suit l'écran du dessus : elle se met sur sa vue (et sur son risque), pour le décrire et le tenir à jour.
+    private func suivre() {
+        guard let lieu = chemin.last else { return }
+        switch lieu {
+        case .client, .alertes: choisir("analyse")
+        case .risque(let cle):
+            choisir("analyse")
+            appeler("risque", cle)
+        case .conseil: choisir("plan")
+        case .scenarios: choisir("scenarios")
+        case .rapport: choisir("rapport")
+        case .donnees: choisir("donnees")
+        case .dossier, .rubrique: choisir("dossier")
+        case .carte(let vue, _): choisir(vue)
+        }
     }
 
     /// Un écran apparaît : la page se met sur la vue correspondante, pour le décrire et le tenir à jour.
@@ -252,7 +273,7 @@ final class Navigation: ObservableObject {
         try? await Task.sleep(nanoseconds: 2_000_000_000)
         let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count),\"dossiers\":\(dossiers.count),\"textes\":\(textes.count),"
             + "\"rubriques\":\(rubriques.count),\"champs\":\(rubriques.reduce(0) { $0 + $1.champs.count }),\"analyse\":\(analyse != nil),\"risques\":\(analyse?.risques.count ?? 0),\"ligne\":\(analyse?.ligne.count ?? 0),"
-            + "\"ecrans\":{" + ["scenarios", "plan", "rapport", "donnees"].map { "\"\($0)\":\(ecrans[$0]?.count ?? 0)" }.joined(separator: ",") + "}}"
+            + "\"ecrans\":{" + ["scenarios", "plan", "rapport", "donnees"].map { "\"\($0)\":\(cartesRecues[$0] ?? 0)" }.joined(separator: ",") + "}}"
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? "{\"page\":\(page),\"app\":\(app)}".write(to: documents.appendingPathComponent("autotest.json"), atomically: true, encoding: .utf8)
         // tour des écrans (PREVOYANCE_TOUR=1) : chacun est montré, puis signalé au script qui le photographie
@@ -283,6 +304,7 @@ final class Navigation: ObservableObject {
         if let modele = message["analyse"] as? [String: Any], let lu = AnalyseModele(modele), lu != analyse { analyse = lu }
         if let ecran = message["ecran"] as? [String: Any], let vue = ecran["vue"] as? String {
             ecrans[vue] = CarteEcran.lire(ecran)
+            cartesRecues[vue] = max(cartesRecues[vue] ?? 0, ecrans[vue]?.count ?? 0)
             versionEcran += 1
         }
         if let libelles = message["noms"] as? [String: String] { noms = libelles }

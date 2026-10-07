@@ -180,7 +180,6 @@ struct ClientNatif: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
         .boutonBas(navigation.analyse?.bouton ?? "") { navigation.entrer(.conseil) }
-        .onAppear { navigation.choisir("analyse") }
     }
 
     private func score(_ a: AnalyseModele) -> some View {
@@ -282,10 +281,6 @@ struct RisqueNatif: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
         .boutonBas(navigation.analyse?.bouton ?? "") { navigation.entrer(.conseil) }
-        .onAppear {
-            navigation.choisir("analyse")
-            navigation.appeler("risque", cle)
-        }
     }
 
     private func tete(_ a: AnalyseModele) -> some View {
@@ -415,7 +410,6 @@ struct AlertesNatif: View {
         }
         .navigationTitle(navigation.analyse?.alertesTitre ?? "")
         .navigationBarTitleDisplayMode(.large)
-        .onAppear { navigation.choisir("analyse") }
     }
 }
 
@@ -469,7 +463,6 @@ struct ConseilNatif: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
         .boutonBas(navigation.noms["rapport"] ?? "") { navigation.entrer(.rapport) }
-        .onAppear { navigation.choisir("plan") }
     }
 
     private func mesures(_ bloc: BlocEcran) -> some View {
@@ -537,7 +530,6 @@ struct EcranCartes: View {
         .navigationTitle(navigation.noms[vue] ?? "")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .onAppear { navigation.choisir(vue) }
     }
 }
 
@@ -564,6 +556,5 @@ struct CarteNative: View {
         }
         .navigationTitle(navigation.noms[vue] ?? "")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { navigation.choisir(vue) }
     }
 }

@@ -32,7 +32,7 @@ export function compter(element, valeur, mise) {
   const depart = e._v ?? 0, debut = performance.now(), duree = 650;
   e._v = valeur;
   const jeton = e._jeton = Symbol('compte');
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || depart === valeur) { element.textContent = mise(valeur); return; }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || depart === valeur || document.documentElement.classList.contains('natif')) { element.textContent = mise(valeur); return; }
   const pas = maintenant => {
     if (e._jeton !== jeton) return;
     const k = Math.min(1, (maintenant - debut) / duree), aise = 1 - Math.pow(1 - k, 4);

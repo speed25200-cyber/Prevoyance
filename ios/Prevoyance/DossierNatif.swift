@@ -78,7 +78,6 @@ struct DossierNatif: View {
         .navigationTitle(navigation.noms["dossier"] ?? "")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .onAppear { navigation.choisir("dossier") }
     }
 }
 
@@ -98,7 +97,6 @@ struct RubriqueNative: View {
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(rubrique.titre)
         .navigationBarTitleDisplayMode(.large)
-        .onAppear { navigation.choisir("dossier") }
     }
 }
 
