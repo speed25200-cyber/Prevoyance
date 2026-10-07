@@ -5,7 +5,7 @@
  */
 
 import { h, colonnes, couloir } from '../ui.js';
-import { Scenarios, Impots } from '../../../moteur/src/index.js';
+import { Scenarios, Impots, Vie } from '../../../moteur/src/index.js';
 import { dossier, garder, PROFILS } from '../etat.js';
 
 export function monter(ctx, racine) {
@@ -23,6 +23,16 @@ export function afficher(ctx) {
   const d = dossier(), P = a.personne, marie = a.marie, canton = a.canton;
   const blocs = [];
 
+  // ---- feuille de route : les échéances légales à venir, dans l'ordre
+  const route = Vie.feuilleDeRoute(dossierMoteur, regles, { impots });
+  if (route.length) {
+    const valeurs = e => ({ m: f.chf(e.v.montant ?? 0), e: f.chf(e.v.economie ?? 0), a: e.v.depart ?? '', d: e.v.mois ? `${String(e.v.mois).padStart(2, '0')}.${e.v.anneeRente}` : '' });
+    blocs.push(carte(t('vi_route'), t('vi_route_d'),
+      h('ol', { class: 'etapes' }, ...route.map((e, i) => h('li', { 'data-prochaine': String(i === 0) },
+        h('b', {}, String(e.annee)), h('small', {}, t('vi_ans', { n: e.age })), h('p', {}, t('vr_' + e.cle, valeurs(e)))))),
+      h('p', { class: 'petit' }, t('vi_route_note'))));
+  }
+
   // ---- âge de départ
   const ages = Scenarios.agesDeDepart(dossierMoteur, regles, undefined, { impots });
   const graphe = colonnes(ages.map(x => ({
@@ -38,6 +48,31 @@ export function afficher(ctx) {
       chiffre(t('lacune'), choisi.lacune > 0 ? f.chf(choisi.lacune / 12) : t('aucuneLacune'), choisi.lacune > 0 ? t('parMois') : '', choisi.lacune > 0 ? 'moins' : 'plus')),
     choisi.pontAVS > 0 ? h('p', { class: 'remarque' }, t('sc_pont', { n: choisi.pontAVS, a: choisi.debutAVS })) : null,
     h('p', { class: 'petit' }, t('sc_age_note'))));
+
+  // ---- test de résistance : la retraite face à une hypothèse qui tourne mal
+  const tenue = Vie.resistance(dossierMoteur, regles, { impots }), chocs = tenue.chocs.filter(c => c.applicable);
+  if (chocs.length) {
+    const nom = c => t('vt_' + c.cle, { a: `${((c.v.a ?? 0) * 100).toFixed(1)} %`, age: c.v.age ?? '', part: f.pourcent(c.v.part ?? 0) });
+    const pire = chocs.reduce((m, c) => (c.ecartMensuel > m.ecartMensuel ? c : m), chocs[0]);
+    const largeur = x => `${Math.round(Math.min(1, Math.max(0, x)) * 100)}%`;
+    blocs.push(carte(t('vi_tenue'), t('vi_tenue_d'),
+      h('div', { class: 'effets' }, ...chocs.map(c => h('div', { class: 'effet' },
+        h('div', { class: 'effet-tete' }, h('span', {}, nom(c)), h('b', { class: c.lacune > 0 ? 'lacune' : 'ok' }, c.lacune > 0 ? `− ${f.chf(c.lacuneMensuelle)} ${t('parMois')}` : t('aucuneLacune'))),
+        h('div', { class: 'effet-barres' }, h('i', { class: 'avant', style: { width: largeur(tenue.base.couverture) } }), h('i', { class: 'apres', style: { width: largeur(c.couverture) } })),
+        h('small', {}, c.ecartMensuel > 0 ? t('vi_plus', { m: f.chf(c.ecartMensuel) }) : t('vi_inchange'))))),
+      h('p', { class: 'remarque' }, pire.ecartMensuel > 0 ? t('vi_fragile', { n: nom(pire) }) : t('vi_solide')),
+      h('p', { class: 'petit' }, t('vi_tenue_note'))));
+  }
+
+  // ---- coût de l'attente : remettre le 3a à plus tard
+  const attente = Vie.coutAttente(dossierMoteur, regles, { impots });
+  if (attente.applicable) {
+    const dernier = attente.reports[attente.reports.length - 1];
+    blocs.push(carte(t('vi_attente'), t('vi_attente_d', { v: f.chf(attente.versement) }),
+      h('div', { class: 'chiffres' }, ...attente.reports.map(r => chiffre(r.annees === 1 ? t('vi_attendre1') : t('vi_attendreN', { n: r.annees }), '− ' + f.chf(r.capitalPerdu), t('vi_capitalPerdu'), 'moins'))),
+      h('p', { class: 'remarque' }, t('vi_attente_r', { n: dernier.annees, c: f.chf(dernier.capitalPerdu), r: f.chf(dernier.renteMensuelle), i: f.chf(dernier.impotsPerdus) })),
+      h('p', { class: 'petit' }, t('vi_attente_note', { r: (attente.rendement * 100).toFixed(1) }))));
+  }
 
   // ---- rente ou capital
   if (P.lpp.affilie && P.lpp.avoirRetraite > 0) {

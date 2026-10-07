@@ -270,3 +270,12 @@ body.presentation .choix-annee { display: none; }
 .budget { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--filet); }
 .budget h3 { margin: 0 0 2px; font: 600 14px/1.2 var(--police); }
 .petit.sans-marge { margin-top: 0; }
+
+/* Feuille de route : les échéances, une par ligne, l'année en tête */
+.etapes { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 0; }
+.etapes li { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); column-gap: 14px; padding: 10px 0; border-top: 1px solid var(--filet); }
+.etapes li:first-child { border-top: 0; }
+.etapes b { grid-row: 1 / span 2; font: 600 20px/1.2 var(--police); font-variant-numeric: tabular-nums; }
+.etapes li[data-prochaine="true"] b { color: var(--p2); }
+.etapes small { color: var(--encre-2); font-size: 12.5px; }
+.etapes p { margin: 2px 0 0; font-size: 14.5px; line-height: 1.4; min-width: 0; }

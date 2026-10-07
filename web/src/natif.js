@@ -99,6 +99,9 @@ function decrire(parent, sortie) {
       const [avant, apres] = /** @type {HTMLElement[]} */ ([...el.querySelectorAll('.effet-barres i')]);
       sortie.push({ type: 'effet', nom: texte(el.querySelector('.effet-tete span')), valeur: texte(el.querySelector('.effet-tete b')), note: texte(el.querySelector(':scope > small')),
         avant: pourcent(avant?.style.width), apres: pourcent(apres?.style.width), lacune: !!el.querySelector('.effet-tete b.lacune') });
+    } else if (c.contains('etapes')) {
+      sortie.push({ type: 'etapes', etapes: [...el.children].map(li => ({ annee: texte(li.querySelector('b')), age: texte(li.querySelector('small')), texte: texte(li.querySelector('p')),
+        prochaine: /** @type {HTMLElement} */ (li).dataset.prochaine === 'true' })) });
     } else if (c.contains('conseil-liste')) {
       sortie.push({ type: 'points', points: [...el.children].map(li => ({ rang: texte(li.querySelector('.conseil-rang')), urgence: /** @type {HTMLElement} */ (li).dataset.urgence ?? '',
         nom: texte(li.querySelector('small')), texte: texte(li.querySelector('p')) })) });

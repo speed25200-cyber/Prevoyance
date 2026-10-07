@@ -129,6 +129,8 @@ struct BlocVue: View {
                     }
                 }
             }
+        case "etapes":
+            etapes
         case "lignes":
             lignes(bloc.liste("lignes"))
         case "tableau":
@@ -219,6 +221,35 @@ struct BlocVue: View {
                 .font(.system(size: 15))
                 .padding(.vertical, 9)
                 .overlay(alignment: .top) { Divider().opacity(0.5) }
+            }
+        }
+    }
+
+    /// Feuille de route : un fil vertical, une échéance par nœud ; la prochaine est mise en avant.
+    private var etapes: some View {
+        let liste = bloc.liste("etapes")
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(liste.enumerated()), id: \.offset) { rang, etape in
+                HStack(alignment: .top, spacing: 14) {
+                    VStack(spacing: 0) {
+                        Circle().fill(vrai(etape, "prochaine") ? Teinte.accent : Teinte.glace.opacity(0.35)).frame(width: 11, height: 11).padding(.top, 7)
+                        if rang + 1 < liste.count {
+                            Rectangle().fill(Teinte.glace.opacity(0.25)).frame(width: 1.5).frame(maxHeight: .infinity)
+                        }
+                    }
+                    .frame(width: 11)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(texte(etape, "annee")).font(.system(size: 20, weight: .semibold)).monospacedDigit()
+                                .foregroundStyle(vrai(etape, "prochaine") ? Teinte.accent : Color.primary)
+                            Text(texte(etape, "age")).font(.system(size: 13)).foregroundStyle(Color.secondary)
+                        }
+                        Text(texte(etape, "texte")).font(.system(size: 15)).foregroundStyle(Color.primary.opacity(0.88)).fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.bottom, 18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

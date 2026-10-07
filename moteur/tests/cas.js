@@ -5,7 +5,7 @@
  * (tests/run.mjs, intégration continue) et dans l'app iOS.
  */
 
-import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat, Conseil } from '../src/index.js';
+import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat, Conseil, Vie } from '../src/index.js';
 import * as Analyse from '../src/analyse.js';
 
 /** @param {(nom: string, obtenu: any, attendu: any, tolerance?: number) => void} egal @param {{r26: any, r27: any, i26?: any}} regles */
@@ -393,4 +393,42 @@ export function casScenarios(egal, { r26, r27, i26, c26 }) {
   egal('Échelle bernoise : 3 mois dès la 5e année, 4 mois dès la 10e', [5, 10].map(n => r26.maladie.echelleBernoise.filter(([an]) => n >= an).pop()[1]), [13, 17]);
   egal('Champs d’un modèle de langage : contrôlés et bornés', Certificat.normaliser({ lppAvoir: 148250.4, lppRenteVieillesse: 12, lppRachat: null, autre: 5 }),
     { lppAvoir: { valeur: 148250, ligne: '' } });
+
+  // ---- feuille de route : homme né le 15.06.1980, analysé le 01.01.2026 (45 ans), salarié affilié, sans 3a
+  const quadra = { dateAnalyse: '2026-01-01', etatCivil: 'celibataire',
+    personne: { dateNaissance: '1980-06-15', sexe: 'h', statut: 'salarie', revenu: 100000, lpp: { avoir: 150000, rachatPossible: 30000 } } };
+  const route = Vie.feuilleDeRoute(quadra, r26), etape = cle => route.find(e => e.cle === cle);
+  egal('Feuille de route : échéances dans l’ordre', route.map(e => e.cle),
+    ['versement3a', 'logementEntier', 'anticipationLPP', 'retrait3a', 'rachatDernier', 'logementDernier', 'anticipationAVS', 'renteAVS', 'ajournementFin']);
+  egal('Feuille de route : années (1980 + 50, 58, 60, 62, 62, 63, 65, 70)', route.map(e => e.annee), [2026, 2030, 2038, 2040, 2042, 2042, 2043, 2045, 2050]);
+  egal('Feuille de route : 3a de l’année = plafond entier', etape('versement3a').v.montant, 7258);
+  egal('Feuille de route : rente AVS dès le mois qui suit les 65 ans (juillet 2045)', [etape('renteAVS').v.anneeRente, etape('renteAVS').v.mois], [2045, 7]);
+  const dame = cle => Vie.feuilleDeRoute({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire',
+    personne: { dateNaissance: '1962-03-10', sexe: 'f', statut: 'salarie', revenu: 70000 } }, r26).find(e => e.cle === cle);
+  egal('Feuille de route : femme née en mars 1962, 64 ans et 6 mois en septembre 2026, rente dès octobre', [dame('renteAVS').annee, dame('renteAVS').v.mois], [2026, 10]);
+  egal('Feuille de route : une échéance passée n’est plus montrée (anticipation à 62 ans, en 2024)', dame('anticipationAVS'), undefined);
+  egal('Feuille de route : fin d’ajournement cinq ans après l’âge de référence (1962 + 69)', dame('ajournementFin').annee, 2031);
+  const decembre = Vie.feuilleDeRoute({ dateAnalyse: '2026-01-01', personne: { dateNaissance: '1961-12-05', sexe: 'h', statut: 'salarie', revenu: 80000 } }, r26).find(e => e.cle === 'renteAVS');
+  egal('Feuille de route : 65 ans en décembre 2026, rente dès janvier 2027', [decembre.annee, decembre.v.mois], [2027, 1]);
+
+  // ---- coût de l'attente : 7 258 par an pendant 20 ans à 2 % ; chaque année perdue coûte le versement capitalisé
+  const attente = Vie.coutAttente(quadra, r26);
+  egal('Attente : versement étudié et durée', [attente.versement, attente.annees], [7258, 20]);
+  egal('Attente : capital si l’on commence maintenant (7 258 x 24,2974)', attente.capital, 176400);
+  egal('Attente : capital perdu en attendant 1, 3 et 5 ans', attente.reports.map(r => r.capitalPerdu), [10600, 31100, 50800]);
+  egal('Attente : économie d’impôt perdue (2 030 par an)', attente.reports.map(r => r.impotsPerdus), [2030, 6090, 10150]);
+  egal('Attente : un an de retard = environ 42 francs de rente par mois en moins', attente.reports[0].renteMensuelle, 42, 1);
+  egal('Attente : sans potentiel 3a, rien à chiffrer', Vie.coutAttente({ dateAnalyse: '2026-01-01', personne: { dateNaissance: '1980-06-15', sexe: 'h', statut: 'sans', revenu: 0 } }, r26).applicable, false);
+
+  // ---- test de résistance : un seul paramètre change à la fois
+  const tenue = Vie.resistance(famille, r26), choc = cle => tenue.chocs.find(c => c.cle === cle);
+  const avantFamille = analyser(famille, r26);
+  egal('Résistance : la base est l’analyse du dossier', tenue.base.lacune, avantFamille.risques.retraite.lacune);
+  egal('Résistance : train de vie à 90 % = 10 % du revenu en plus à trouver (11 000)', choc('trainDeVie').lacune - tenue.base.lacune, 11000, 1);
+  egal('Résistance : un point de conversion en moins = 1 % de l’avoir de retraite en moins', choc('conversion').lacune - tenue.base.lacune,
+    avantFamille.personne.lpp.avoirRetraite * 0.01, 2);
+  egal('Résistance : départ deux ans plus tôt = le scénario « âge de départ » à 63 ans', choc('depart').lacune, Scenarios.agesDeDepart(famille, r26, [63])[0].lacune);
+  egal('Résistance : vivre cinq ans de plus demande plus de capital', choc('longevite').capital > tenue.base.capital, true);
+  egal('Résistance : sans 3e pilier, le choc de rendement ne s’applique pas', [choc('rendement').applicable, choc('rendement').lacune], [false, tenue.base.lacune]);
+  egal('Résistance : le dossier d’origine n’est pas modifié', [famille.hypotheses, famille.besoins, famille.personne.lpp.tauxConversion], [undefined, undefined, undefined]);
 }
