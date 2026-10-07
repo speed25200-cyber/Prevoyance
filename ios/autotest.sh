@@ -41,7 +41,7 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
   fi
   if [ -f "build/captures/$nom.png" ]; then
     sips -Z "$4" -s format jpeg -s formatOptions 32 "build/captures/$nom.png" --out "/tmp/$nom.jpg" >/dev/null 2>&1
-    echo "IMAGE-DEBUT $nom"; base64 -i "/tmp/$nom.jpg" | fold -w 380; echo "IMAGE-FIN $nom"
+    echo "IMAGE-DEBUT $nom"; base64 -i "/tmp/$nom.jpg" | fold -w 3000; echo "IMAGE-FIN $nom"
   fi
   # tour des écrans : l'app signale chaque écran affiché (fichier tour_<nom>), il est photographié aussitôt
   if [ "${5:-0}" = "1" ]; then
@@ -50,7 +50,7 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
       [ -f "$dossier/Documents/tour_$e" ] || { echo "error: $nom — écran $e jamais affiché"; ECHECS=$((ECHECS + 1)); continue; }
       borne 60 xcrun simctl io "$udid" screenshot "build/captures/${nom}_$e.png" >/dev/null 2>&1
       sips -Z 440 -s format jpeg -s formatOptions 30 "build/captures/${nom}_$e.png" --out "/tmp/${nom}_$e.jpg" >/dev/null 2>&1
-      echo "IMAGE-DEBUT ${nom}_$e"; base64 -i "/tmp/${nom}_$e.jpg" | fold -w 380; echo "IMAGE-FIN ${nom}_$e"
+      echo "IMAGE-DEBUT ${nom}_$e"; base64 -i "/tmp/${nom}_$e.jpg" | fold -w 3000; echo "IMAGE-FIN ${nom}_$e"
     done
   fi
   xcrun simctl shutdown "$udid" 2>/dev/null
