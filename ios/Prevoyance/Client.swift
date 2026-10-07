@@ -509,7 +509,9 @@ struct CadreSections: ViewModifier {
                         .frame(height: 48)
                         OngletsSections(navigation: navigation)
                     }
-                    .background(.ultraThinMaterial.opacity(0.96), ignoresSafeAreaEdges: .top)
+                    // un voile de nuit sous la matière : la lune du fond ne fait pas de reflet derrière les onglets
+                    .background(Teinte.nuit.opacity(0.55), ignoresSafeAreaEdges: .top)
+                    .background(.ultraThinMaterial, ignoresSafeAreaEdges: .top)
                 }
                 .toolbar(.hidden, for: .navigationBar)
         }
@@ -573,6 +575,8 @@ struct LigneDeVie: View {
             // la légende sous le graphique : le haut reste au repère de la retraite
             .chartLegend(position: .bottom, alignment: .leading)
             .frame(height: hauteur)
+            // la place du repère de la retraite, au-dessus du graphique
+            .padding(.top, 16)
         }
         .padding(16)
         .tuileBord()
@@ -616,10 +620,12 @@ struct LigneRisque: View {
 struct CarteRisques: View {
     @ObservedObject var navigation: Navigation
     let a: AnalyseModele
+    /// Sans en-tête dans la section « Risques », qui porte déjà ce titre.
+    var titre = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TitreCarte(titre: navigation.textes["risques"] ?? "Risques", symbole: "shield.lefthalf.filled")
+            if titre { TitreCarte(titre: navigation.textes["risques"] ?? "Risques", symbole: "shield.lefthalf.filled") }
             ForEach(a.risques) { risque in
                 NavigationLink(value: Lieu.risque(risque.id)) { LigneRisque(risque: risque) }.buttonStyle(Appui())
             }
@@ -638,7 +644,7 @@ struct RisquesNatif: View {
             TitreSection(titre: navigation.textes["risques"] ?? "Risques")
             if let a = navigation.analyse {
                 Colonnes {
-                    CarteRisques(navigation: navigation, a: a).apparition(0)
+                    CarteRisques(navigation: navigation, a: a, titre: false).apparition(0)
                 } droite: {
                     LigneDeVie(a: a, hauteur: 260).apparition(1)
                     if !a.alertes.isEmpty {
