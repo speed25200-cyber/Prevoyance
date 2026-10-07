@@ -47,19 +47,41 @@ struct Destination: View {
 
 /// Le corps d'un écran : une colonne qui défile, de largeur lisible, sur le fond de l'app.
 struct Feuille<Contenu: View>: View {
+    /// Écran qui se met en deux colonnes sur iPad : il prend alors toute la largeur utile.
+    var large = false
     @ViewBuilder var contenu: () -> Contenu
+    @Environment(\.horizontalSizeClass) private var classe
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) { contenu() }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, classe == .regular ? 32 : 20)
                 .padding(.top, 8)
                 .padding(.bottom, 28)
-                .frame(maxWidth: 640, alignment: .leading)
+                .frame(maxWidth: large && classe == .regular ? 1120 : 680, alignment: .leading)
                 .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
         .background(FondApp())
+    }
+}
+
+/// Deux colonnes côte à côte sur grand écran (iPad), l'une sous l'autre sur iPhone.
+struct Colonnes<Gauche: View, Droite: View>: View {
+    @Environment(\.horizontalSizeClass) private var classe
+    @ViewBuilder var gauche: () -> Gauche
+    @ViewBuilder var droite: () -> Droite
+
+    var body: some View {
+        if classe == .regular {
+            HStack(alignment: .top, spacing: 28) {
+                VStack(alignment: .leading, spacing: 18) { gauche() }.frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 18) { droite() }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            gauche()
+            droite()
+        }
     }
 }
 
@@ -148,29 +170,24 @@ struct Montagne: View {
 /// Un seul geste principal : le conseil. Le dossier, les scénarios et le rapport sont à portée, en dessous.
 struct ClientNatif: View {
     @ObservedObject var navigation: Navigation
+    @Environment(\.horizontalSizeClass) private var classe
 
     var body: some View {
-        Feuille {
+        Feuille(large: true) {
             if let a = navigation.analyse {
-                if let choix = a.cibleChoix {
-                    Picker("", selection: Binding(get: { choix }, set: { navigation.appeler("cible", $0) })) {
-                        Text(a.ciblePersonne).tag("personne")
-                        Text(a.cibleConjoint).tag("conjoint")
+                Colonnes {
+                    if let choix = a.cibleChoix {
+                        Picker("", selection: Binding(get: { choix }, set: { navigation.appeler("cible", $0) })) {
+                            Text(a.ciblePersonne).tag("personne")
+                            Text(a.cibleConjoint).tag("conjoint")
+                        }
+                        .pickerStyle(.segmented)
                     }
-                    .pickerStyle(.segmented)
-                }
-                score(a)
-                fil(a)
-                if !a.alertes.isEmpty {
-                    NavigationLink(value: Lieu.alertes) {
-                        Tuile(titre: a.alertesTitre, note: String(a.alertes.count), symbole: "exclamationmark.circle")
-                    }
-                    .buttonStyle(Appui())
-                }
-                HStack(spacing: 10) {
-                    lien(.dossier, "dossier", "person.text.rectangle")
-                    lien(.scenarios, "scenarios", "arrow.triangle.branch")
-                    lien(.rapport, "rapport", "doc.text")
+                    score(a)
+                    if classe == .regular { acces(a) }
+                } droite: {
+                    fil(a)
+                    if classe != .regular { acces(a) }
                 }
             } else {
                 Attente()
@@ -180,6 +197,21 @@ struct ClientNatif: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
         .boutonBas(navigation.analyse?.bouton ?? "") { navigation.entrer(.conseil) }
+    }
+
+    /// Points d'attention, dossier, scénarios, rapport.
+    @ViewBuilder private func acces(_ a: AnalyseModele) -> some View {
+        if !a.alertes.isEmpty {
+            NavigationLink(value: Lieu.alertes) {
+                Tuile(titre: a.alertesTitre, note: String(a.alertes.count), symbole: "exclamationmark.circle")
+            }
+            .buttonStyle(Appui())
+        }
+        HStack(spacing: 10) {
+            lien(.dossier, "dossier", "person.text.rectangle")
+            lien(.scenarios, "scenarios", "arrow.triangle.branch")
+            lien(.rapport, "rapport", "doc.text")
+        }
     }
 
     private func score(_ a: AnalyseModele) -> some View {
@@ -264,15 +296,18 @@ struct RisqueNatif: View {
     let cle: String
 
     var body: some View {
-        Feuille {
+        Feuille(large: true) {
             if let a = navigation.analyse, a.risque == cle {
-                tete(a)
-                sources(a)
-                cles(a)
-                if !a.attente.isEmpty {
-                    Text(a.attente).font(.system(size: 14)).foregroundStyle(Color.secondary).fixedSize(horizontal: false, vertical: true)
+                Colonnes {
+                    tete(a)
+                    sources(a)
+                } droite: {
+                    cles(a)
+                    if !a.attente.isEmpty {
+                        Text(a.attente).font(.system(size: 14)).foregroundStyle(Color.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                    ligneDeVie(a)
                 }
-                ligneDeVie(a)
             } else {
                 Attente()
             }
@@ -352,22 +387,24 @@ struct RisqueNatif: View {
             }
             Chart {
                 ForEach(a.ligne) { point in
-                    BarMark(x: .value("âge", point.id), y: .value("revenu", point.salaire), width: .ratio(1))
-                        .foregroundStyle(by: .value("source", noms[0]))
-                    BarMark(x: .value("âge", point.id), y: .value("revenu", point.p1), width: .ratio(1))
-                        .foregroundStyle(by: .value("source", noms[1]))
-                    BarMark(x: .value("âge", point.id), y: .value("revenu", point.p2), width: .ratio(1))
-                        .foregroundStyle(by: .value("source", noms[2]))
-                    BarMark(x: .value("âge", point.id), y: .value("revenu", point.p3), width: .ratio(1))
-                        .foregroundStyle(by: .value("source", noms[3]))
+                    let age = Double(point.id), bas = [0, point.salaire, point.salaire + point.p1, point.salaire + point.p1 + point.p2]
+                    let hauts = [point.salaire, point.salaire + point.p1, point.salaire + point.p1 + point.p2, point.salaire + point.p1 + point.p2 + point.p3]
+                    ForEach(0..<4, id: \.self) { rang in
+                        if hauts[rang] > bas[rang] {
+                            RectangleMark(xStart: .value("âge", age - 0.5), xEnd: .value("âge", age + 0.5),
+                                          yStart: .value("revenu", bas[rang]), yEnd: .value("revenu", hauts[rang]))
+                                .foregroundStyle(by: .value("source", noms[rang]))
+                        }
+                    }
                 }
                 ForEach(a.ligne) { point in
-                    LineMark(x: .value("âge", point.id), y: .value("besoin", point.besoin), series: .value("série", noms[4]))
+                    LineMark(x: .value("âge", Double(point.id)), y: .value("besoin", point.besoin), series: .value("série", noms[4]))
                         .interpolationMethod(.stepCenter)
                         .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
                         .foregroundStyle(Color.primary)
                 }
             }
+            .chartXScale(domain: (Double(a.ligne.first?.id ?? 0) - 0.5)...(Double(a.ligne.last?.id ?? 100) + 0.5))
             .chartForegroundStyleScale(domain: Array(noms.prefix(4)), range: [Teinte.salaire, Teinte.pilier1, Teinte.pilier2, Teinte.pilier3])
             .chartYAxis {
                 AxisMarks(position: .leading) { valeur in
@@ -423,8 +460,9 @@ struct ConseilNatif: View {
     var body: some View {
         let cartes = navigation.ecrans["plan"] ?? []
         let conseil = cartes.first(where: { carte in carte.blocs.contains(where: { $0.type == "points" }) })
-        return Feuille {
+        return Feuille(large: true) {
             if let tete = cartes.first {
+              Colonnes {
                 ForEach(tete.blocs) { bloc in
                     if bloc.type == "grand" {
                         Text(bloc.s("texte")).font(.system(size: 30, weight: .semibold)).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
@@ -432,6 +470,15 @@ struct ConseilNatif: View {
                         BlocVue(navigation: navigation, bloc: bloc).id("\(navigation.versionEcran)-t-\(bloc.id)")
                     }
                 }
+                ForEach(cartes) { carte in
+                    if carte.id != tete.id && carte.id != conseil?.id && !carte.titre.isEmpty {
+                        NavigationLink(value: Lieu.carte("plan", carte.id)) {
+                            Tuile(titre: carte.titre, note: carte.sousTitre)
+                        }
+                        .buttonStyle(Appui())
+                    }
+                }
+              } droite: {
                 if let conseil {
                     // le résumé, puis les mesures ; la reprise dans le procès-verbal vient après
                     ForEach(conseil.blocs) { bloc in
@@ -447,14 +494,7 @@ struct ConseilNatif: View {
                         }
                     }
                 }
-                ForEach(cartes) { carte in
-                    if carte.id != tete.id && carte.id != conseil?.id && !carte.titre.isEmpty {
-                        NavigationLink(value: Lieu.carte("plan", carte.id)) {
-                            Tuile(titre: carte.titre, note: carte.sousTitre)
-                        }
-                        .buttonStyle(Appui())
-                    }
-                }
+              }
             } else {
                 Attente()
             }

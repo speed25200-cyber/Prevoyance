@@ -15,6 +15,7 @@ struct DossierResume: Identifiable, Equatable {
 struct Accueil: View {
     @ObservedObject var navigation: Navigation
     @Environment(\.colorScheme) private var theme
+    @Environment(\.horizontalSizeClass) private var largeur
     @Environment(\.accessibilityReduceMotion) private var calme
     @State private var arrive = false
     @StateObject private var inclinaison = Inclinaison()
@@ -23,83 +24,19 @@ struct Accueil: View {
     private static var jamaisVu = true
 
     var body: some View {
-        ZStack {
-            fond
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 30) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text((navigation.textes["titre"] ?? "Prévoyance").uppercased())
-                            .font(.system(size: 13, weight: .semibold))
-                            .tracking(5)
-                            .foregroundStyle(Color.secondary)
-                        Text(navigation.textes["accroche"] ?? "")
-                            .font(.system(size: 42, weight: .bold))
-                            .foregroundStyle(Color.primary)
-                            .minimumScaleFactor(0.7)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.top, 300)
-                    .offset(x: inclinaison.x * 8, y: inclinaison.y * 6)
-                    .opacity(arrive ? 1 : 0)
-                    .offset(y: arrive ? 0 : 18)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text((navigation.textes["dossiers"] ?? "").uppercased())
-                            .font(.system(size: 12, weight: .semibold))
-                            .tracking(2.4)
-                            .foregroundStyle(Color.secondary)
-                            .padding(.leading, 4)
-                        ForEach(Array(navigation.dossiers.enumerated()), id: \.element.id) { rang, dossier in
-                            Button {
-                                navigation.ouvrir(dossier: dossier.id)
-                            } label: {
-                                carte(dossier)
-                            }
-                            .buttonStyle(Appui())
-                            .opacity(arrive ? 1 : 0)
-                            .offset(y: arrive ? 0 : 24)
-                            .animation(.spring(response: 0.6, dampingFraction: 0.82).delay(0.12 + Double(rang) * 0.06), value: arrive)
-                        }
-                    }
-
-                    HStack(spacing: 12) {
-                        Button {
-                            navigation.creerDossier(exemple: false)
-                        } label: {
-                            Label(navigation.textes["nouveau"] ?? "", systemImage: "plus")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Teinte.boutonEncre)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(
-                                    LinearGradient(colors: [Teinte.bouton, Teinte.bouton.opacity(0.9)],
-                                                   startPoint: .top, endPoint: .bottom),
-                                    in: Capsule())
-                                .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.8))
-                                .shadow(color: Color.black.opacity(0.4), radius: 18, y: 10)
-                        }
-                        .buttonStyle(Appui())
-                        Button {
-                            navigation.creerDossier(exemple: true)
-                        } label: {
-                            Text(navigation.textes["exemple"] ?? "")
-                                .font(.system(size: 17, weight: .medium))
-                                .foregroundStyle(Color.primary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .padding(.horizontal, 20)
-                                .frame(height: 56)
-                                .verreArrondi(rayon: 28)
-                        }
-                        .buttonStyle(Appui())
-                    }
-                    .opacity(arrive ? 1 : 0)
-                    .animation(.easeOut(duration: 0.5).delay(0.3), value: arrive)
+        GeometryReader { cadre in
+            if largeur == .regular && cadre.size.width > cadre.size.height {
+                // iPad en paysage : le film garde ses proportions dans un volet à gauche, les dossiers sont à droite
+                HStack(spacing: 0) {
+                    fond(lateral: true).frame(width: cadre.size.width * 0.44)
+                    liste(haut: 0, mini: cadre.size.height * 0.86)
                 }
-                .padding(.horizontal, 22)
-                .padding(.bottom, 48)
-                .frame(maxWidth: 680, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .background(Teinte.nuit.ignoresSafeArea())
+            } else {
+                ZStack {
+                    fond(lateral: false)
+                    liste(haut: 300, mini: 0)
+                }
             }
         }
         // l'accueil est une scène de nuit, quel que soit le thème de l'appareil
@@ -114,9 +51,90 @@ struct Accueil: View {
         .onDisappear { inclinaison.arreter() }
     }
 
+    /// Le titre, les dossiers et les deux gestes ; `haut` laisse voir le film au-dessus, `mini` centre le tout dans un volet.
+    private func liste(haut: CGFloat, mini: CGFloat) -> some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 30) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text((navigation.textes["titre"] ?? "Prévoyance").uppercased())
+                        .font(.system(size: 13, weight: .semibold))
+                        .tracking(5)
+                        .foregroundStyle(Color.secondary)
+                    Text(navigation.textes["accroche"] ?? "")
+                        .font(.system(size: 42, weight: .bold))
+                        .foregroundStyle(Color.primary)
+                        .minimumScaleFactor(0.7)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.top, haut)
+                .offset(x: inclinaison.x * 8, y: inclinaison.y * 6)
+                .opacity(arrive ? 1 : 0)
+                .offset(y: arrive ? 0 : 18)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text((navigation.textes["dossiers"] ?? "").uppercased())
+                        .font(.system(size: 12, weight: .semibold))
+                        .tracking(2.4)
+                        .foregroundStyle(Color.secondary)
+                        .padding(.leading, 4)
+                    ForEach(Array(navigation.dossiers.enumerated()), id: \.element.id) { rang, dossier in
+                        Button {
+                            navigation.ouvrir(dossier: dossier.id)
+                        } label: {
+                            carte(dossier)
+                        }
+                        .buttonStyle(Appui())
+                        .opacity(arrive ? 1 : 0)
+                        .offset(y: arrive ? 0 : 24)
+                        .animation(.spring(response: 0.6, dampingFraction: 0.82).delay(0.12 + Double(rang) * 0.06), value: arrive)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    Button {
+                        navigation.creerDossier(exemple: false)
+                    } label: {
+                        Label(navigation.textes["nouveau"] ?? "", systemImage: "plus")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(Teinte.boutonEncre)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                LinearGradient(colors: [Teinte.bouton, Teinte.bouton.opacity(0.9)],
+                                               startPoint: .top, endPoint: .bottom),
+                                in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.3), lineWidth: 0.8))
+                            .shadow(color: Color.black.opacity(0.4), radius: 18, y: 10)
+                    }
+                    .buttonStyle(Appui())
+                    Button {
+                        navigation.creerDossier(exemple: true)
+                    } label: {
+                        Text(navigation.textes["exemple"] ?? "")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .padding(.horizontal, 20)
+                            .frame(height: 56)
+                            .verreArrondi(rayon: 28)
+                    }
+                    .buttonStyle(Appui())
+                }
+                .opacity(arrive ? 1 : 0)
+                .animation(.easeOut(duration: 0.5).delay(0.3), value: arrive)
+            }
+            .padding(.horizontal, 22)
+            .padding(.bottom, 48)
+            .frame(maxWidth: 680, alignment: .leading)
+            .frame(minHeight: mini, alignment: .center)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
     /// Le fond : le film des trois piliers (émergence à la première ouverture, puis boucle), sur son image fixe, sous
     /// un voile qui laisse lire le texte. Il se décale légèrement avec l'inclinaison de l'appareil.
-    private var fond: some View {
+    private func fond(lateral: Bool) -> some View {
         let nuit = Teinte.nuit
         return ZStack {
             nuit
@@ -134,9 +152,14 @@ struct Accueil: View {
                 .offset(x: inclinaison.x * -22, y: inclinaison.y * -16)
                 .clipped()
             }
-            LinearGradient(stops: [.init(color: nuit.opacity(0), location: 0), .init(color: nuit.opacity(0.05), location: 0.42),
-                                   .init(color: nuit.opacity(0.78), location: 0.66), .init(color: nuit.opacity(0.96), location: 1)],
-                           startPoint: .top, endPoint: .bottom)
+            if lateral {
+                // en volet : le film se fond dans la nuit vers la droite, où commence le texte
+                LinearGradient(stops: [.init(color: nuit.opacity(0), location: 0.62), .init(color: nuit, location: 1)], startPoint: .leading, endPoint: .trailing)
+            } else {
+                LinearGradient(stops: [.init(color: nuit.opacity(0), location: 0), .init(color: nuit.opacity(0.05), location: 0.42),
+                                       .init(color: nuit.opacity(0.78), location: 0.66), .init(color: nuit.opacity(0.96), location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+            }
         }
         .ignoresSafeArea()
     }

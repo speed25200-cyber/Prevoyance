@@ -21,7 +21,8 @@ ECHECS=0
 VOULUS=$(cat autotest-diagnostic 2>/dev/null | tr '\n' ' ')
 
 essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laissé pour la capture ; $4 : taille de la capture du journal
-  local nom="$1" udid dossier fichier
+  local nom="$1" udid dossier fichier tour="${5:-0}"
+  case " $VOULUS " in *" ipad "*) if [ "$nom" = ipad ]; then tour=1; else tour=0; fi ;; esac
   udid=$(xcrun simctl list devices available | grep -E "$2" | tail -1 | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
   if [ -z "$udid" ]; then echo "error: aucun simulateur pour $nom"; ECHECS=$((ECHECS + 1)); return; fi
   echo "==== $nom : $(xcrun simctl list devices available | grep "$udid" | sed 's/ (.*//' | xargs) ===="
@@ -29,7 +30,7 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
   borne 300 xcrun simctl bootstatus "$udid" -b >/dev/null 2>&1
   xcrun simctl ui "$udid" appearance dark 2>/dev/null
   borne 120 xcrun simctl install "$udid" "$APP"
-  SIMCTL_CHILD_PREVOYANCE_AUTOTEST=1 SIMCTL_CHILD_PREVOYANCE_VUE="$3" SIMCTL_CHILD_PREVOYANCE_TOUR="${5:-0}" borne 60 xcrun simctl launch "$udid" ch.prevoyance.app >/dev/null
+  SIMCTL_CHILD_PREVOYANCE_AUTOTEST=1 SIMCTL_CHILD_PREVOYANCE_VUE="$3" SIMCTL_CHILD_PREVOYANCE_TOUR="$tour" borne 60 xcrun simctl launch "$udid" ch.prevoyance.app >/dev/null
   dossier=$(xcrun simctl get_app_container "$udid" ch.prevoyance.app data)
   fichier="$dossier/Documents/autotest.json"
   for _ in $(seq 1 60); do [ -f "$fichier" ] && break; sleep 2; done
@@ -45,7 +46,7 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
     echo "IMAGE-DEBUT $nom"; base64 -i "/tmp/$nom.jpg" | fold -w 380; echo "IMAGE-FIN $nom"
   fi
   # tour des écrans : l'app signale chaque écran affiché (fichier tour_<nom>), il est photographié aussitôt
-  if [ "${5:-0}" = "1" ]; then
+  if [ "$tour" = "1" ]; then
     for e in risque conseil reglages scenarios question rapport dossier rubrique donnees accueil; do
       for _ in $(seq 1 40); do [ -f "$dossier/Documents/tour_$e" ] && break; sleep 0.5; done
       [ -f "$dossier/Documents/tour_$e" ] || { echo "error: $nom — écran $e jamais affiché"; ECHECS=$((ECHECS + 1)); continue; }
