@@ -242,6 +242,21 @@ final class Navigation: ObservableObject {
             + "\"ecrans\":{" + ["scenarios", "plan", "rapport", "donnees"].map { "\"\($0)\":\(ecrans[$0]?.count ?? 0)" }.joined(separator: ",") + "}}"
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? "{\"page\":\(page),\"app\":\(app)}".write(to: documents.appendingPathComponent("autotest.json"), atomically: true, encoding: .utf8)
+        // tour des écrans (PREVOYANCE_TOUR=1) : chacun est montré, puis signalé au script qui le photographie
+        guard ProcessInfo.processInfo.environment["PREVOYANCE_TOUR"] == "1" else { return }
+        try? await Task.sleep(nanoseconds: 7_000_000_000)
+        let tour: [(String, [Lieu])] = [
+            ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]),
+            ("scenarios", [.client, .scenarios]), ("question", [.client, .scenarios, .carte("scenarios", 0)]),
+            ("rapport", [.client, .rapport]), ("dossier", [.client, .dossier]),
+            ("rubrique", [.client, .dossier, .rubrique(rubriques.first?.id ?? "client")]), ("donnees", [.client, .donnees]), ("accueil", []),
+        ]
+        for (nom, lieux) in tour {
+            chemin = lieux
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            try? "1".write(to: documents.appendingPathComponent("tour_\(nom)"), atomically: true, encoding: .utf8)
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+        }
     }
 
     /// Message de la page : `actif` (vue ouverte), `noms` (libellés traduits), `visible` (montrer la barre).
