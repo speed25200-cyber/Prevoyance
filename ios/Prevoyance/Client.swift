@@ -52,6 +52,8 @@ struct Destination: View {
 struct Feuille<Contenu: View>: View {
     /// Écran qui se met en deux colonnes sur iPad : il prend alors toute la largeur utile.
     var large = false
+    /// Les Alpes de nuit en haut de la page, derrière le contenu.
+    var montagne = false
     @ViewBuilder var contenu: () -> Contenu
     @Environment(\.horizontalSizeClass) private var classe
 
@@ -65,7 +67,17 @@ struct Feuille<Contenu: View>: View {
                 .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(FondApp())
+        .background {
+            ZStack(alignment: .top) {
+                FondApp()
+                if montagne {
+                    Panorama(ancrage: .trailing)
+                        .frame(height: classe == .regular ? 340 : 230)
+                        .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.45), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                        .ignoresSafeArea(edges: .top)
+                }
+            }
+        }
     }
 }
 
@@ -203,6 +215,15 @@ extension View {
     func tuileBord() -> some View { modifier(TuileBord()) }
 }
 
+/// Le titre d'une section, en tête de page (les écrans de section n'ont pas la barre du système).
+struct TitreSection: View {
+    let titre: String
+
+    var body: some View {
+        Text(titre).font(.system(size: 28, weight: .semibold)).foregroundStyle(Color.primary).padding(.top, 4)
+    }
+}
+
 /// L'en-tête d'une carte : un pictogramme, un titre.
 struct TitreCarte: View {
     let titre: String
@@ -325,6 +346,29 @@ struct RailSections: View {
                 .accessibilityAddTraits(actif ? .isSelected : [])
             }
             Spacer(minLength: 0)
+            // revenir à la liste des clients ; année des règles, langue, présentation
+            Button {
+                navigation.montrerAccueil()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.2").font(.system(size: reduite ? 19 : 17, weight: .medium)).frame(width: 24)
+                    if !reduite {
+                        Text(navigation.textes["dossiers"] ?? "").font(.system(size: 15)).lineLimit(1).minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
+                    }
+                }
+                .foregroundStyle(Color.primary.opacity(0.72))
+                .padding(.horizontal, 12)
+                .frame(maxWidth: reduite ? .infinity : nil)
+                .frame(height: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(navigation.textes["dossiers"] ?? "Clients"))
+            MenuOutils(navigation: navigation)
+                .padding(.horizontal, reduite ? 0 : 12)
+                .frame(maxWidth: reduite ? .infinity : nil, alignment: .leading)
+                .frame(height: 40)
             if !reduite {
                 // la montagne et la devise, au pied de la barre
                 ZStack(alignment: .bottomLeading) {
@@ -334,17 +378,21 @@ struct RailSections: View {
                     Text(navigation.textes["devise"] ?? "").font(.system(size: 13, weight: .medium)).foregroundStyle(Teinte.accent)
                         .fixedSize(horizontal: false, vertical: true).padding(12)
                 }
-                .frame(height: 170)
+                .frame(height: 190)
                 .padding(.horizontal, -12)
                 .padding(.bottom, -12)
+                .clipped()
             }
         }
         .padding(12)
-        .frame(width: reduite ? 72 : 196)
+        .frame(width: reduite ? 76 : 214)
         .frame(maxHeight: .infinity)
-        .background(Teinte.carteBas.opacity(0.9))
-        .overlay(alignment: .trailing) { Rectangle().fill(Teinte.accent.opacity(0.14)).frame(width: 1) }
-        .clipped()
+        .background {
+            // jusqu'en haut et en bas de l'écran, comme un vrai panneau
+            LinearGradient(colors: [Teinte.carteHaut, Teinte.carteBas], startPoint: .top, endPoint: .bottom)
+                .overlay(alignment: .trailing) { Rectangle().fill(Teinte.accent.opacity(0.16)).frame(width: 1) }
+                .ignoresSafeArea()
+        }
     }
 }
 
@@ -388,7 +436,6 @@ struct OngletsSections: View {
                 if let ouverte = sections.first(where: { $0.lieu == ici }) { defile.scrollTo(ouverte.id, anchor: .center) }
             }
         }
-        .background(Teinte.nuit.opacity(0.9))
     }
 }
 
@@ -403,8 +450,34 @@ struct CadreSections: ViewModifier {
                 // iPad en portrait : la barre se réduit aux pictogrammes, le contenu garde deux vraies colonnes
                 content.safeAreaInset(edge: .leading, spacing: 0) { RailSections(navigation: navigation, reduite: cadre.size.width < 1000) }
             }
+            // le menu latéral tient lieu de barre : celle du système se retire
+            .toolbar(.hidden, for: .navigationBar)
         } else {
-            content.safeAreaInset(edge: .top, spacing: 0) { OngletsSections(navigation: navigation) }
+            content
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    VStack(spacing: 0) {
+                        HStack(spacing: 14) {
+                            Marque(navigation: navigation)
+                            Spacer(minLength: 8)
+                            MenuOutils(navigation: navigation)
+                            Button {
+                                navigation.montrerAccueil()
+                            } label: {
+                                Image(systemName: "person.2").font(.system(size: 17, weight: .medium)).foregroundStyle(Color.primary)
+                                    .frame(width: 38, height: 38)
+                                    .background(Teinte.carteHaut, in: Circle())
+                                    .overlay(Circle().strokeBorder(Teinte.accent.opacity(0.2), lineWidth: 1))
+                            }
+                            .buttonStyle(Appui())
+                            .accessibilityLabel(Text(navigation.textes["dossiers"] ?? "Clients"))
+                        }
+                        .padding(.horizontal, 20)
+                        .frame(height: 48)
+                        OngletsSections(navigation: navigation)
+                    }
+                    .background(Teinte.nuit.opacity(0.94).ignoresSafeArea(edges: .top))
+                }
+                .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
@@ -528,6 +601,7 @@ struct RisquesNatif: View {
 
     var body: some View {
         Feuille(large: true) {
+            TitreSection(titre: navigation.textes["risques"] ?? "Risques")
             if let a = navigation.analyse {
                 Colonnes {
                     CarteRisques(navigation: navigation, a: a)
@@ -561,9 +635,9 @@ struct ClientNatif: View {
         GeometryReader { cadre in
             // trois colonnes quand la place le permet (iPad en paysage), deux sur iPad en portrait, une sur iPhone
             let trois = classe == .regular && cadre.size.width >= 900
-            Feuille(large: true) {
+            Feuille(large: true, montagne: true) {
                 if let a = navigation.analyse {
-                    if classe == .regular { bandeau(a) }
+                    if classe == .regular { bandeau(a) } else { Text(navigation.nomDossier).font(.system(size: 24, weight: .semibold)).padding(.top, 2) }
                     if trois {
                         HStack(alignment: .top, spacing: 16) {
                             VStack(spacing: 14) {
@@ -605,12 +679,6 @@ struct ClientNatif: View {
         }
         .navigationTitle(navigation.nomDossier)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if classe != .regular {
-                ToolbarItem(placement: .principal) { Marque(navigation: navigation) }
-            }
-            OutilsEcran(navigation: navigation)
-        }
         .cadreSections(navigation)
     }
 
@@ -619,14 +687,12 @@ struct ClientNatif: View {
     /// Le bandeau : les Alpes de nuit, l'accroche, et le client ouvert (toucher : revenir à la liste des clients).
     private func bandeau(_ a: AnalyseModele) -> some View {
         ZStack(alignment: .leading) {
-            Panorama(ancrage: .trailing)
-                .mask(LinearGradient(colors: [.black.opacity(0.55), .black], startPoint: .leading, endPoint: .trailing))
-            LinearGradient(colors: [Teinte.nuit.opacity(0.55), Teinte.nuit.opacity(0)], startPoint: .leading, endPoint: .center)
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(navigation.textes["bonjour"] ?? "").font(.system(size: 14)).foregroundStyle(Color.secondary)
-                    Text(navigation.textes["slogan"] ?? "").font(.system(size: 26, weight: .semibold)).foregroundStyle(Color.primary)
-                        .lineLimit(2).minimumScaleFactor(0.7).frame(maxWidth: 330, alignment: .leading)
+                    Text(navigation.textes["slogan"] ?? "").font(.system(size: 30, weight: .semibold)).foregroundStyle(Color.primary)
+                        .lineLimit(2).minimumScaleFactor(0.7).frame(maxWidth: 380, alignment: .leading)
+                        .shadow(color: Teinte.nuit.opacity(0.8), radius: 8)
                     Text(navigation.textes["metiers"] ?? "").font(.system(size: 13)).foregroundStyle(Color.secondary)
                 }
                 Spacer(minLength: 12)
@@ -651,10 +717,10 @@ struct ClientNatif: View {
                     cible(a).frame(maxWidth: 240)
                 }
             }
-            .padding(18)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 14)
         }
-        .frame(height: 150)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .frame(minHeight: 132)
     }
 
     /// Couple : la personne analysée.
@@ -1154,6 +1220,7 @@ struct EcranCartes: View {
     var body: some View {
         let cartes = navigation.ecrans[vue] ?? []
         return Feuille {
+            if vue == "scenarios" || vue == "rapport" { TitreSection(titre: navigation.noms[vue] ?? "") }
             if cartes.isEmpty { Attente() }
             ForEach(cartes) { carte in
                 if carte.id < ouvertes || carte.titre.isEmpty {

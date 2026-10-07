@@ -68,6 +68,10 @@ struct DossierNatif: View {
 
     var body: some View {
         List {
+            Section {
+                TitreSection(titre: navigation.noms["dossier"] ?? "")
+                    .listRowBackground(Color.clear).listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 0))
+            }
             ForEach(navigation.rubriques) { rubrique in
                 NavigationLink(value: Lieu.rubrique(rubrique.id)) {
                     Label {

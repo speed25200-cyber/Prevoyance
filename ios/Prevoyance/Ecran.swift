@@ -265,6 +265,10 @@ final class Navigation: ObservableObject {
     /// Autotest : la page exécute web/src/autotest.js dans cette vue web ; le résultat, complété par l'état de la barre
     /// native, est écrit dans les documents de l'app, où le script ios/autotest.sh le lit.
     private func lancerAutotest() async {
+        // capture en paysage (PREVOYANCE_PAYSAGE=1) : l'iPad tourné, comme on le tient en rendez-vous
+        if ProcessInfo.processInfo.environment["PREVOYANCE_PAYSAGE"] == "1", let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
+        }
         try? await Task.sleep(nanoseconds: 2_500_000_000)
         let demandee = ProcessInfo.processInfo.environment["PREVOYANCE_VUE"] ?? "analyse"
         // « accueil » : l'autotest tourne derrière l'accueil, qui reste à l'écran pour la capture
