@@ -26,7 +26,7 @@ struct Destination: View {
 
     var body: some View {
         switch lieu {
-        case .client: ClientNatif(navigation: navigation)
+        case .client: CockpitClient(navigation: navigation)
         case .risques: RisquesNatif(navigation: navigation)
         case .risque(let cle): RisqueNatif(navigation: navigation, cle: cle)
         case .alertes: AlertesNatif(navigation: navigation)
@@ -177,16 +177,20 @@ struct Montagne: View {
 struct Anneau: View {
     let part: Double
     var epaisseur: CGFloat = 6
+    /// Part affichée : elle part de zéro et rejoint la valeur, pour que la jauge se remplisse sous les yeux.
+    @State private var montre = 0.0
 
     var body: some View {
         ZStack {
             Circle().stroke(Color.white.opacity(0.12), lineWidth: epaisseur)
-            Circle().trim(from: 0, to: CGFloat(Swift.max(0.004, Swift.min(1, part))))
+            Circle().trim(from: 0, to: CGFloat(Swift.max(0.004, Swift.min(1, montre))))
                 .stroke(LinearGradient(colors: [Teinte.pilier2, Teinte.eclat, Color.white], startPoint: .bottomLeading, endPoint: .topTrailing),
                         style: StrokeStyle(lineWidth: epaisseur, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .shadow(color: Color.white.opacity(0.22), radius: epaisseur * 0.5)
         }
+        .onAppear { withAnimation(.easeOut(duration: 1.1).delay(0.15)) { montre = part } }
+        .onChange(of: part) { _, nouvelle in withAnimation(.easeInOut(duration: 0.6)) { montre = nouvelle } }
     }
 }
 
@@ -276,15 +280,16 @@ enum Sections {
             .map { Section(id: $0.offset, lieu: $0.element.0, nom: $0.element.1, symbole: $0.element.2) }
     }
 
-    /// La section affichée : le deuxième écran du chemin (rien : la synthèse).
+    /// La section affichée (rien : la synthèse).
     @MainActor static func courante(_ navigation: Navigation) -> Lieu? {
-        navigation.chemin.count > 1 ? navigation.chemin[1] : nil
+        navigation.sectionOuverte
     }
 }
 
 /// iPad : la barre latérale. En haut la marque, puis les sections ; en bas, la montagne et la devise.
 struct RailSections: View {
     @ObservedObject var navigation: Navigation
+    @Namespace private var espace
     /// Écran étroit : pictogrammes seuls, pour laisser la place au contenu.
     var reduite = false
 
@@ -308,6 +313,9 @@ struct RailSections: View {
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: section.symbole).font(.system(size: reduite ? 19 : 17, weight: .medium)).frame(width: 24)
+                            .symbolVariant(actif ? .fill : .none)
+                            .symbolEffect(.bounce, value: actif)
+                            .foregroundStyle(actif ? Teinte.eclat : Color.primary.opacity(0.72))
                         if !reduite {
                             Text(section.nom).font(.system(size: 15, weight: actif ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.8)
                             Spacer(minLength: 0)
@@ -321,6 +329,8 @@ struct RailSections: View {
                         if actif {
                             RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.16))
                                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
+                                .overlay(alignment: .leading) { Capsule().fill(Teinte.eclat).frame(width: 3, height: 20).offset(x: -1) }
+                                .matchedGeometryEffect(id: "choix", in: espace)
                         }
                     }
                     .contentShape(Rectangle())
@@ -371,6 +381,7 @@ struct RailSections: View {
 /// iPhone : les sections en onglets, sur une ligne qui défile ; l'onglet ouvert est plein et lumineux.
 struct OngletsSections: View {
     @ObservedObject var navigation: Navigation
+    @Namespace private var espace
 
     var body: some View {
         let ici = Sections.courante(navigation), sections = Sections.liste(navigation)
@@ -386,8 +397,10 @@ struct OngletsSections: View {
                                 .foregroundStyle(actif ? Teinte.boutonEncre : Color.primary.opacity(0.8))
                                 .padding(.horizontal, 15)
                                 .frame(height: 34)
-                                .background(actif ? Color.white.opacity(0.92) : Color.white.opacity(0.09), in: Capsule())
-                                .overlay(Capsule().strokeBorder(Color.white.opacity(actif ? 0 : 0.16), lineWidth: 0.8))
+                                .background {
+                                    Capsule().fill(Color.white.opacity(0.09)).overlay(Capsule().strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8))
+                                    if actif { Capsule().fill(Color.white.opacity(0.94)).matchedGeometryEffect(id: "choix", in: espace) }
+                                }
                         }
                         .buttonStyle(.plain)
                         .id(section.id)
@@ -400,8 +413,64 @@ struct OngletsSections: View {
             .onAppear {
                 if let ouverte = sections.first(where: { $0.lieu == ici }) { defile.scrollTo(ouverte.id, anchor: .center) }
             }
+            .onChange(of: ici) { _, nouvelle in
+                // l'onglet ouvert reste en vue quand on change de section
+                if let ouverte = sections.first(where: { $0.lieu == nouvelle }) { withAnimation(.snappy) { defile.scrollTo(ouverte.id, anchor: .center) } }
+            }
         }
     }
+}
+
+/// Un client : son menu (barre latérale sur iPad, onglets sur iPhone) reste en place, et la section choisie entre
+/// en fondu, en montant légèrement. Un toucher léger accompagne le changement.
+struct CockpitClient: View {
+    @ObservedObject var navigation: Navigation
+
+    var body: some View {
+        ZStack {
+            contenu
+                .id(cle)
+                .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 16)), removal: .opacity))
+        }
+        .animation(.smooth(duration: 0.38), value: cle)
+        .cadreSections(navigation)
+        .sensoryFeedback(.selection, trigger: cle)
+    }
+
+    private var cle: String {
+        navigation.sectionOuverte.map { String(describing: $0) } ?? "synthese"
+    }
+
+    @ViewBuilder private var contenu: some View {
+        switch navigation.sectionOuverte {
+        case .risques?: RisquesNatif(navigation: navigation)
+        case .conseil?: ConseilNatif(navigation: navigation)
+        case .scenarios?: EcranCartes(navigation: navigation, vue: "scenarios", ouvertes: 0)
+        case .rapport?: EcranCartes(navigation: navigation, vue: "rapport", ouvertes: 1)
+        case .dossier?: DossierNatif(navigation: navigation)
+        default: ClientNatif(navigation: navigation)
+        }
+    }
+}
+
+/// Entrée d'une carte : elle apparaît en montant légèrement, chacune un instant après la précédente.
+struct Apparition: ViewModifier {
+    let rang: Int
+    @State private var visible = false
+    @Environment(\.accessibilityReduceMotion) private var calme
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(visible ? 1 : 0)
+            .offset(y: visible || calme ? 0 : 18)
+            .onAppear {
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.86).delay(calme ? 0 : 0.05 + Double(rang) * 0.07)) { visible = true }
+            }
+    }
+}
+
+extension View {
+    func apparition(_ rang: Int) -> some View { modifier(Apparition(rang: rang)) }
 }
 
 /// Le cadre des écrans de section : la barre latérale sur iPad, les onglets du haut sur iPhone.
@@ -569,9 +638,9 @@ struct RisquesNatif: View {
             TitreSection(titre: navigation.textes["risques"] ?? "Risques")
             if let a = navigation.analyse {
                 Colonnes {
-                    CarteRisques(navigation: navigation, a: a)
+                    CarteRisques(navigation: navigation, a: a).apparition(0)
                 } droite: {
-                    LigneDeVie(a: a, hauteur: 260)
+                    LigneDeVie(a: a, hauteur: 260).apparition(1)
                     if !a.alertes.isEmpty {
                         NavigationLink(value: Lieu.alertes) {
                             Tuile(titre: a.alertesTitre, note: String(a.alertes.count), symbole: "exclamationmark.circle")
@@ -586,7 +655,6 @@ struct RisquesNatif: View {
         .navigationTitle(navigation.textes["risques"] ?? "Risques")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .cadreSections(navigation)
     }
 }
 
@@ -606,35 +674,35 @@ struct ClientNatif: View {
                     if trois {
                         HStack(alignment: .top, spacing: 16) {
                             VStack(spacing: 14) {
-                                score(a)
-                                if let menage = a.menage { foyer(menage) }
-                                if !a.colonnes.isEmpty { piliers(a) }
+                                score(a).apparition(0)
+                                if let menage = a.menage { foyer(menage).apparition(3) }
+                                if !a.colonnes.isEmpty { piliers(a).apparition(5) }
                             }
                             .frame(maxWidth: .infinity)
                             VStack(spacing: 14) {
-                                LigneDeVie(a: a, hauteur: 330)
-                                alertes(a)
+                                LigneDeVie(a: a, hauteur: 330).apparition(1)
+                                alertes(a).apparition(4)
                             }
                             .frame(maxWidth: .infinity)
                             .layoutPriority(1)
                             VStack(spacing: 14) {
-                                CarteRisques(navigation: navigation, a: a)
-                                if let prochaine = a.prochaine { echeance(prochaine) }
+                                CarteRisques(navigation: navigation, a: a).apparition(2)
+                                if let prochaine = a.prochaine { echeance(prochaine).apparition(4) }
                             }
                             .frame(maxWidth: .infinity)
                         }
                     } else {
                         Colonnes {
                             if classe != .regular { cible(a) }
-                            score(a)
-                            if !a.colonnes.isEmpty { piliers(a) }
-                            if classe == .regular, let menage = a.menage { foyer(menage) }
+                            score(a).apparition(0)
+                            if !a.colonnes.isEmpty { piliers(a).apparition(2) }
+                            if classe == .regular, let menage = a.menage { foyer(menage).apparition(4) }
                         } droite: {
-                            CarteRisques(navigation: navigation, a: a)
-                            if classe == .regular { LigneDeVie(a: a, hauteur: 220) }
-                            if let prochaine = a.prochaine { echeance(prochaine) }
-                            if classe != .regular, let menage = a.menage { foyer(menage) }
-                            alertes(a)
+                            CarteRisques(navigation: navigation, a: a).apparition(1)
+                            if classe == .regular { LigneDeVie(a: a, hauteur: 220).apparition(3) }
+                            if let prochaine = a.prochaine { echeance(prochaine).apparition(3) }
+                            if classe != .regular, let menage = a.menage { foyer(menage).apparition(4) }
+                            alertes(a).apparition(5)
                         }
                     }
                 } else {
@@ -644,7 +712,6 @@ struct ClientNatif: View {
         }
         .navigationTitle(navigation.nomDossier)
         .navigationBarTitleDisplayMode(.inline)
-        .cadreSections(navigation)
     }
 
     // MARK: le bandeau (iPad)
@@ -782,7 +849,9 @@ struct ClientNatif: View {
     // MARK: la prochaine échéance
 
     private func echeance(_ prochaine: AnalyseModele.Echeance) -> some View {
-        NavigationLink(value: Lieu.scenarios) {
+        Button {
+            navigation.section(.scenarios)
+        } label: {
             HStack(spacing: 14) {
                 Image(systemName: "calendar").font(.system(size: 20, weight: .medium)).foregroundStyle(Teinte.eclat).frame(width: 30)
                 VStack(alignment: .leading, spacing: 3) {
@@ -868,6 +937,7 @@ struct FormeCristal: Shape {
 /// Un cristal de glace : deux facettes, une arête claire, une lueur.
 struct Cristal: View {
     let rang: Int
+    @State private var pousse = false
 
     var body: some View {
         let teinte = rang == 0 ? Teinte.pilier1 : rang == 1 ? Teinte.eclat : Teinte.pilier3
@@ -883,6 +953,9 @@ struct Cristal: View {
             FormeCristal().stroke(Color.white.opacity(0.55), lineWidth: 0.8)
         }
         .shadow(color: Color.white.opacity(0.18), radius: 6)
+        .scaleEffect(x: 1, y: pousse ? 1 : 0.15, anchor: .bottom)
+        .opacity(pousse ? 1 : 0)
+        .onAppear { withAnimation(.spring(response: 0.7, dampingFraction: 0.72).delay(0.25 + Double(rang) * 0.12)) { pousse = true } }
     }
 }
 
@@ -1021,8 +1094,8 @@ struct ConseilNatif: View {
         return Feuille(large: true) {
             if let tete = cartes.first {
                 Colonnes {
-                    entete(tete)
-                    avantApres(tete)
+                    entete(tete).apparition(0)
+                    avantApres(tete).apparition(1)
                     ForEach(cartes) { carte in
                         if carte.id != tete.id && carte.id != conseil?.id && !carte.titre.isEmpty {
                             NavigationLink(value: Lieu.carte("plan", carte.id)) {
@@ -1032,7 +1105,7 @@ struct ConseilNatif: View {
                         }
                     }
                 } droite: {
-                    if let conseil { mesures(conseil) }
+                    if let conseil { mesures(conseil).apparition(2) }
                     pied
                 }
             } else {
@@ -1042,7 +1115,6 @@ struct ConseilNatif: View {
         .navigationTitle(navigation.noms["plan"] ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .cadreSections(navigation)
     }
 
     /// Le titre de la section et la phrase qui résume le plan.
@@ -1199,17 +1271,6 @@ struct EcranCartes: View {
         .navigationTitle(navigation.noms[vue] ?? "")
         .navigationBarTitleDisplayMode(.large)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .modifier(CadreSiSection(navigation: navigation, section: vue == "scenarios" || vue == "rapport"))
-    }
-}
-
-/// Scénarios et Rapport sont des sections du client (cadre) ; Données n'en est pas une.
-struct CadreSiSection: ViewModifier {
-    @ObservedObject var navigation: Navigation
-    let section: Bool
-
-    func body(content: Content) -> some View {
-        if section { content.cadreSections(navigation) } else { content }
     }
 }
 

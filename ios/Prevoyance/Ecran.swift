@@ -65,6 +65,10 @@ final class Navigation: ObservableObject {
         didSet { if chemin != oldValue { suivre() } }
     }
     var accueil: Bool { chemin.isEmpty }
+    /// La section ouverte du client (rien : la synthèse). Le menu reste en place ; seul le contenu change.
+    @Published var sectionOuverte: Lieu? = nil {
+        didSet { if sectionOuverte != oldValue { suivre() } }
+    }
     @Published var dossiers: [DossierResume] = []
     @Published var textes: [String: String] = [:]
     /// Le dossier (rubriques et champs décrits par la page) et l'analyse, pour les écrans natifs.
@@ -143,7 +147,9 @@ final class Navigation: ObservableObject {
 
     /// La page suit l'écran du dessus : elle se met sur sa vue (et sur son risque), pour le décrire et le tenir à jour.
     private func suivre() {
-        guard let lieu = chemin.last else { return }
+        guard var lieu = chemin.last else { return }
+        // l'écran du client montre sa section ouverte
+        if lieu == .client, let section = sectionOuverte { lieu = section }
         switch lieu {
         case .client, .risques:
             // la synthèse et les risques montrent la ligne de vie de la retraite
@@ -209,7 +215,7 @@ final class Navigation: ObservableObject {
         guard id.allSatisfy({ $0.isLetter || $0.isNumber }) else { return }
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.ouvrirDossier && window.__prevoyance.ouvrirDossier('\(id)')")
         oublier()
-        chemin = [.client]
+        aller([.client])
     }
 
     /// Un autre dossier s'ouvre : rien de l'ancien (analyse, écrans décrits) ne doit rester à l'écran.
@@ -222,7 +228,7 @@ final class Navigation: ObservableObject {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.creerDossier && window.__prevoyance.creerDossier(\(exemple))")
         oublier()
         // un dossier vide s'ouvre sur sa saisie ; l'exemple, sur sa synthèse
-        chemin = exemple ? [.client] : [.client, .dossier]
+        aller(exemple ? [.client] : [.client, .dossier])
     }
 
     func montrerAccueil() {
@@ -237,9 +243,20 @@ final class Navigation: ObservableObject {
     /// Changer de section d'un client : Synthèse (`nil`), Risques, Conseil, Scénarios, Rapport, Dossier. Sans glissement :
     /// ce sont des écrans voisins, pas un écran dans lequel on entre.
     func section(_ lieu: Lieu?) {
-        var sansAnimation = Transaction()
-        sansAnimation.disablesAnimations = true
-        withTransaction(sansAnimation) { chemin = lieu.map { [.client, $0] } ?? [.client] }
+        if chemin != [.client] { chemin = [.client] }
+        withAnimation(.snappy(duration: 0.34)) { sectionOuverte = lieu }
+    }
+
+    /// Aller droit à un écran (autotest, création d'un dossier) : la section, puis ce dans quoi l'on entre.
+    func aller(_ lieux: [Lieu]) {
+        let sections: [Lieu] = [.risques, .conseil, .scenarios, .rapport, .dossier]
+        if lieux.count > 1, sections.contains(lieux[1]) {
+            sectionOuverte = lieux[1]
+            chemin = [.client] + lieux.dropFirst(2)
+        } else {
+            sectionOuverte = nil
+            chemin = lieux
+        }
     }
 
     /// Entrer dans un écran.
@@ -287,13 +304,13 @@ final class Navigation: ObservableObject {
         // l'écran demandé pour la capture, une fois les contrôles passés
         switch demandee {
         case "accueil": break
-        case "dossier": chemin = [.client, .dossier]
-        case "plan": chemin = [.client, .conseil]
-        case "scenarios": chemin = [.client, .scenarios]
-        case "rapport": chemin = [.client, .rapport]
-        case "donnees": chemin = [.client, .donnees]
-        case "risque": chemin = [.client, .risque("retraite")]
-        default: chemin = [.client]
+        case "dossier": aller([.client, .dossier])
+        case "plan": aller([.client, .conseil])
+        case "scenarios": aller([.client, .scenarios])
+        case "rapport": aller([.client, .rapport])
+        case "donnees": aller([.client, .donnees])
+        case "risque": aller([.client, .risque("retraite")])
+        default: aller([.client])
         }
         // le temps que l'écran entre et que la page le décrive
         try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -312,7 +329,7 @@ final class Navigation: ObservableObject {
             ("rubrique", [.client, .dossier, .rubrique(rubriques.first?.id ?? "client")]), ("donnees", [.client, .donnees]), ("accueil", []),
         ]
         for (nom, lieux) in tour {
-            chemin = lieux
+            aller(lieux)
             try? await Task.sleep(nanoseconds: 3_500_000_000)
             try? "1".write(to: documents.appendingPathComponent("tour_\(nom)"), atomically: true, encoding: .utf8)
             try? await Task.sleep(nanoseconds: 4_000_000_000)

@@ -2,16 +2,55 @@ import PhotosUI
 import SwiftUI
 
 /// Le fond des écrans : les Alpes de nuit en plein écran, sous un voile qui s'épaissit vers le bas. C'est lui que le
-/// verre des cartes laisse deviner.
+/// verre des cartes laisse deviner. Il vit : l'image dérive très lentement, les étoiles scintillent (sauf si
+/// l'appareil demande de réduire les animations).
 struct FondApp: View {
+    @Environment(\.accessibilityReduceMotion) private var calme
+    @State private var derive = false
+
     var body: some View {
         ZStack {
             Teinte.nuit
             Panorama(ancrage: .topTrailing)
-            LinearGradient(stops: [.init(color: Teinte.nuit.opacity(0.10), location: 0), .init(color: Teinte.nuit.opacity(0.52), location: 0.40),
+                .scaleEffect(derive ? 1.09 : 1.02, anchor: .topTrailing)
+                .offset(x: derive ? -12 : 0, y: derive ? 6 : 0)
+            if !calme { Etoiles() }
+            LinearGradient(stops: [.init(color: Teinte.nuit.opacity(0.16), location: 0), .init(color: Teinte.nuit.opacity(0.52), location: 0.42),
                                    .init(color: Teinte.nuit.opacity(0.90), location: 1)], startPoint: .top, endPoint: .bottom)
         }
         .ignoresSafeArea()
+        .onAppear {
+            guard !calme, !derive else { return }
+            withAnimation(.easeInOut(duration: 32).repeatForever(autoreverses: true)) { derive = true }
+        }
+    }
+}
+
+/// Un ciel d'étoiles qui scintillent doucement, dans la moitié haute de l'écran.
+struct Etoiles: View {
+    private struct Etoile { let x: Double; let y: Double; let rayon: Double; let phase: Double; let vitesse: Double }
+    /// Toujours le même ciel : positions tirées d'une suite fixe.
+    private static let ciel: [Etoile] = {
+        var graine: UInt64 = 20261007
+        func hasard() -> Double {
+            graine = graine &* 6364136223846793005 &+ 1442695040888963407
+            return Double((graine >> 33) % 100_000) / 100_000
+        }
+        return (0..<80).map { _ in Etoile(x: hasard(), y: hasard() * hasard(), rayon: 0.6 + hasard() * 1.5, phase: hasard() * 6.28, vitesse: 0.4 + hasard() * 1.1) }
+    }()
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 12)) { temps in
+            Canvas { contexte, taille in
+                let instant = temps.date.timeIntervalSinceReferenceDate
+                for etoile in Etoiles.ciel {
+                    let eclat = 0.18 + 0.62 * (0.5 + 0.5 * sin(instant * etoile.vitesse + etoile.phase))
+                    let cadre = CGRect(x: etoile.x * taille.width, y: etoile.y * taille.height * 0.55, width: etoile.rayon, height: etoile.rayon)
+                    contexte.fill(Path(ellipseIn: cadre), with: .color(Color.white.opacity(eclat)))
+                }
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -93,7 +132,6 @@ struct DossierNatif: View {
         .navigationTitle(navigation.noms["dossier"] ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .cadreSections(navigation)
     }
 }
 
