@@ -13,6 +13,7 @@
  * l'assureur.
  */
 
+import * as Marque from './marque.js';
 import { h } from './ui.js';
 import { etat, garder, dossier } from './etat.js';
 import * as Signature from './signature.js';
@@ -110,6 +111,15 @@ export function champsConseil(ctx, reconstruire) {
   ];
 }
 
+/** Pose (ou retire) le logo, puis lit sa couleur dominante : elle devient la couleur de la marque, sauf choix contraire. */
+function poserLogo(i, image, reconstruire) {
+  i.logo = image;
+  if (!image) i.couleurAuto = '';
+  garder();
+  reconstruire();
+  if (image) Marque.couleurDuLogo(image).then(couleur => { if (i.logo === image) { i.couleurAuto = couleur; garder(); reconstruire(); } });
+}
+
 /** Champs de la fiche de l'intermédiaire (une fois pour tous les dossiers). */
 export function champsIntermediaire(ctx, reconstruire) {
   const i = intermediaire(), lie = i.genre === 'lie';
@@ -117,7 +127,7 @@ export function champsIntermediaire(ctx, reconstruire) {
     (Collecte.decrire({ type: 'note', libelle: ctx.t('lg_intermediaireAide') }), h('p', { class: 'petit sans-marge' }, ctx.t('lg_intermediaireAide'))),
     // logo du courtier ou de la compagnie : en tête de chaque page du rapport
     (Collecte.decrire({ type: 'logo', libelle: ctx.t(i.logo ? 'lg_logoChanger' : 'lg_logoChoisir'), valeur: i.logo ? 1 : 0, note: ctx.t('lg_logoAide'), indication: ctx.t('lg_logoRetirer') },
-      image => { i.logo = String(image ?? ''); garder(); reconstruire(); }), null),
+      image => { poserLogo(i, String(image ?? ''), reconstruire); }), null),
     h('div', { class: 'logo-choix' },
       i.logo ? h('img', { src: i.logo, alt: '' }) : h('span', { class: 'petit' }, ctx.t('lg_logoAide')),
       h('label', { class: 'pastille' }, ctx.t(i.logo ? 'lg_logoChanger' : 'lg_logoChoisir'),
@@ -125,9 +135,18 @@ export function champsIntermediaire(ctx, reconstruire) {
           const fichier = e.target.files?.[0];
           if (!fichier) return;
           const image = await Signature.lireLogo(fichier);
-          if (image) { i.logo = image; garder(); reconstruire(); }
+          if (image) poserLogo(i, image, reconstruire);
         } })),
-      i.logo ? h('button', { type: 'button', class: 'pastille', onclick: () => { i.logo = ''; garder(); reconstruire(); } }, ctx.t('lg_logoRetirer')) : null),
+      i.logo ? h('button', { type: 'button', class: 'pastille', onclick: () => poserLogo(i, '', reconstruire) }, ctx.t('lg_logoRetirer')) : null),
+    // couleur de la marque : celle du logo, ou celle que l'on choisit ; elle habille le rapport
+    (Collecte.decrire({ type: 'couleur', libelle: ctx.t('lg_couleur'), valeur: i.couleur || i.couleurAuto || '#14161a', note: ctx.t('lg_couleurAide') },
+      valeur => { i.couleur = Marque.deHex(String(valeur ?? '')) ? String(valeur) : ''; garder(); }), null),
+    i.couleur && i.couleurAuto ? (Collecte.decrire({ type: 'action', libelle: ctx.t('lg_couleurAuto'), icone: 'couleur' }, () => { i.couleur = ''; garder(); reconstruire(); }), null) : null,
+    h('label', { class: 'champ couleur-marque' }, h('span', {}, ctx.t('lg_couleur')),
+      h('div', { class: 'rangee' },
+        h('input', { type: 'color', value: i.couleur || i.couleurAuto || '#14161a', 'aria-label': ctx.t('lg_couleur'), onchange: e => { i.couleur = e.target.value; garder(); reconstruire(); } }),
+        i.couleur && i.couleurAuto ? h('button', { type: 'button', class: 'pastille', onclick: () => { i.couleur = ''; garder(); reconstruire(); } }, ctx.t('lg_couleurAuto')) : null)),
+    h('p', { class: 'petit sans-marge' }, ctx.t('lg_couleurAide')),
     champ(ctx, i, 'nom', 'lg_nom'),
     champ(ctx, i, 'adresse', 'lg_adresse'),
     choix(ctx, i, 'genre', 'lg_genre', ['nonLie', 'lie'], 'lg_', reconstruire),

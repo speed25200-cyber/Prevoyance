@@ -251,11 +251,22 @@ struct ChampNatif: View {
             }
             .padding(.vertical, 4)
             .onChange(of: valeur) { _, nouveau in navigation.ecrire(champ.id, nombre: nouveau) }
+        case "couleur":
+            // couleur de la marque : le sélecteur du système ; la page reçoit « #rrggbb »
+            VStack(alignment: .leading, spacing: 6) {
+                ColorPicker(champ.libelle, selection: Binding(get: { ChampNatif.couleur(texte) }, set: { nouvelle in
+                    let hex = ChampNatif.hex(nouvelle)
+                    guard hex != texte else { return }
+                    texte = hex
+                    navigation.ecrire(champ.id, texte: hex)
+                }), supportsOpacity: false)
+                if !champ.note.isEmpty { Text(champ.note).font(.footnote).foregroundStyle(Color.secondary) }
+            }
         case "action":
             Button(role: champ.icone == "danger" ? .destructive : nil) {
                 if champ.options.isEmpty && champ.icone != "danger" { navigation.ecrire(champ.id, actif: true) } else { demande = true }
             } label: {
-                Label(champ.libelle, systemImage: champ.icone == "scan" ? "doc.viewfinder" : champ.icone == "danger" ? "lock.open" : "lock")
+                Label(champ.libelle, systemImage: champ.icone == "scan" ? "doc.viewfinder" : champ.icone == "danger" ? "lock.open" : champ.icone == "couleur" ? "paintpalette" : "lock")
             }
             .confirmationDialog(champ.icone == "danger" ? champ.note : champ.libelle, isPresented: $demande, titleVisibility: .visible) {
                 if champ.options.isEmpty {
@@ -322,6 +333,20 @@ struct ChampNatif: View {
     }
 
     /// Logo ramené à 520 x 180 points au plus, en PNG (adresse de données pour la page).
+    /// « #rrggbb » vers une couleur, et retour.
+    static func couleur(_ hex: String) -> Color {
+        let chiffres = hex.trimmingCharacters(in: CharacterSet(charactersIn: "# "))
+        guard chiffres.count == 6, let n = UInt32(chiffres, radix: 16) else { return Color(red: 0.08, green: 0.09, blue: 0.10) }
+        return Color(red: Double(n >> 16 & 255) / 255, green: Double(n >> 8 & 255) / 255, blue: Double(n & 255) / 255)
+    }
+
+    static func hex(_ couleur: Color) -> String {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(couleur).getRed(&r, green: &g, blue: &b, alpha: &a)
+        let octet: (CGFloat) -> Int = { Int((Swift.max(0, Swift.min(1, $0)) * 255).rounded()) }
+        return String(format: "#%02x%02x%02x", octet(r), octet(g), octet(b))
+    }
+
     static func reduire(_ donnees: Data) -> String? {
         guard let image = UIImage(data: donnees), image.size.width > 0, image.size.height > 0 else { return nil }
         let echelle = Swift.min(1, 520 / image.size.width, 180 / image.size.height)

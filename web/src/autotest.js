@@ -51,6 +51,17 @@ export async function executer(finale = 'analyse') {
     noter('suivi : liste bornée', longue.length === Suivi.MAXIMUM && longue[longue.length - 1].s === 49);
     noter('suivi : le dossier ouvert a son point du jour', (p.etat.dossiers.find(x => x.id === p.etat.ouvert)?.suivi ?? []).length >= 1);
 
+    // couleur de la marque : lue sur le logo, puis déclinée pour rester lisible
+    const Marque = await import('./marque.js');
+    const pixels = [];
+    for (let n = 0; n < 100; n++) pixels.push(...(n < 60 ? [255, 255, 255, 255] : n < 90 ? [0, 90, 200, 255] : n < 95 ? [120, 120, 120, 255] : [0, 0, 0, 0]));
+    noter('marque : couleur dominante du logo (bleu, malgré le blanc et le gris)', Marque.enHex(Marque.dominante(pixels)) === '#005ac8');
+    const noir = []; for (let n = 0; n < 100; n++) noir.push(...(n < 70 ? [255, 255, 255, 255] : [22, 22, 26, 255]));
+    noter('marque : logo noir, teinte sombre retenue', Marque.enHex(Marque.dominante(noir)) === '#16161a' && Marque.dominante([255, 255, 255, 0]) === null);
+    const jaune = Marque.palette('#ffd400'), marine = Marque.palette('#0a3d91');
+    noter('marque : texte lisible sur l’aplat et sur le papier', jaune.encre === '#14161a' && marine.encre === '#ffffff'
+      && Marque.contraste(Marque.deHex(jaune.texte), { r: 255, g: 255, b: 255 }) >= 4.5 && marine.texte === '#0a3d91' && Marque.palette('rouge') === null);
+
     // les six écrans : chacun s'affiche seul, avec du contenu, sans dépasser la largeur
     const affiche = id => getComputedStyle(/** @type {HTMLElement} */ (document.getElementById(id))).display !== 'none';
     for (const vue of ['dossier', 'analyse', 'scenarios', 'plan', 'rapport', 'donnees']) {

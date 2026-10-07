@@ -280,3 +280,35 @@ body.presentation .choix-annee { display: none; }
 .etapes small { color: var(--encre-2); font-size: 12.5px; }
 .etapes p { margin: 2px 0 0; font-size: 14.5px; line-height: 1.4; min-width: 0; }
 .page .etapes li { padding: 6px 0; } .page .etapes b { font-size: 15px; } .page .etapes p { font-size: 11.5px; } .page .etapes small { font-size: 10.5px; }
+
+/* ---------- rapport aux couleurs de l'intermédiaire (couleur tirée de son logo) */
+.couleur-marque input[type="color"] { width: 54px; height: 36px; padding: 0; border: 1px solid var(--filet); border-radius: 10px; background: none; }
+/* la couverture à la marque n'a pas de marge : le bandeau va d'un bord à l'autre, le reste est rentré de 16 mm */
+.rapport .page.couverture.griffe { padding: 0; justify-content: flex-start; gap: 14mm; }
+.rapport .page.couverture.griffe > :not(.r-bandeau) { margin-left: 16mm; margin-right: 16mm; }
+.rapport .page.couverture.griffe .r-bandeau { align-self: stretch; background: var(--marque); color: var(--marque-encre); margin: 0; padding: 16mm 16mm 12mm !important; box-sizing: border-box; width: 100%; min-height: 104mm;
+  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 10mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.rapport .page.couverture.griffe .r-plaque { background: #fff; border-radius: 10px; padding: 5mm 7mm; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .35); line-height: 0; }
+.rapport .page.couverture.griffe .r-plaque img { display: block; height: 22mm; width: auto; max-width: 78mm; object-fit: contain; position: static; padding: 0; background: none; border-radius: 0; }
+.rapport .page.couverture.griffe .r-maison-nom { margin: 0; font: 600 24px/1.2 var(--police); letter-spacing: -.01em; text-transform: none; color: var(--marque-encre); }
+.rapport .page.couverture.griffe .r-maison-adresse { margin: 5px 0 0; font: 400 12.5px/1.45 var(--police); letter-spacing: 0; text-transform: none; white-space: pre-line; color: var(--marque-encre); opacity: .86; }
+.couverture.griffe h1 { color: var(--encre); }
+.couverture.griffe .r-fiche { margin-top: auto; margin-bottom: 12mm; align-self: flex-start; }
+.couverture.griffe > div:not(.r-bandeau) { align-self: stretch; }
+.rapport .page.couverture.griffe::after { content: ""; display: block; height: 3mm; margin: 0; align-self: stretch; background: var(--marque); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.rapport.griffe .surtitre { color: var(--marque-texte); }
+.rapport.griffe .page header { border-bottom-color: var(--marque); }
+.rapport.griffe .page header h2::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: var(--marque); margin-right: 10px; transform: translateY(-3px);
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.rapport.griffe .page h3 { color: var(--marque-texte); }
+.rapport.griffe .r-tableau thead th { color: var(--marque-texte); border-bottom: 1.5px solid var(--marque); }
+.rapport.griffe .r-tableau tr.fort th, .rapport.griffe .r-tableau tr.fort td { border-top-color: var(--marque); }
+.rapport.griffe .page footer { border-top-color: var(--marque); }
+.rapport.griffe .page footer span:first-child { color: var(--marque-texte); font-weight: 600; }
+.rapport.griffe .r-score b { color: var(--marque-texte) !important; }
+.rapport.griffe .etapes li[data-prochaine="true"] b { color: var(--marque-texte); }
+.rapport.griffe .conseil-rang { background: var(--marque-claire); color: var(--marque-texte); }
+@media (max-width: 860px) {
+  .rapport .page.couverture.griffe .r-bandeau { padding: 9mm !important; min-height: 60mm; }
+  .rapport .page.couverture.griffe > :not(.r-bandeau) { margin-left: 9mm; margin-right: 9mm; }
+}

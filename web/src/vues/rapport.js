@@ -13,6 +13,7 @@ import { planCourant, budgetPlan } from './plan.js';
 import { Impots } from '../../../moteur/src/index.js';
 import * as Conformite from '../conformite.js';
 import * as ConseilTexte from '../conseil-texte.js';
+import * as Marque from '../marque.js';
 
 const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
 
@@ -33,6 +34,13 @@ export function afficher(ctx) {
   // marque du rapport : le logo et le nom de l'intermédiaire quand ils sont saisis, sinon le nom de l'application
   const marque = etat.intermediaire ?? {};
   const signature = marque.nom?.trim() || t('titre');
+  // un logo enregistré avant que sa couleur ne soit lue : on la lit une fois, puis le rapport se redessine
+  if (marque.logo && marque.couleurAuto === undefined) {
+    marque.couleurAuto = '';
+    Marque.couleurDuLogo(marque.logo).then(couleur => { marque.couleurAuto = couleur; garder(); afficher(ctx); });
+  }
+  // les teintes du rapport : la couleur choisie, sinon celle du logo ; sans marque, le rapport garde sa sobriété
+  const teintes = marque.logo || marque.nom?.trim() ? Marque.palette(marque.couleur || marque.couleurAuto || '#14161a') : null;
   const pied = n => h('footer', {}, h('span', {}, `${signature} · ${d.nom || t('sansNom')}`), h('span', {}, `${date} · ${n}`));
   const entete = titre => h('header', {}, h('h2', {}, titre), marque.logo ? h('img', { class: 'r-logo', src: marque.logo, alt: signature }) : h('span', {}, signature));
   const bloc = x => { const e = h('div', { class: 'r-detail' }, h('h3', {}, t(x.cle)), ...detailRisque(ctx, x)); for (const i of e.querySelectorAll('.pile i')) i.style.width = `${(+(i.dataset.part ?? 0) * 100).toFixed(2)}%`; return e; };
@@ -44,9 +52,12 @@ export function afficher(ctx) {
     h('button', { type: 'button', class: 'bouton', onclick: () => window.print() }, t('rp_pdf')));
 
   // ---- 1. couverture
-  const couverture = page('couverture',
-    h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
-    marque.logo ? h('img', { class: 'r-logo r-logo-couverture', src: marque.logo, alt: signature }) : null,
+  const couverture = page(teintes ? 'couverture griffe' : 'couverture',
+    // avec une marque : un bandeau à sa couleur, son logo sur une plaque blanche, son nom et son adresse
+    teintes ? h('div', { class: 'r-bandeau' },
+      marque.logo ? h('div', { class: 'r-plaque' }, h('img', { src: marque.logo, alt: signature })) : h('span', {}),
+      h('div', { class: 'r-maison' }, h('p', { class: 'r-maison-nom' }, signature), marque.adresse?.trim() ? h('p', { class: 'r-maison-adresse' }, marque.adresse.trim()) : null))
+      : h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
     h('div', {}, h('p', { class: 'surtitre' }, t('rp_surtitre', { a: a.annee })), h('h1', {}, t('rp_h1')), h('p', { class: 'r-client' }, d.nom || t('sansNom'))),
     h('table', { class: 'r-fiche' },
       ligne(t('rp_date'), date), ligne(t('rp_conseiller'), h('span', { class: 'r-conseiller' }, etat.conseiller || '—')),
@@ -167,5 +178,6 @@ export function afficher(ctx) {
   // ---- informations de l'intermédiaire (art. 45 LSA) et procès-verbal de conseil, avec les signatures
   const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, (avecDeces ? 9 : 8) + decalage);
 
-  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, pageRoute, sources, ...legales].filter(Boolean)));
+  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' + (teintes ? ' griffe' : ''),
+    style: teintes ? { '--marque': teintes.couleur, '--marque-encre': teintes.encre, '--marque-texte': teintes.texte, '--marque-claire': teintes.claire } : {} }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, pageRoute, sources, ...legales].filter(Boolean)));
 }
