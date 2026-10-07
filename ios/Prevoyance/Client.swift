@@ -439,12 +439,16 @@ struct ConseilNatif: View {
                     }
                 }
                 if let conseil {
+                    // le résumé, puis les mesures ; la reprise dans le procès-verbal vient après
                     ForEach(conseil.blocs) { bloc in
-                        if bloc.type == "points" {
-                            mesures(bloc)
-                        } else if bloc.type == "grand" {
+                        if bloc.type == "grand" {
                             Text(bloc.s("texte")).font(.system(size: 16)).foregroundStyle(Color.secondary).fixedSize(horizontal: false, vertical: true)
-                        } else if bloc.type == "bouton" || bloc.type == "note" {
+                        } else if bloc.type == "points" {
+                            mesures(bloc)
+                        }
+                    }
+                    ForEach(conseil.blocs) { bloc in
+                        if bloc.type == "bouton" || bloc.type == "note" {
                             BlocVue(navigation: navigation, bloc: bloc).id("\(navigation.versionEcran)-c-\(bloc.id)")
                         }
                     }
