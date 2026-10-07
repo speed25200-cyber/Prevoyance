@@ -279,3 +279,4 @@ body.presentation .choix-annee { display: none; }
 .etapes li[data-prochaine="true"] b { color: var(--p2); }
 .etapes small { color: var(--encre-2); font-size: 12.5px; }
 .etapes p { margin: 2px 0 0; font-size: 14.5px; line-height: 1.4; min-width: 0; }
+.page .etapes li { padding: 6px 0; } .page .etapes b { font-size: 15px; } .page .etapes p { font-size: 11.5px; } .page .etapes small { font-size: 10.5px; }

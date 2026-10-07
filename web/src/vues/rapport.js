@@ -6,7 +6,7 @@
  */
 
 import { h, colonnes, couleurCouverture } from '../ui.js';
-import { Scenarios, VERSION } from '../../../moteur/src/index.js';
+import { Scenarios, Vie, VERSION } from '../../../moteur/src/index.js';
 import { etat, garder, dossier } from '../etat.js';
 import { RISQUES, detailRisque, texteAlerte } from './analyse.js';
 import { planCourant, budgetPlan } from './plan.js';
@@ -128,7 +128,27 @@ export function afficher(ctx) {
   // ---- conseil personnalisé : avant le plan chiffré
   const pageConseil = ConseilTexte.page(ctx, { page, entete, pied }, avecDeces ? 6 : 5);
 
-  // ---- 7. hypothèses et sources
+  // ---- feuille de route : les échéances à venir du client, et ce que devient sa retraite si une hypothèse tourne mal
+  const numeroRoute = avecDeces ? 8 : 7;
+  const route = Vie.feuilleDeRoute(dossierMoteur, regles, { impots });
+  const tenue = Vie.resistance(dossierMoteur, regles, { impots }), chocs = tenue.chocs.filter(c => c.applicable);
+  const valeursEtape = e => ({ m: f.chf(e.v.montant ?? 0), e: f.chf(e.v.economie ?? 0), a: e.v.depart ?? '', d: e.v.mois ? `${String(e.v.mois).padStart(2, '0')}.${e.v.anneeRente}` : '' });
+  const nomChoc = c => t('vt_' + c.cle, { a: `${((c.v.a ?? 0) * 100).toFixed(1)} %`, age: c.v.age ?? '', part: f.pourcent(c.v.part ?? 0) });
+  const pageRoute = route.length ? page('', entete(t('vi_route')),
+    h('p', { class: 'r-texte' }, t('vi_route_d')),
+    h('ol', { class: 'etapes' }, ...route.map((e, i) => h('li', { 'data-prochaine': String(i === 0) },
+      h('b', {}, String(e.annee)), h('small', {}, t('vi_ans', { n: e.age })), h('p', {}, t('vr_' + e.cle, valeursEtape(e)))))),
+    h('p', { class: 'petit' }, t('vi_route_note')),
+    ...(chocs.length ? [h('h3', {}, t('vi_tenue')),
+      h('table', { class: 'r-tableau' },
+        h('thead', {}, h('tr', {}, h('th', {}, t('vi_tenue')), h('th', {}, `${t('lacune')} ${t('parMois')}`), h('th', {}, t('couvert')))),
+        h('tbody', {}, ...chocs.map(c => h('tr', {}, h('th', {}, nomChoc(c)),
+          h('td', { class: c.lacune > 0 ? 'lacune' : 'ok' }, c.lacune > 0 ? '− ' + f.chf(c.lacuneMensuelle) : '✓'), h('td', {}, f.pourcent(Math.min(1, c.couverture))))))),
+      h('p', { class: 'petit' }, t('vi_tenue_note'))] : []),
+    pied(numeroRoute)) : null;
+  const decalage = pageRoute ? 1 : 0;
+
+  // ---- hypothèses et sources
   const hyp = a.hypotheses;
   const sources = page('', entete(t('rp_hypotheses')),
     h('table', { class: 'r-fiche large' },
@@ -143,9 +163,9 @@ export function afficher(ctx) {
     h('ul', { class: 'r-sources' }, ...['rp_s_enfants', 'rp_s_mariage', 'rp_s_depart', 'rp_s_capitaux', 'rp_s_caisses'].map(cle => h('li', {}, t(cle)))),
     h('h3', {}, t('rp_sources')),
     h('ul', { class: 'r-sources' }, ...Object.values(regles.sources).map(s => h('li', {}, String(s)))),
-    pied(avecDeces ? 8 : 7));
-  // ---- 8 et 9. informations de l'intermédiaire (art. 45 LSA) et procès-verbal de conseil, avec les signatures
-  const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, avecDeces ? 9 : 8);
+    pied((avecDeces ? 8 : 7) + decalage));
+  // ---- informations de l'intermédiaire (art. 45 LSA) et procès-verbal de conseil, avec les signatures
+  const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, (avecDeces ? 9 : 8) + decalage);
 
-  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, sources, ...legales].filter(Boolean)));
+  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, pageRoute, sources, ...legales].filter(Boolean)));
 }
