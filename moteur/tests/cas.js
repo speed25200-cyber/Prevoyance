@@ -431,4 +431,16 @@ export function casScenarios(egal, { r26, r27, i26, c26 }) {
   egal('Résistance : vivre cinq ans de plus demande plus de capital', choc('longevite').capital > tenue.base.capital, true);
   egal('Résistance : sans 3e pilier, le choc de rendement ne s’applique pas', [choc('rendement').applicable, choc('rendement').lacune], [false, tenue.base.lacune]);
   egal('Résistance : le dossier d’origine n’est pas modifié', [famille.hypotheses, famille.besoins, famille.personne.lpp.tauxConversion], [undefined, undefined, undefined]);
+
+  // ---- comparaison d'offres : la rente et le capital du plan proposé comblent les risques de la famille
+  const R = plan.mesures.renteInvalidite, K = plan.mesures.capitalDeces ?? 0;
+  const duel = Scenarios.comparerOffres(famille, r26, [{ prime: 1800, renteInvalidite: R, capitalDeces: K }, { prime: 1200, renteInvalidite: R / 2, capitalDeces: K }]);
+  egal('Offres : celle du plan comble les risques, la demi-rente laisse une lacune', [duel.offres[0].couvre, duel.offres[1].couvre, duel.offres[1].lacuneInvalidite > 0], [true, false, true]);
+  egal('Offres : on retient celle qui comble, même plus chère', duel.meilleure, 0);
+  egal('Offres : à couverture égale, la moins chère', Scenarios.comparerOffres(famille, r26, [{ prime: 1800, renteInvalidite: R, capitalDeces: K }, { prime: 1500, renteInvalidite: R, capitalDeces: K }]).meilleure, 1);
+  const large = Scenarios.comparerOffres(famille, r26, [{ prime: 2400, renteInvalidite: R + 6000, capitalDeces: K }]);
+  egal('Offres : rente au-delà du besoin = rente offerte moins la plus grande lacune', large.offres[0].excedentRente, R + 6000 - large.avant.lacuneInvalidite, 1);
+  egal('Offres : une seule offre saisie, pas de préférence', large.meilleure, null);
+  egal('Offres : une offre vide ne change rien', Scenarios.comparerOffres(famille, r26, [{}]).offres[0], { saisie: false, prime: 0, score: plan.avant.score, gainScore: 0,
+    lacuneInvalidite: large.avant.lacuneInvalidite, lacuneInvaliditeMensuelle: Math.round(large.avant.lacuneInvalidite / 12), capitalDecesManquant: large.avant.capitalDeces, couvre: false, excedentRente: 0, excedentCapital: 0 });
 }

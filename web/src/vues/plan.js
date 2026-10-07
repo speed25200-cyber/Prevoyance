@@ -36,6 +36,12 @@ export function monter(ctx, racine) {
     h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', value: primes()[cle] ? f.nombre(primes()[cle]) : '',
       oninput: e => { const brut = e.target.value.replace(/[^\d]/g, ''); primes()[cle] = brut === '' ? 0 : +brut; garder(); afficher(ctx); },
       onblur: e => { e.target.value = primes()[cle] ? f.nombre(primes()[cle]) : ''; } })));
+  // les deux offres comparées : montants saisis par le conseiller, gardés dans le dossier
+  const offres = () => { const o = (d.offres ??= {}); return (o[d.cible] ??= [{}, {}]); };
+  const offre = (i, cle, libelle) => h('label', { class: 'champ' }, h('span', {}, t(libelle)), h('div', { class: 'montant' },
+    h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', value: offres()[i][cle] ? f.nombre(offres()[i][cle]) : '',
+      oninput: e => { const brut = e.target.value.replace(/[^\d]/g, ''); offres()[i][cle] = brut === '' ? 0 : +brut; garder(); afficher(ctx); },
+      onblur: e => { e.target.value = offres()[i][cle] ? f.nombre(offres()[i][cle]) : ''; } })));
   const ref = (cle, e) => (r[cle] = e);
   racine.replaceChildren(
     h('div', { class: 'carte plan-tete' },
@@ -60,6 +66,13 @@ export function monter(ctx, racine) {
           h('div', { class: 'rangee' }, prime('renteInvalidite', 'pl_primeInvalidite'), prime('capitalDeces', 'pl_primeDeces')),
           h('div', { class: 'rangee' }, prime('ijm', 'pl_primeIjm'), prime('laa', 'pl_primeLaa')))),
       h('div', { class: 'carte' }, h('h2', {}, t('pl_effet')), ref('effets', h('div', { class: 'effets' })), ref('fiscal', h('div')))),
+    // deux offres reçues, côte à côte : ce que chacune comble, et à quel prix
+    h('div', { class: 'carte' }, h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('of_titre')), h('p', {}, t('of_d')))),
+      h('div', { class: 'champs nus' }, ...[0, 1].flatMap(i => [
+        h('p', { class: 'intertitre' }, t(i ? 'of_b' : 'of_a')),
+        offre(i, 'prime', 'of_prime'), offre(i, 'renteInvalidite', 'of_rente'), offre(i, 'capitalDeces', 'of_capital')])),
+      ref('offres', h('div', {})),
+      h('p', { class: 'petit' }, t('of_note'))),
     h('p', { class: 'avertissement' }, t('pl_note')));
   afficher(ctx);
 }
@@ -86,6 +99,20 @@ export function afficher(ctx) {
         h('i', { class: 'apres', style: { width: `${Math.min(100, y.total / echelle * 100)}%`, background: couleurCouverture(y.couverture) } })),
       h('small', {}, x.lacune > 0 ? t('pl_avantLacune', { m: f.chf(x.lacuneMensuelle) }) : t('pl_dejaCouvert')));
   }));
+  // les deux offres : chacune appliquée au dossier, puis comparées
+  if (r.offres) {
+    const saisies = dossier().offres?.[dossier().cible] ?? [{}, {}];
+    const duel = Scenarios.comparerOffres(ctx.dossierMoteur, ctx.regles, saisies, { impots });
+    r.offres.replaceChildren(h('div', { class: 'options' }, ...duel.offres.map((o, i) => h('div', { class: 'option' + (duel.meilleure === i ? ' meilleure' : '') },
+      h('h3', {}, t(i ? 'of_b' : 'of_a') + (duel.meilleure === i ? ` · ${t('of_retenir')}` : '')),
+      h('b', {}, o.saisie ? `${f.chf(o.prime)} ${t('parAn')}` : '—'),
+      h('small', {}, !o.saisie ? t('of_vide') : o.couvre ? t('of_couvre') : t('of_partiel')),
+      o.saisie ? h('ul', {},
+        h('li', {}, h('span', {}, t('of_score')), h('b', {}, `${o.score} / 100`)),
+        h('li', {}, h('span', {}, t('of_resteInv')), h('b', {}, o.lacuneInvalidite > 0 ? `− ${f.chf(o.lacuneInvaliditeMensuelle)} ${t('parMois')}` : '✓')),
+        h('li', {}, h('span', {}, t('of_resteDeces')), h('b', {}, o.capitalDecesManquant > 0 ? f.chf(o.capitalDecesManquant) : '✓')),
+        o.excedentRente > 0 ? h('li', {}, h('span', {}, t('of_excedent')), h('b', {}, `${f.chf(o.excedentRente)} ${t('parAn')}`)) : null) : null))));
+  }
   // effet fiscal des versements déductibles
   const a = avant, brut = a.personne.revenu + (a.conjoint && a.marie ? a.conjoint.revenu : 0);
   const eco = montant => (impots && a.canton ? Impots.economieDeduction(impots, a.canton, a.marie, brut, montant, a.enfantsACharge) ?? 0 : Math.round(montant * a.potentiels.tauxMarginal));

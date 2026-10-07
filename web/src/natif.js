@@ -51,10 +51,24 @@ export function analyse(ctx) {
     alertesTitre: t('alertes'),
     alertes: [...a.alertes].sort((p, q) => GRAVITES.indexOf(p.gravite) - GRAVITES.indexOf(q.gravite)).map(al => ({ gravite: al.gravite, texte: texteAlerte(ctx, al) })),
     avertissement: t('avertissement'),
+    menage: menage(ctx),
     suivi: evolution ? d.suivi.map(p => ({ jour: p.j, score: p.s })) : [],
     suiviTexte: !evolution ? '' : evolution.ecart === 0 ? t('vi_suiviStable', { d: jour(evolution.depuis) })
       : t(evolution.ecart > 0 ? 'vi_suiviPlus' : 'vi_suiviMoins', { n: Math.abs(evolution.ecart), d: jour(evolution.depuis) }),
   };
+}
+
+/** Le ménage à la retraite : les revenus des deux conjoints additionnés, face à leur besoin commun. `null` pour une personne seule. */
+function menage(ctx) {
+  const { t, f, analyse: a, analyseAutre: b } = ctx;
+  if (!b) return null;
+  const x = a.risques.retraite, y = b.risques.retraite, besoin = x.besoin + y.besoin, total = x.total + y.total;
+  const lacune = Math.max(0, besoin - total), echelle = Math.max(besoin, total, 1);
+  const noms = dossier().cible === 'conjoint' ? [t('conjointCourt'), t('client')] : [t('client'), t('conjointCourt')];
+  return { titre: t('mn_titre'), note: t('mn_d'), lacune: lacune > 0, verdict: lacune > 0 ? `− ${f.chf(lacune / 12)} ${t('parMois')}` : t('aucuneLacune'),
+    parts: [x.total / echelle, y.total / echelle, lacune / echelle],
+    lignes: [{ nom: noms[0], valeur: f.chf(x.total) }, { nom: noms[1], valeur: f.chf(y.total) }, { nom: t('mn_besoin'), valeur: f.chf(besoin) }],
+    plafond: a.marie ? t('mn_plafond', { m: f.chf(ctx.regles.avs.renteMaxMensuelle * ctx.regles.avs.plafondCoupleFacteur) }) : '' };
 }
 
 // ---------------------------------------------------------------------------------------------- écrans décrits

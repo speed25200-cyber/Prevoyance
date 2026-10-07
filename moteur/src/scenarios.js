@@ -209,3 +209,37 @@ export function proposerPlan(dossier, regles, contexte = {}) {
   }
   return { mesures, avant, apres };
 }
+
+/**
+ * Compare des offres d'assurance de risque (rente d'incapacité de gain, capital décès) : chacune est appliquée au
+ * dossier, puis l'analyse est refaite. On voit ce que chaque offre comble, ce qu'elle laisse, ce qu'elle assure de
+ * trop, et à quel prix. L'offre à retenir est celle qui comble les lacunes de risque au meilleur prix ; si aucune ne
+ * les comble, celle qui couvre le mieux, puis la moins chère.
+ * Seules les prestations chiffrées sont comparées : délais d'attente, exclusions et excédents se lisent dans l'offre.
+ * @param {import('./analyse.js').Dossier} dossier @param {any} regles
+ * @param {{prime?: number, renteInvalidite?: number, capitalDeces?: number}[]} offres @param {{impots?: any}} [contexte]
+ */
+export function comparerOffres(dossier, regles, offres, contexte = {}) {
+  const avant = analyser(dossier, regles, contexte);
+  // la plus grande lacune à venir (celle d'après les rentes d'enfants), comme dans le plan proposé
+  const risques = a => ({ invalidite: Math.max(a.risques.invaliditeMaladie.lacuneMax ?? 0, a.risques.invaliditeAccident.lacuneMax ?? 0,
+                                               a.risques.invaliditeMaladie.lacune, a.risques.invaliditeAccident.lacune),
+                          deces: Math.max(a.risques.decesMaladie.capital ?? 0, a.risques.decesAccident.capital ?? 0) });
+  const besoin = risques(avant);
+  const resultats = offres.map(o => {
+    const rente = Math.max(0, o.renteInvalidite ?? 0), capital = Math.max(0, o.capitalDeces ?? 0), prime = Math.max(0, o.prime ?? 0);
+    const saisie = rente > 0 || capital > 0;
+    const apres = saisie ? analyser(appliquerMesures(dossier, { renteInvalidite: rente, capitalDeces: capital }, regles), regles, contexte) : avant;
+    const reste = risques(apres);
+    return { saisie, prime, score: apres.score, gainScore: apres.score - avant.score,
+             lacuneInvalidite: reste.invalidite, lacuneInvaliditeMensuelle: arrondi(reste.invalidite / 12), capitalDecesManquant: reste.deces,
+             couvre: saisie && reste.invalidite === 0 && reste.deces === 0,
+             // ce qui est assuré au-delà du besoin : une prime payée pour rien
+             excedentRente: arrondi(Math.max(0, rente - besoin.invalidite)), excedentCapital: arrondi(Math.max(0, capital - besoin.deces)) };
+  });
+  const candidats = resultats.map((r, i) => ({ r, i })).filter(x => x.r.saisie);
+  candidats.sort((x, y) => (Number(y.r.couvre) - Number(x.r.couvre)) || (x.r.couvre && y.r.couvre ? x.r.prime - y.r.prime : (y.r.score - x.r.score) || (x.r.prime - y.r.prime)));
+  // une préférence n'a de sens qu'entre deux offres saisies
+  return { avant: { score: avant.score, lacuneInvalidite: besoin.invalidite, capitalDeces: besoin.deces }, offres: resultats,
+           meilleure: candidats.length >= 2 ? candidats[0].i : null };
+}

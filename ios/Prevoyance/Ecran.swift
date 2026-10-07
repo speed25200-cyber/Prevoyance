@@ -286,7 +286,7 @@ final class Navigation: ObservableObject {
         guard ProcessInfo.processInfo.environment["PREVOYANCE_TOUR"] == "1" else { return }
         try? await Task.sleep(nanoseconds: 7_000_000_000)
         let tour: [(String, [Lieu])] = [
-            ("client", [.client]), ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]),
+            ("client", [.client]), ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]), ("offres", [.client, .conseil, .carte("plan", 4)]),
             ("scenarios", [.client, .scenarios]), ("question", [.client, .scenarios, .carte("scenarios", 0)]),
             ("rapport", [.client, .rapport]), ("dossier", [.client, .dossier]),
             ("rubrique", [.client, .dossier, .rubrique(rubriques.first?.id ?? "client")]), ("donnees", [.client, .donnees]), ("accueil", []),

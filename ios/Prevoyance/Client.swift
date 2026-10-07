@@ -185,9 +185,13 @@ struct ClientNatif: View {
                     }
                     score(a)
                     if classe == .regular { acces(a) }
+                    if classe == .regular, let menage = a.menage { foyer(menage) }
                 } droite: {
                     fil(a)
-                    if classe != .regular { acces(a) }
+                    if classe != .regular {
+                        if let menage = a.menage { foyer(menage) }
+                        acces(a)
+                    }
                 }
             } else {
                 Attente()
@@ -213,6 +217,45 @@ struct ClientNatif: View {
             lien(.scenarios, "scenarios", "arrow.triangle.branch")
             if !navigation.presentation { lien(.rapport, "rapport", "doc.text") }
         }
+    }
+
+    /// Le ménage à la retraite : ce que les deux conjoints touchent ensemble, face à leur besoin commun.
+    private func foyer(_ m: AnalyseModele.Menage) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(m.titre).font(.system(size: 17, weight: .semibold))
+                Spacer(minLength: 8)
+                Text(m.verdict).font(.system(size: 16, weight: .semibold)).monospacedDigit().foregroundStyle(m.lacune ? Color.primary : Teinte.accent)
+            }
+            GeometryReader { cadre in
+                HStack(spacing: 2) {
+                    ForEach(Array(m.parts.enumerated()), id: \.offset) { rang, part in
+                        if part > 0 {
+                            Capsule().fill(rang == 0 ? Teinte.pilier2 : rang == 1 ? Teinte.pilier3 : Teinte.manque)
+                                .frame(width: Swift.max(3, (cadre.size.width - 6) * Swift.min(1, part)))
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(height: 10)
+            VStack(spacing: 0) {
+                ForEach(Array(m.lignes.enumerated()), id: \.offset) { rang, ligne in
+                    HStack(spacing: 10) {
+                        if rang < 2 { Circle().fill(rang == 0 ? Teinte.pilier2 : Teinte.pilier3).frame(width: 9, height: 9) }
+                        Text(ligne.nom).fontWeight(rang == 2 ? .semibold : .regular)
+                        Spacer(minLength: 8)
+                        Text(ligne.valeur).fontWeight(.semibold).monospacedDigit()
+                    }
+                    .font(.system(size: 15))
+                    .padding(.vertical, 9)
+                    .overlay(alignment: .top) { Divider().opacity(0.6) }
+                }
+            }
+            if !m.plafond.isEmpty { Text(m.plafond).font(.system(size: 12)).foregroundStyle(Color.secondary).fixedSize(horizontal: false, vertical: true) }
+        }
+        .padding(16)
+        .verreArrondi(rayon: 16)
     }
 
     private func score(_ a: AnalyseModele) -> some View {

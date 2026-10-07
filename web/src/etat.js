@@ -38,6 +38,8 @@ export const dossierExemple = () => ({
   besoins: { retraite: 0.8, invalidite: 0.9, deces: 0.75 }, bien: { valeur: 980000, dette: 620000 },
   // deux rendez-vous passés fictifs, pour montrer le suivi dans le temps sur l'exemple
   suivi: [{ j: '2025-10-02', s: 81, r: 1650, i: 640, d: 310 }, { j: '2026-04-14', s: 87, r: 1410, i: 420, d: 180 }],
+  // deux offres fictives, pour montrer la comparaison sur l'exemple
+  offres: { personne: [{ prime: 1850, renteInvalidite: 38400, capitalDeces: 170000 }, { prime: 1420, renteInvalidite: 24000, capitalDeces: 170000 }] },
 });
 
 function charger() {
