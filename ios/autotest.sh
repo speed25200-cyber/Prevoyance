@@ -24,7 +24,7 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
   local nom="$1" udid dossier fichier tour="${5:-0}" paysage=0 taille=440 qualite=30
   # « paysage » : l'iPad est tourné ; « grand » : une capture plus fine (une ou deux par passage, le journal est court)
   case " $VOULUS " in *" paysage "*) [ "$nom" = ipad ] && paysage=1 ;; esac
-  case " $VOULUS " in *" grand "*) taille=1000; qualite=26 ;; esac
+  case " $VOULUS " in *" grand "*) taille=760; qualite=24 ;; esac
   case " $VOULUS " in *" ipad "*) if [ "$nom" = ipad ]; then tour=1; else tour=0; fi ;; esac
   udid=$(xcrun simctl list devices available | grep -E "$2" | tail -1 | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
   if [ -z "$udid" ]; then echo "error: aucun simulateur pour $nom"; ECHECS=$((ECHECS + 1)); return; fi
