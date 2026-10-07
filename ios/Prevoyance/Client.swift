@@ -208,9 +208,10 @@ struct ClientNatif: View {
             .buttonStyle(Appui())
         }
         HStack(spacing: 10) {
-            lien(.dossier, "dossier", "person.text.rectangle")
+            // en présentation client, la saisie et le rapport (outils du conseiller) se retirent
+            if !navigation.presentation { lien(.dossier, "dossier", "person.text.rectangle") }
             lien(.scenarios, "scenarios", "arrow.triangle.branch")
-            lien(.rapport, "rapport", "doc.text")
+            if !navigation.presentation { lien(.rapport, "rapport", "doc.text") }
         }
     }
 
@@ -222,6 +223,24 @@ struct ClientNatif: View {
                 .contentTransition(.numericText())
                 .animation(.easeInOut(duration: 0.4), value: a.score)
             Text(a.scoreNom.uppercased()).font(.system(size: 12, weight: .semibold)).tracking(2.4).foregroundStyle(Color.secondary)
+            if a.suivi.count >= 2 {
+                // le chemin parcouru d'un rendez-vous à l'autre
+                Chart(a.suivi) { jour in
+                    LineMark(x: .value("jour", jour.id), y: .value("score", jour.score))
+                        .interpolationMethod(.monotone)
+                        .foregroundStyle(Teinte.accent)
+                        .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
+                    if jour.id == a.suivi.count - 1 {
+                        PointMark(x: .value("jour", jour.id), y: .value("score", jour.score)).foregroundStyle(Teinte.accent).symbolSize(50)
+                    }
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartYScale(domain: 0...100)
+                .frame(width: 180, height: 38)
+                .padding(.top, 10)
+                Text(a.suiviTexte).font(.system(size: 13)).foregroundStyle(Color.secondary)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 22)
@@ -489,7 +508,7 @@ struct ConseilNatif: View {
                         }
                     }
                     ForEach(conseil.blocs) { bloc in
-                        if bloc.type == "bouton" || bloc.type == "note" {
+                        if (bloc.type == "bouton" || bloc.type == "note") && !navigation.presentation {
                             BlocVue(navigation: navigation, bloc: bloc).id("\(navigation.versionEcran)-c-\(bloc.id)")
                         }
                     }
@@ -502,7 +521,7 @@ struct ConseilNatif: View {
         .navigationTitle(navigation.noms["plan"] ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { OutilsEcran(navigation: navigation) }
-        .boutonBas(navigation.noms["rapport"] ?? "") { navigation.entrer(.rapport) }
+        .boutonBas(navigation.presentation ? "" : (navigation.noms["rapport"] ?? "")) { navigation.entrer(.rapport) }
     }
 
     private func mesures(_ bloc: BlocEcran) -> some View {

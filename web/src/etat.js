@@ -36,6 +36,8 @@ export const dossierExemple = () => ({
               ijm: true, avoir3a: 41000, versement3a: 3600, fortune: 30000 },
   conjoint: { dateNaissance: '1985-11-08', sexe: 'h', statut: 'independant', revenu: 78000, avoir3a: 22000, versement3a: 6000 },
   besoins: { retraite: 0.8, invalidite: 0.9, deces: 0.75 }, bien: { valeur: 980000, dette: 620000 },
+  // deux rendez-vous passés fictifs, pour montrer le suivi dans le temps sur l'exemple
+  suivi: [{ j: '2025-10-02', s: 81, r: 1650, i: 640, d: 310 }, { j: '2026-04-14', s: 87, r: 1410, i: 420, d: 180 }],
 });
 
 function charger() {

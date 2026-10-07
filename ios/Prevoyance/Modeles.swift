@@ -91,6 +91,7 @@ struct AnalyseModele: Equatable {
     struct Source: Equatable, Identifiable { let id: Int; let nom: String; let montant: String; let pilier: Int; let part: Double }
     struct Point: Equatable, Identifiable { let id: Int; let besoin: Double; let salaire: Double; let p1: Double; let p2: Double; let p3: Double }
     struct Alerte: Equatable, Identifiable { let id: Int; let gravite: String; let texte: String }
+    struct Jour: Equatable, Identifiable { let id: Int; let jour: String; let score: Double }
 
     let score: Int
     let scoreNom: String
@@ -116,6 +117,9 @@ struct AnalyseModele: Equatable {
     let alertes: [Alerte]
     /// Libellés de la légende : salaire, 1er, 2e, 3e pilier, besoin.
     let legende: [String]
+    /// Le score de chaque jour d'analyse (vide tant qu'il n'y en a qu'un) et la phrase qui dit le chemin parcouru.
+    let suivi: [Jour]
+    let suiviTexte: String
 
     init?(_ d: [String: Any]) {
         guard d["risques"] != nil else { return nil }
@@ -141,5 +145,7 @@ struct AnalyseModele: Equatable {
         alertes = liste("alertes").enumerated().map { Alerte(id: $0.offset, gravite: $0.element["gravite"] as? String ?? "info", texte: $0.element["texte"] as? String ?? "") }
         let l = d["legende"] as? [String: Any] ?? [:]
         legende = ["salaire", "p1", "p2", "p3", "besoin"].map { l[$0] as? String ?? $0 }
+        suivi = liste("suivi").enumerated().map { Jour(id: $0.offset, jour: $0.element["jour"] as? String ?? "", score: n($0.element, "score")) }
+        suiviTexte = s("suiviTexte")
     }
 }

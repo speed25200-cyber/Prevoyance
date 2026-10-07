@@ -35,7 +35,10 @@ struct MenuOutils: View {
             Picker("", selection: Binding(get: { navigation.langue }, set: { navigation.regler(langue: $0) })) {
                 ForEach(navigation.langues, id: \.self) { code in Text(code.uppercased()).tag(code) }
             }
-            if navigation.chemin.last != .donnees {
+            Toggle(isOn: Binding(get: { navigation.presentation }, set: { navigation.presentation = $0 })) {
+                Label(navigation.textes["presentation"] ?? "Présentation client", systemImage: "person.2.wave.2")
+            }
+            if navigation.chemin.last != .donnees && !navigation.presentation {
                 Button {
                     navigation.entrer(.donnees)
                 } label: {
@@ -48,9 +51,12 @@ struct MenuOutils: View {
                 Label(navigation.textes["accueil"] ?? "Accueil", systemImage: "house")
             }
         } label: {
-            Text("\(String(navigation.annee)) · \(navigation.langue.uppercased())")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.primary)
+            HStack(spacing: 6) {
+                if navigation.presentation { Image(systemName: "person.2.wave.2").font(.system(size: 13, weight: .semibold)).foregroundStyle(Teinte.accent) }
+                Text("\(String(navigation.annee)) · \(navigation.langue.uppercased())")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.primary)
+            }
         }
     }
 }

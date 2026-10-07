@@ -40,6 +40,17 @@ export async function executer(finale = 'analyse') {
     noter('coffre : le bon code rend le dossier (120 000 caractères)', rendu?.dossiers?.[0]?.nom === 'Dupont Marie' && rendu.dossiers[0].image.length === 120000);
     Verrou.fermer();
 
+    // suivi dans le temps : un point par jour, le dernier état du jour fait foi, la liste reste bornée
+    const Suivi = await import('./suivi.js');
+    const p1 = { j: '2026-03-01', s: 70, r: 900, i: 0, d: 0 }, p2 = { j: '2026-03-01', s: 74, r: 700, i: 0, d: 0 }, p3 = { j: '2026-09-01', s: 88, r: 200, i: 0, d: 0 };
+    const un = Suivi.noter(undefined, p1), deux = Suivi.noter(un.suivi, p2), trois = Suivi.noter(deux.suivi, p3), meme = Suivi.noter(trois.suivi, p3);
+    noter('suivi : un point par jour, le dernier état fait foi', un.suivi.length === 1 && deux.suivi.length === 1 && deux.suivi[0].s === 74 && trois.suivi.length === 2 && !meme.change);
+    noter('suivi : écart depuis le premier point', Suivi.evolution(trois.suivi)?.ecart === 14 && Suivi.evolution(un.suivi) === null);
+    let longue = [];
+    for (let n = 0; n < 50; n++) longue = Suivi.noter(longue, { j: `2026-01-${String(n + 1).padStart(2, '0')}`, s: n, r: 0, i: 0, d: 0 }).suivi;
+    noter('suivi : liste bornée', longue.length === Suivi.MAXIMUM && longue[longue.length - 1].s === 49);
+    noter('suivi : le dossier ouvert a son point du jour', (p.etat.dossiers.find(x => x.id === p.etat.ouvert)?.suivi ?? []).length >= 1);
+
     // les six écrans : chacun s'affiche seul, avec du contenu, sans dépasser la largeur
     const affiche = id => getComputedStyle(/** @type {HTMLElement} */ (document.getElementById(id))).display !== 'none';
     for (const vue of ['dossier', 'analyse', 'scenarios', 'plan', 'rapport', 'donnees']) {

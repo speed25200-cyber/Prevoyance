@@ -21,6 +21,7 @@ import * as VueDonnees from './vues/donnees.js';
 import { h, $ } from './ui.js';
 import { installerFond } from './fond.js';
 import * as Natif from './natif.js';
+import * as Suivi from './suivi.js';
 import * as Verrou from './verrou.js';
 import * as EcranVerrou from './verrou-ecran.js';
 
@@ -46,7 +47,7 @@ function marquer() {
   placerBulle();
   // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
   appNative()?.postMessage({ actif, visible: true, analyse: Natif.analyse(ctx), dossiers: resumeDossiers(),
-    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil'), suivant: ctx.t('accueilSuivant'), terminer: ctx.t('accueilTerminer') },
+    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil'), suivant: ctx.t('accueilSuivant'), terminer: ctx.t('accueilTerminer'), presentation: ctx.t('vi_presentation') },
     langue: etat.langue, langues: LANGUES, annee: etat.annee, annees: ANNEES, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
 }
 const appNative = () => /** @type {any} */ (window).webkit?.messageHandlers?.onglet ?? null;
@@ -137,6 +138,12 @@ async function calculer() {
     return;
   }
   signalerErreur(false);
+  // suivi : le point du jour de la personne principale (un par jour, le dernier état fait foi)
+  const suivi = dossier();
+  if (suivi.cible !== 'conjoint' && ctx.analyse) {
+    const note = Suivi.noter(suivi.suivi, Suivi.pointDe(ctx.analyse, new Date().toISOString().slice(0, 10)));
+    if (note.change) { suivi.suivi = note.suivi; garder(); }
+  }
   MODULES[etat.vue].afficher(ctx);
   // l'app dessine elle-même l'analyse : on lui remet le modèle d'affichage à chaque calcul
   appNative()?.postMessage({ analyse: Natif.analyse(ctx) });

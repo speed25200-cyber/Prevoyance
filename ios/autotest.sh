@@ -47,7 +47,7 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
   fi
   # tour des écrans : l'app signale chaque écran affiché (fichier tour_<nom>), il est photographié aussitôt
   if [ "$tour" = "1" ]; then
-    for e in risque conseil reglages scenarios question rapport dossier rubrique donnees accueil; do
+    for e in client risque conseil reglages scenarios question rapport dossier rubrique donnees accueil; do
       for _ in $(seq 1 40); do [ -f "$dossier/Documents/tour_$e" ] && break; sleep 0.5; done
       [ -f "$dossier/Documents/tour_$e" ] || { echo "error: $nom — écran $e jamais affiché"; ECHECS=$((ECHECS + 1)); continue; }
       borne 60 xcrun simctl io "$udid" screenshot "build/captures/${nom}_$e.png" >/dev/null 2>&1

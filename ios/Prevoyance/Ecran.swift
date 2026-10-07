@@ -75,6 +75,10 @@ final class Navigation: ObservableObject {
     /// Les autres écrans, tels que la page les décrit, par vue.
     @Published var ecrans: [String: [CarteEcran]] = [:]
     @Published var versionEcran = 0
+    /// Présentation client : les outils du conseiller se retirent et l'écran ne se met pas en veille.
+    @Published var presentation = false {
+        didSet { UIApplication.shared.isIdleTimerDisabled = presentation }
+    }
     /// Autotest : le plus grand nombre de cartes reçues pour chaque écran décrit.
     private var cartesRecues: [String: Int] = [:]
 
@@ -282,7 +286,7 @@ final class Navigation: ObservableObject {
         guard ProcessInfo.processInfo.environment["PREVOYANCE_TOUR"] == "1" else { return }
         try? await Task.sleep(nanoseconds: 7_000_000_000)
         let tour: [(String, [Lieu])] = [
-            ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]),
+            ("client", [.client]), ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]),
             ("scenarios", [.client, .scenarios]), ("question", [.client, .scenarios, .carte("scenarios", 0)]),
             ("rapport", [.client, .rapport]), ("dossier", [.client, .dossier]),
             ("rubrique", [.client, .dossier, .rubrique(rubriques.first?.id ?? "client")]), ("donnees", [.client, .donnees]), ("accueil", []),

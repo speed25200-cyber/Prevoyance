@@ -9,6 +9,7 @@
 
 import { etat, dossier } from './etat.js';
 import { RISQUES, texteAlerte, pointsDuGraphique } from './vues/analyse.js';
+import * as Suivi from './suivi.js';
 
 const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
 
@@ -20,6 +21,9 @@ export function analyse(ctx) {
   const plusTard = r => r.lacune === 0 && (r.lacuneMax ?? 0) > 0;
   const verse = n => x.sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0);
   const points = pointsDuGraphique(a, x);
+  // le chemin parcouru : score de chaque jour d'analyse de la personne principale, et l'écart depuis le premier
+  const evolution = d.cible !== 'conjoint' ? Suivi.evolution(d.suivi) : null;
+  const jour = j => new Date(j + 'T12:00:00').toLocaleDateString(etat.langue + '-CH', { day: 'numeric', month: 'numeric', year: 'numeric' });
   return {
     score: a.score, scoreNom: t('score'),
     cible: d.avecConjoint ? { choix: d.cible === 'conjoint' ? 'conjoint' : 'personne', personne: t('client'), conjoint: t('conjointCourt') } : null,
@@ -47,6 +51,9 @@ export function analyse(ctx) {
     alertesTitre: t('alertes'),
     alertes: [...a.alertes].sort((p, q) => GRAVITES.indexOf(p.gravite) - GRAVITES.indexOf(q.gravite)).map(al => ({ gravite: al.gravite, texte: texteAlerte(ctx, al) })),
     avertissement: t('avertissement'),
+    suivi: evolution ? d.suivi.map(p => ({ jour: p.j, score: p.s })) : [],
+    suiviTexte: !evolution ? '' : evolution.ecart === 0 ? t('vi_suiviStable', { d: jour(evolution.depuis) })
+      : t(evolution.ecart > 0 ? 'vi_suiviPlus' : 'vi_suiviMoins', { n: Math.abs(evolution.ecart), d: jour(evolution.depuis) }),
   };
 }
 
