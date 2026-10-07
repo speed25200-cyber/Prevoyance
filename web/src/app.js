@@ -47,7 +47,7 @@ function marquer() {
   placerBulle();
   // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
   appNative()?.postMessage({ actif, visible: true, analyse: Natif.analyse(ctx), dossiers: resumeDossiers(),
-    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil'), suivant: ctx.t('accueilSuivant'), terminer: ctx.t('accueilTerminer'), presentation: ctx.t('vi_presentation'), risques: ctx.t('vi_risques'), synthese: ctx.t('vi_synthese') },
+    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil'), suivant: ctx.t('accueilSuivant'), terminer: ctx.t('accueilTerminer'), presentation: ctx.t('vi_presentation'), risques: ctx.t('vi_risques'), synthese: ctx.t('vi_synthese'), sousTitre: ctx.t('vi_sousTitre'), devise: ctx.t('vi_devise'), bonjour: ctx.t('vi_bonjour'), slogan: ctx.t('vi_slogan'), metiers: ctx.t('vi_metiers') },
     langue: etat.langue, langues: LANGUES, annee: etat.annee, annees: ANNEES, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
 }
 const appNative = () => /** @type {any} */ (window).webkit?.messageHandlers?.onglet ?? null;

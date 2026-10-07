@@ -225,8 +225,8 @@ struct VerreArrondi: ViewModifier {
     func body(content: Content) -> some View {
         let forme = RoundedRectangle(cornerRadius: min(rayon, 16), style: .continuous)
         return content
-            .background(Teinte.glace.opacity(0.07), in: forme)
-            .overlay(forme.strokeBorder(Teinte.glace.opacity(0.16), lineWidth: 1))
+            .background(LinearGradient(colors: [Teinte.carteHaut, Teinte.carteBas], startPoint: .top, endPoint: .bottom), in: forme)
+            .overlay(forme.strokeBorder(Teinte.accent.opacity(0.18), lineWidth: 1))
     }
 }
 

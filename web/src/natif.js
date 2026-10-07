@@ -58,9 +58,12 @@ export function analyse(ctx) {
     colonnes: (() => {
       const sources = a.risques.retraite.sources, de = n => sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0);
       const plus = Math.max(de(1), de(2), de(3), 1);
-      return [1, 2, 3].map(n => ({ nom: t(n === 3 ? 'pilier3c' : 'pilier' + n), montant: f.chf(de(n)), part: de(n) / plus }));
+      const tout = Math.max(de(1) + de(2) + de(3), 1);
+      return [1, 2, 3].map(n => ({ nom: t(n === 3 ? 'pilier3c' : 'pilier' + n), montant: f.chf(de(n)), part: de(n) / plus, pourcent: f.pourcent(de(n) / tout) }));
     })(),
     prochaine: prochaine(ctx),
+    // repère de la ligne de vie : l'âge de la retraite (seulement sur la ligne de la retraite)
+    repere: x.cle === 'retraite' ? { age: a.personne.ageRetraite, texte: `${t('retraite')} · ${a.personne.ageRetraite} ${t('ans')}` } : null,
     suivi: evolution ? d.suivi.map(p => ({ jour: p.j, score: p.s })) : [],
     suiviTexte: !evolution ? '' : evolution.ecart === 0 ? t('vi_suiviStable', { d: jour(evolution.depuis) })
       : t(evolution.ecart > 0 ? 'vi_suiviPlus' : 'vi_suiviMoins', { n: Math.abs(evolution.ecart), d: jour(evolution.depuis) }),

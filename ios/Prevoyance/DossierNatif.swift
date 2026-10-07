@@ -6,7 +6,8 @@ struct FondApp: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [Teinte.nuit, Teinte.nuitBasse], startPoint: .top, endPoint: .bottom)
-            RadialGradient(colors: [Teinte.pilier3.opacity(0.16), .clear], center: .topTrailing, startRadius: 0, endRadius: 560)
+            RadialGradient(colors: [Teinte.eclat.opacity(0.20), .clear], center: .topTrailing, startRadius: 0, endRadius: 620)
+            RadialGradient(colors: [Teinte.pilier1.opacity(0.26), .clear], center: .bottomLeading, startRadius: 0, endRadius: 700)
         }
         .ignoresSafeArea()
     }
