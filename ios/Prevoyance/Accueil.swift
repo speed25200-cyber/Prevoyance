@@ -35,7 +35,8 @@ struct Accueil: View {
             } else {
                 ZStack {
                     fond(lateral: false)
-                    liste(haut: 300, mini: 0)
+                    // sur iPad en portrait le film est plus haut : le texte commence sous les piliers
+                    liste(haut: largeur == .regular ? cadre.size.height * 0.5 : 300, mini: 0)
                 }
             }
         }
