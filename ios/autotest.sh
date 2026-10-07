@@ -18,6 +18,7 @@ APP=$(find build/sim/Build/Products -maxdepth 2 -name "Prevoyance.app" | head -1
 [ -d "$APP" ] || { echo "error: app du simulateur introuvable"; exit 1; }
 mkdir -p build/captures
 ECHECS=0
+VOULUS=$(cat autotest-diagnostic 2>/dev/null | tr '\n' ' ')
 
 essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laissé pour la capture ; $4 : taille de la capture du journal
   local nom="$1" udid dossier fichier
@@ -39,9 +40,9 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
   else
     echo "error: $nom — l'autotest n'a rien écrit en deux minutes (page non chargée ?)"; ECHECS=$((ECHECS + 1))
   fi
-  if [ -f "build/captures/$nom.png" ]; then
+  if [ -f "build/captures/$nom.png" ] && [ -z "$VOULUS" ]; then
     sips -Z "$4" -s format jpeg -s formatOptions 32 "build/captures/$nom.png" --out "/tmp/$nom.jpg" >/dev/null 2>&1
-    echo "IMAGE-DEBUT $nom"; base64 -i "/tmp/$nom.jpg" | fold -w 3000; echo "IMAGE-FIN $nom"
+    echo "IMAGE-DEBUT $nom"; base64 -i "/tmp/$nom.jpg" | fold -w 380; echo "IMAGE-FIN $nom"
   fi
   # tour des écrans : l'app signale chaque écran affiché (fichier tour_<nom>), il est photographié aussitôt
   if [ "${5:-0}" = "1" ]; then
@@ -49,8 +50,10 @@ essayer() {   # $1 : nom affiché ; $2 : motif de l'appareil ; $3 : écran laiss
       for _ in $(seq 1 40); do [ -f "$dossier/Documents/tour_$e" ] && break; sleep 0.5; done
       [ -f "$dossier/Documents/tour_$e" ] || { echo "error: $nom — écran $e jamais affiché"; ECHECS=$((ECHECS + 1)); continue; }
       borne 60 xcrun simctl io "$udid" screenshot "build/captures/${nom}_$e.png" >/dev/null 2>&1
+      # le journal relayé est court : seuls les écrans nommés dans autotest-diagnostic y sont écrits
+      case " $VOULUS " in *" $e "*) ;; *) continue ;; esac
       sips -Z 440 -s format jpeg -s formatOptions 30 "build/captures/${nom}_$e.png" --out "/tmp/${nom}_$e.jpg" >/dev/null 2>&1
-      echo "IMAGE-DEBUT ${nom}_$e"; base64 -i "/tmp/${nom}_$e.jpg" | fold -w 3000; echo "IMAGE-FIN ${nom}_$e"
+      echo "IMAGE-DEBUT ${nom}_$e"; base64 -i "/tmp/${nom}_$e.jpg" | fold -w 380; echo "IMAGE-FIN ${nom}_$e"
     done
   fi
   xcrun simctl shutdown "$udid" 2>/dev/null
