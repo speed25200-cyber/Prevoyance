@@ -67,17 +67,7 @@ struct Feuille<Contenu: View>: View {
                 .frame(maxWidth: .infinity)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background {
-            ZStack(alignment: .top) {
-                FondApp()
-                if montagne {
-                    Panorama(ancrage: .trailing)
-                        .frame(height: classe == .regular ? 340 : 230)
-                        .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.45), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
-                        .ignoresSafeArea(edges: .top)
-                }
-            }
-        }
+        .background(FondApp())
     }
 }
 
@@ -190,24 +180,20 @@ struct Anneau: View {
 
     var body: some View {
         ZStack {
-            Circle().stroke(Teinte.glace.opacity(0.14), lineWidth: epaisseur)
+            Circle().stroke(Color.white.opacity(0.12), lineWidth: epaisseur)
             Circle().trim(from: 0, to: CGFloat(Swift.max(0.004, Swift.min(1, part))))
-                .stroke(LinearGradient(colors: [Teinte.pilier1, Teinte.eclat, Teinte.accent], startPoint: .bottomLeading, endPoint: .topTrailing),
+                .stroke(LinearGradient(colors: [Teinte.pilier2, Teinte.eclat, Color.white], startPoint: .bottomLeading, endPoint: .topTrailing),
                         style: StrokeStyle(lineWidth: epaisseur, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: Teinte.eclat.opacity(0.7), radius: epaisseur * 1.2)
+                .shadow(color: Color.white.opacity(0.22), radius: epaisseur * 0.5)
         }
     }
 }
 
-/// Une carte du tableau de bord : verre bleu nuit, filet clair en haut, angles doux.
+/// Une carte du tableau de bord : le verre du système.
 struct TuileBord: ViewModifier {
     func body(content: Content) -> some View {
-        let forme = RoundedRectangle(cornerRadius: 20, style: .continuous)
-        return content
-            .background(LinearGradient(colors: [Teinte.carteHaut, Teinte.carteBas], startPoint: .top, endPoint: .bottom), in: forme)
-            .overlay(forme.strokeBorder(LinearGradient(colors: [Teinte.accent.opacity(0.34), Teinte.accent.opacity(0.08)], startPoint: .top, endPoint: .bottom), lineWidth: 1))
-            .clipShape(forme)
+        content.modifier(VerreCarte(rayon: 24))
     }
 }
 
@@ -333,10 +319,8 @@ struct RailSections: View {
                     .frame(height: 48)
                     .background {
                         if actif {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(LinearGradient(colors: [Teinte.eclat.opacity(0.42), Teinte.pilier1.opacity(0.32)], startPoint: .top, endPoint: .bottom))
-                                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Teinte.accent.opacity(0.55), lineWidth: 1))
-                                .shadow(color: Teinte.eclat.opacity(0.35), radius: 10)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.16))
+                                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8))
                         }
                     }
                     .contentShape(Rectangle())
@@ -370,29 +354,17 @@ struct RailSections: View {
                 .frame(maxWidth: reduite ? .infinity : nil, alignment: .leading)
                 .frame(height: 40)
             if !reduite {
-                // la montagne et la devise, au pied de la barre
-                ZStack(alignment: .bottomLeading) {
-                    Panorama(ancrage: .trailing)
-                        .mask(LinearGradient(colors: [.clear, .black, .black], startPoint: .top, endPoint: .bottom))
-                        .opacity(0.85)
-                    Text(navigation.textes["devise"] ?? "").font(.system(size: 13, weight: .medium)).foregroundStyle(Teinte.accent)
-                        .fixedSize(horizontal: false, vertical: true).padding(12)
-                }
-                .frame(height: 190)
-                .padding(.horizontal, -12)
-                .padding(.bottom, -12)
-                .clipped()
+                Text(navigation.textes["devise"] ?? "").font(.system(size: 12.5)).foregroundStyle(Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 12).padding(.top, 6).padding(.bottom, 4)
             }
         }
         .padding(12)
-        .frame(width: reduite ? 76 : 214)
+        .frame(width: reduite ? 76 : 220)
         .frame(maxHeight: .infinity)
-        .background {
-            // jusqu'en haut et en bas de l'écran, comme un vrai panneau
-            LinearGradient(colors: [Teinte.carteHaut, Teinte.carteBas], startPoint: .top, endPoint: .bottom)
-                .overlay(alignment: .trailing) { Rectangle().fill(Teinte.accent.opacity(0.16)).frame(width: 1) }
-                .ignoresSafeArea()
-        }
+        // un panneau de verre qui flotte au bord de l'écran, comme les barres latérales d'iPadOS
+        .modifier(VerreCarte(rayon: 30))
+        .padding(.leading, 12)
+        .padding(.vertical, 10)
     }
 }
 
@@ -411,18 +383,11 @@ struct OngletsSections: View {
                             navigation.section(section.lieu)
                         } label: {
                             Text(section.nom).font(.system(size: 14, weight: actif ? .semibold : .medium))
-                                .foregroundStyle(actif ? Color.white : Color.primary.opacity(0.75))
+                                .foregroundStyle(actif ? Teinte.boutonEncre : Color.primary.opacity(0.8))
                                 .padding(.horizontal, 15)
                                 .frame(height: 34)
-                                .background {
-                                    if actif {
-                                        Capsule().fill(LinearGradient(colors: [Teinte.eclat, Teinte.pilier1], startPoint: .top, endPoint: .bottom))
-                                            .shadow(color: Teinte.eclat.opacity(0.55), radius: 8)
-                                    } else {
-                                        Capsule().fill(Teinte.carteHaut)
-                                    }
-                                }
-                                .overlay(Capsule().strokeBorder(Teinte.accent.opacity(actif ? 0.6 : 0.16), lineWidth: 1))
+                                .background(actif ? Color.white.opacity(0.92) : Color.white.opacity(0.09), in: Capsule())
+                                .overlay(Capsule().strokeBorder(Color.white.opacity(actif ? 0 : 0.16), lineWidth: 0.8))
                         }
                         .buttonStyle(.plain)
                         .id(section.id)
@@ -465,8 +430,8 @@ struct CadreSections: ViewModifier {
                             } label: {
                                 Image(systemName: "person.2").font(.system(size: 17, weight: .medium)).foregroundStyle(Color.primary)
                                     .frame(width: 38, height: 38)
-                                    .background(Teinte.carteHaut, in: Circle())
-                                    .overlay(Circle().strokeBorder(Teinte.accent.opacity(0.2), lineWidth: 1))
+                                    .background(Color.white.opacity(0.1), in: Circle())
+                                    .overlay(Circle().strokeBorder(Color.white.opacity(0.16), lineWidth: 0.8))
                             }
                             .buttonStyle(Appui())
                             .accessibilityLabel(Text(navigation.textes["dossiers"] ?? "Clients"))
@@ -475,7 +440,7 @@ struct CadreSections: ViewModifier {
                         .frame(height: 48)
                         OngletsSections(navigation: navigation)
                     }
-                    .background(Teinte.nuit.opacity(0.94).ignoresSafeArea(edges: .top))
+                    .background(.ultraThinMaterial.opacity(0.96), ignoresSafeAreaEdges: .top)
                 }
                 .toolbar(.hidden, for: .navigationBar)
         }
@@ -521,8 +486,8 @@ struct LigneDeVie: View {
                         .annotation(position: .top, alignment: .center, spacing: 2) {
                             Text(a.repereTexte).font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.primary)
                                 .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background(Teinte.carteHaut, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(Teinte.accent.opacity(0.4), lineWidth: 1))
+                                .background(Teinte.nuit.opacity(0.7), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(Color.white.opacity(0.25), lineWidth: 0.8))
                         }
                 }
             }
@@ -573,8 +538,8 @@ struct LigneRisque: View {
         .padding(.horizontal, 12)
         .frame(minHeight: 62)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Teinte.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Teinte.accent.opacity(0.14), lineWidth: 1))
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8))
     }
 }
 
@@ -710,8 +675,7 @@ struct ClientNatif: View {
                         }
                         .padding(.horizontal, 14)
                         .frame(height: 50)
-                        .background(Teinte.carteHaut.opacity(0.9), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Teinte.accent.opacity(0.3), lineWidth: 1))
+                        .modifier(VerreCarte(rayon: 16))
                     }
                     .buttonStyle(Appui())
                     cible(a).frame(maxWidth: 240)
@@ -908,7 +872,7 @@ struct Cristal: View {
     var body: some View {
         let teinte = rang == 0 ? Teinte.pilier1 : rang == 1 ? Teinte.eclat : Teinte.pilier3
         return ZStack {
-            FormeCristal().fill(LinearGradient(colors: [Teinte.accent, teinte, Teinte.pilier1.opacity(0.9)], startPoint: .top, endPoint: .bottom))
+            FormeCristal().fill(LinearGradient(colors: [Color.white.opacity(0.95), teinte, teinte.opacity(0.55)], startPoint: .top, endPoint: .bottom))
             // la facette de gauche, plus claire
             GeometryReader { cadre in
                 FormeCristal().fill(Color.white.opacity(0.22)).frame(width: cadre.size.width, height: cadre.size.height)
@@ -918,7 +882,7 @@ struct Cristal: View {
             }
             FormeCristal().stroke(Color.white.opacity(0.55), lineWidth: 0.8)
         }
-        .shadow(color: Teinte.eclat.opacity(0.75), radius: 10)
+        .shadow(color: Color.white.opacity(0.18), radius: 6)
     }
 }
 
@@ -1162,8 +1126,8 @@ struct ConseilNatif: View {
                         }
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Teinte.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Teinte.accent.opacity(0.14), lineWidth: 1))
+                        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8))
                     }
                 }
             }
@@ -1178,17 +1142,10 @@ struct ConseilNatif: View {
         .tuileBord()
     }
 
-    /// La montagne et la devise, pour fermer l'écran.
+    /// La devise, pour fermer l'écran.
     private var pied: some View {
-        ZStack(alignment: .bottomLeading) {
-            Panorama(ancrage: .trailing)
-            LinearGradient(colors: [Teinte.nuit.opacity(0.1), Teinte.nuit.opacity(0.7)], startPoint: .trailing, endPoint: .leading)
-            Text(navigation.textes["devise"] ?? "").font(.system(size: 15, weight: .medium)).foregroundStyle(Color.primary)
-                .frame(maxWidth: 190, alignment: .leading).padding(16)
-        }
-        .frame(height: 118)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Teinte.accent.opacity(0.18), lineWidth: 1))
+        Text(navigation.textes["devise"] ?? "").font(.system(size: 14)).foregroundStyle(Color.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 6).padding(.top, 4)
     }
 }
 

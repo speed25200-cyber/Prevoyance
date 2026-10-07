@@ -218,15 +218,38 @@ struct Appui: ButtonStyle {
     }
 }
 
-/// Panneau « Alpin » : une plaque nette, à peine teintée de glace, bordée d'un filet. Les angles restent sobres.
+/// Le verre d'une carte : « Liquid Glass » d'iOS 26, légèrement teinté de nuit pour que le texte reste net ;
+/// matériau translucide avant.
+struct VerreCarte: ViewModifier {
+    var rayon: CGFloat = 22
+
+    #if compiler(>=6.2)
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.tint(Teinte.nuit.opacity(0.42)), in: RoundedRectangle(cornerRadius: rayon, style: .continuous))
+        } else {
+            ancien(content)
+        }
+    }
+    #else
+    func body(content: Content) -> some View { ancien(content) }
+    #endif
+
+    private func ancien(_ content: Content) -> some View {
+        let forme = RoundedRectangle(cornerRadius: rayon, style: .continuous)
+        return content
+            .background(.ultraThinMaterial, in: forme)
+            .background(Teinte.nuit.opacity(0.35), in: forme)
+            .overlay(forme.strokeBorder(LinearGradient(colors: [Color.white.opacity(0.28), Color.white.opacity(0.06)], startPoint: .top, endPoint: .bottom), lineWidth: 0.8))
+    }
+}
+
+/// Panneau courant : le même verre, aux angles un peu plus serrés.
 struct VerreArrondi: ViewModifier {
     let rayon: CGFloat
 
     func body(content: Content) -> some View {
-        let forme = RoundedRectangle(cornerRadius: min(rayon, 16), style: .continuous)
-        return content
-            .background(LinearGradient(colors: [Teinte.carteHaut, Teinte.carteBas], startPoint: .top, endPoint: .bottom), in: forme)
-            .overlay(forme.strokeBorder(Teinte.accent.opacity(0.18), lineWidth: 1))
+        content.modifier(VerreCarte(rayon: min(rayon, 18)))
     }
 }
 

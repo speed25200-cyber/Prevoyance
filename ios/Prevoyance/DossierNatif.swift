@@ -1,13 +1,15 @@
 import PhotosUI
 import SwiftUI
 
-/// Le fond des écrans : la nuit de montagne, du bleu profond vers un bleu ardoise, avec une lueur de glace en haut.
+/// Le fond des écrans : les Alpes de nuit en plein écran, sous un voile qui s'épaissit vers le bas. C'est lui que le
+/// verre des cartes laisse deviner.
 struct FondApp: View {
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Teinte.nuit, Teinte.nuitBasse], startPoint: .top, endPoint: .bottom)
-            RadialGradient(colors: [Teinte.eclat.opacity(0.20), .clear], center: .topTrailing, startRadius: 0, endRadius: 620)
-            RadialGradient(colors: [Teinte.pilier1.opacity(0.26), .clear], center: .bottomLeading, startRadius: 0, endRadius: 700)
+            Teinte.nuit
+            Panorama(ancrage: .topTrailing)
+            LinearGradient(stops: [.init(color: Teinte.nuit.opacity(0.30), location: 0), .init(color: Teinte.nuit.opacity(0.62), location: 0.38),
+                                   .init(color: Teinte.nuit.opacity(0.90), location: 1)], startPoint: .top, endPoint: .bottom)
         }
         .ignoresSafeArea()
     }
