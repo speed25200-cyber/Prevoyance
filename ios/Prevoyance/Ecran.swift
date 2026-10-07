@@ -418,14 +418,20 @@ final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate, UIScro
             return
         }
         guard message.name == "imprimer", let vue else { return }
-        let impression = UIPrintInteractionController.shared
-        let infos = UIPrintInfo(dictionary: nil)
-        infos.outputType = .general
-        infos.jobName = (message.body as? String) ?? "Prévoyance"
-        impression.printInfo = infos
-        // La mise en page A4 du rapport vient de la feuille de style d'impression de la page.
-        impression.printFormatter = vue.viewPrintFormatter()
-        impression.present(animated: true)
+        // Le PDF est fabriqué ici, en feuilles A4 exactes (la mise en page vient de la feuille de style d'impression de
+        // la page), puis remis par la feuille de partage : enregistrer dans Fichiers, envoyer, imprimer.
+        let pdf = Navigation.pdf(de: vue)
+        let client = (navigation?.nomDossier ?? "").components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>")).joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        let nom = client.isEmpty ? "Analyse de prévoyance" : "Analyse de prévoyance – \(client)"
+        let fichier = FileManager.default.temporaryDirectory.appendingPathComponent(nom + ".pdf")
+        guard pdf.pages > 0, (try? pdf.donnees.write(to: fichier, options: .atomic)) != nil else { return }
+        let partage = UIActivityViewController(activityItems: [fichier], applicationActivities: nil)
+        partage.popoverPresentationController?.sourceView = vue
+        partage.popoverPresentationController?.sourceRect = CGRect(x: vue.bounds.midX, y: vue.bounds.midY, width: 1, height: 1)
+        partage.popoverPresentationController?.permittedArrowDirections = []
+        var hote = vue.window?.rootViewController
+        while let suivant = hote?.presentedViewController { hote = suivant }
+        hote?.present(partage, animated: true)
     }
 
     /// La page se recharge (verrouillage après une absence) : la barre se retire jusqu'à ce qu'elle soit prête.

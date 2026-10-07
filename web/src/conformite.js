@@ -111,13 +111,13 @@ export function champsConseil(ctx, reconstruire) {
   ];
 }
 
-/** Pose (ou retire) le logo, puis lit sa couleur dominante : elle devient la couleur de la marque, sauf choix contraire. */
+/** Pose (ou retire) le logo, puis l'analyse : marges rognées, couleurs lues. Le thème du rapport en découle, sauf choix contraire. */
 function poserLogo(i, image, reconstruire) {
   i.logo = image;
-  if (!image) i.couleurAuto = '';
+  i.logoPret = null;
   garder();
   reconstruire();
-  if (image) Marque.couleurDuLogo(image).then(couleur => { if (i.logo === image) { i.couleurAuto = couleur; garder(); reconstruire(); } });
+  if (image) Marque.preparer(image).then(pret => { if (i.logo === image) { i.logoPret = pret; garder(); reconstruire(); } });
 }
 
 /** Champs de la fiche de l'intermédiaire (une fois pour tous les dossiers). */
@@ -139,13 +139,13 @@ export function champsIntermediaire(ctx, reconstruire) {
         } })),
       i.logo ? h('button', { type: 'button', class: 'pastille', onclick: () => poserLogo(i, '', reconstruire) }, ctx.t('lg_logoRetirer')) : null),
     // couleur de la marque : celle du logo, ou celle que l'on choisit ; elle habille le rapport
-    (Collecte.decrire({ type: 'couleur', libelle: ctx.t('lg_couleur'), valeur: i.couleur || i.couleurAuto || '#14161a', note: ctx.t('lg_couleurAide') },
+    (Collecte.decrire({ type: 'couleur', libelle: ctx.t('lg_couleur'), valeur: i.couleur || Marque.theme({ ...(i.logoPret ?? {}), choisie: null }).filet, note: ctx.t('lg_couleurAide') },
       valeur => { i.couleur = Marque.deHex(String(valeur ?? '')) ? String(valeur) : ''; garder(); }), null),
-    i.couleur && i.couleurAuto ? (Collecte.decrire({ type: 'action', libelle: ctx.t('lg_couleurAuto'), icone: 'couleur' }, () => { i.couleur = ''; garder(); reconstruire(); }), null) : null,
+    i.couleur && i.logoPret ? (Collecte.decrire({ type: 'action', libelle: ctx.t('lg_couleurAuto'), icone: 'couleur' }, () => { i.couleur = ''; garder(); reconstruire(); }), null) : null,
     h('label', { class: 'champ couleur-marque' }, h('span', {}, ctx.t('lg_couleur')),
       h('div', { class: 'rangee' },
-        h('input', { type: 'color', value: i.couleur || i.couleurAuto || '#14161a', 'aria-label': ctx.t('lg_couleur'), onchange: e => { i.couleur = e.target.value; garder(); reconstruire(); } }),
-        i.couleur && i.couleurAuto ? h('button', { type: 'button', class: 'pastille', onclick: () => { i.couleur = ''; garder(); reconstruire(); } }, ctx.t('lg_couleurAuto')) : null)),
+        h('input', { type: 'color', value: i.couleur || Marque.theme({ ...(i.logoPret ?? {}), choisie: null }).filet, 'aria-label': ctx.t('lg_couleur'), onchange: e => { i.couleur = e.target.value; garder(); reconstruire(); } }),
+        i.couleur && i.logoPret ? h('button', { type: 'button', class: 'pastille', onclick: () => { i.couleur = ''; garder(); reconstruire(); } }, ctx.t('lg_couleurAuto')) : null)),
     h('p', { class: 'petit sans-marge' }, ctx.t('lg_couleurAide')),
     champ(ctx, i, 'nom', 'lg_nom'),
     champ(ctx, i, 'adresse', 'lg_adresse'),

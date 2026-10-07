@@ -56,7 +56,8 @@ export function lireLogo(fichier) {
       const image = new Image();
       image.onerror = () => resoudre('');
       image.onload = () => {
-        const echelle = Math.min(1, 520 / image.naturalWidth, 180 / image.naturalHeight);
+        // assez de points pour un logo net sur le papier ; les marges sont rognées ensuite (marque.js)
+        const echelle = Math.min(1, 1000 / image.naturalWidth, 1000 / image.naturalHeight);
         const toile = document.createElement('canvas');
         toile.width = Math.max(1, Math.round(image.naturalWidth * echelle)); toile.height = Math.max(1, Math.round(image.naturalHeight * echelle));
         /** @type {CanvasRenderingContext2D} */ (toile.getContext('2d')).drawImage(image, 0, 0, toile.width, toile.height);

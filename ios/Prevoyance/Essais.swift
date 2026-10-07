@@ -47,15 +47,17 @@ extension Navigation {
         let images = (await page("return document.querySelectorAll('#vue img[src^=data]').length;", [:]) as? NSNumber)?.intValue ?? -1
         noter("rapport : logo et signatures repris", images >= 1, "\(images) image(s) dans le rapport")
         let feuilles = (await page("return document.querySelectorAll('#vue .page').length;", [:]) as? NSNumber)?.intValue ?? -1
-        let (pages, octets) = pdfDuRapport()
+        let pdf = Navigation.pdf(de: vue)
+        let pages = pdf.pages, octets = pdf.donnees.count
         noter("rapport : PDF produit, une page par feuille, sans page vide", feuilles >= 2 && pages == feuilles && octets > 20_000, "\(pages) pages pour \(feuilles) feuilles, \(octets) octets")
 
         guard let donnees = try? JSONSerialization.data(withJSONObject: essais), let json = String(data: donnees, encoding: .utf8) else { return "[]" }
         return json
     }
 
-    /// Le rapport, tel que l'impression du système le met en pages : nombre de pages et taille du PDF.
-    private func pdfDuRapport() -> (Int, Int) {
+    /// Le rapport en PDF, fabriqué par l'app : des feuilles A4 exactes, sans les marges qu'une imprimante ajouterait
+    /// (ce sont elles qui repoussaient le bas de chaque feuille sur une page de plus).
+    static func pdf(de vue: WKWebView) -> (donnees: Data, pages: Int) {
         let rendu = UIPrintPageRenderer()
         rendu.addPrintFormatter(vue.viewPrintFormatter(), startingAtPageAt: 0)
         let feuille = CGRect(x: 0, y: 0, width: 595.28, height: 841.89)   // A4, en points
@@ -71,7 +73,7 @@ extension Navigation {
         }
         UIGraphicsEndPDFContext()
         let pages = CGDataProvider(data: donnees as CFData).flatMap { CGPDFDocument($0) }?.numberOfPages ?? 0
-        return (pages, donnees.length)
+        return (donnees as Data, pages)
     }
 
     /// Un certificat de prévoyance d'essai, dessiné comme une page photographiée : libellés à gauche, montants à droite.

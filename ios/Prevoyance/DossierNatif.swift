@@ -350,7 +350,8 @@ struct ChampNatif: View {
 
     static func reduire(_ donnees: Data) -> String? {
         guard let image = UIImage(data: donnees), image.size.width > 0, image.size.height > 0 else { return nil }
-        let echelle = Swift.min(1, 520 / image.size.width, 180 / image.size.height)
+        // assez de points pour un logo net sur le papier ; la page rogne ensuite ses marges
+        let echelle = Swift.min(1, 1000 / image.size.width, 1000 / image.size.height)
         let taille = CGSize(width: image.size.width * echelle, height: image.size.height * echelle)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1

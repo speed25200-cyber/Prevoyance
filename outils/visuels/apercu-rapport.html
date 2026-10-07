@@ -1,13 +1,21 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Aperçu du rapport à la marque d'un intermédiaire fictif</title>
-<!-- Outil de mise au point : pose un intermédiaire fictif (logo dessiné ici, nom, adresse) dans l'état de l'app, puis
-     ouvre le rapport. À servir depuis la racine du dépôt (python -m http.server), jamais avec de vraies données. -->
+<title>Aperçu du rapport à la marque d'un intermédiaire</title>
+<!-- Outil de mise au point : pose un intermédiaire (logo, nom, adresse) dans l'état de l'app, puis ouvre le rapport.
+     À servir depuis la racine du dépôt (python -m http.server), jamais avec de vraies données de clients.
+     Paramètres : ?c=#rrggbb (couleur du logo dessiné ici) · ?logo=fichier (un logo local posé à côté de cette page, sous un
+     nom en « _essai-… » que git ignore) · ?nom=… · ?sans (aucune marque). -->
 <script type="module">
   import { etat, garder } from '../../web/src/etat.js';
   import * as Marque from '../../web/src/marque.js';
 
-  const couleur = new URLSearchParams(location.search).get('c') ?? '#0b6b4f';
+  const demande = new URLSearchParams(location.search);
+  if (demande.has('sans')) {
+    etat.intermediaire = {}; etat.vue = 'rapport'; garder();
+    location.replace('../../web/index.html');
+    await new Promise(() => {});
+  }
+  const couleur = demande.get('c') ?? '#0b6b4f';
   const toile = document.createElement('canvas');
   toile.width = 520; toile.height = 160;
   const d = toile.getContext('2d');
@@ -15,9 +23,14 @@
   d.beginPath(); d.moveTo(20, 130); d.lineTo(80, 30); d.lineTo(110, 80); d.lineTo(130, 55); d.lineTo(170, 130); d.closePath(); d.fill();
   d.font = '600 58px system-ui, sans-serif'; d.fillText('Alpina', 195, 92);
   d.fillStyle = '#5d636d'; d.font = '400 26px system-ui, sans-serif'; d.fillText('Courtage SA', 198, 128);
-  const logo = toile.toDataURL('image/png');
-  if (new URLSearchParams(location.search).has('sans')) { etat.intermediaire = {}; etat.vue = 'rapport'; garder(); location.replace('../../web/index.html'); await new Promise(() => {}); }
-  etat.intermediaire = { ...(etat.intermediaire ?? {}), nom: 'Alpina Courtage SA', adresse: 'Rue du Lac 12\n1003 Lausanne', logo, couleurAuto: await Marque.couleurDuLogo(logo), couleur: '' };
+  let logo = toile.toDataURL('image/png');
+  const fichier = demande.get('logo');
+  if (fichier) {
+    const octets = await (await fetch(fichier)).blob();
+    logo = await new Promise(fini => { const lecteur = new FileReader(); lecteur.onload = () => fini(String(lecteur.result)); lecteur.readAsDataURL(octets); });
+  }
+  etat.intermediaire = { ...(etat.intermediaire ?? {}), nom: demande.get('nom') ?? 'Alpina Courtage SA', adresse: 'Rue du Lac 12\n1003 Lausanne',
+                         logo, logoPret: await Marque.preparer(logo), couleur: '' };
   etat.conseiller = 'Camille Aubert';
   etat.vue = 'rapport';
   garder();

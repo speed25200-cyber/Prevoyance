@@ -34,15 +34,21 @@ export function afficher(ctx) {
   // marque du rapport : le logo et le nom de l'intermédiaire quand ils sont saisis, sinon le nom de l'application
   const marque = etat.intermediaire ?? {};
   const signature = marque.nom?.trim() || t('titre');
-  // un logo enregistré avant que sa couleur ne soit lue : on la lit une fois, puis le rapport se redessine
-  if (marque.logo && marque.couleurAuto === undefined) {
-    marque.couleurAuto = '';
-    Marque.couleurDuLogo(marque.logo).then(couleur => { marque.couleurAuto = couleur; garder(); afficher(ctx); });
+  // un logo pas encore analysé (enregistré par une version précédente) : on l'analyse une fois, puis le rapport se redessine
+  if (marque.logo && marque.logoPret === undefined) {
+    marque.logoPret = null;
+    Marque.preparer(marque.logo).then(pret => { marque.logoPret = pret; garder(); afficher(ctx); });
   }
-  // les teintes du rapport : la couleur choisie, sinon celle du logo ; sans marque, le rapport garde sa sobriété
-  const teintes = marque.logo || marque.nom?.trim() ? Marque.palette(marque.couleur || marque.couleurAuto || '#14161a') : null;
+  const pret = marque.logo ? marque.logoPret : null;
+  // le thème : tiré du logo (fond, couleur principale, accent) ou de la couleur choisie ; sans marque, le rapport garde sa sobriété
+  const teintes = marque.logo || marque.nom?.trim() ? Marque.theme({ ...(pret ?? {}), choisie: marque.couleur || null }) : null;
+  // le logo, rogné de ses marges, à la taille d'un cadre (en millimètres)
+  const logo = (largeur, hauteur, classe) => {
+    const taille = Marque.cadrer(pret?.ratio ?? 3, largeur, hauteur);
+    return h('img', { class: classe, src: pret?.image ?? marque.logo, alt: signature, style: { width: `${taille.l}mm`, height: `${taille.h}mm` } });
+  };
   const pied = n => h('footer', {}, h('span', {}, `${signature} · ${d.nom || t('sansNom')}`), h('span', {}, `${date} · ${n}`));
-  const entete = titre => h('header', {}, h('h2', {}, titre), marque.logo ? h('img', { class: 'r-logo', src: marque.logo, alt: signature }) : h('span', {}, signature));
+  const entete = titre => h('header', {}, h('h2', {}, titre), marque.logo ? logo(46, 11, 'r-logo') : h('span', {}, signature));
   const bloc = x => { const e = h('div', { class: 'r-detail' }, h('h3', {}, t(x.cle)), ...detailRisque(ctx, x)); for (const i of e.querySelectorAll('.pile i')) i.style.width = `${(+(i.dataset.part ?? 0) * 100).toFixed(2)}%`; return e; };
 
   const outils = h('div', { class: 'rapport-outils carte' },
@@ -52,16 +58,34 @@ export function afficher(ctx) {
     h('button', { type: 'button', class: 'bouton', onclick: () => window.print() }, t('rp_pdf')));
 
   // ---- 1. couverture
-  const couverture = page(teintes ? 'couverture griffe' : 'couverture',
-    // avec une marque : un bandeau à sa couleur, son logo sur une plaque blanche, son nom et son adresse
-    teintes ? h('div', { class: 'r-bandeau' },
-      marque.logo ? h('div', { class: 'r-plaque' }, h('img', { src: marque.logo, alt: signature })) : h('span', {}),
-      h('div', { class: 'r-maison' }, h('p', { class: 'r-maison-nom' }, signature), marque.adresse?.trim() ? h('p', { class: 'r-maison-adresse' }, marque.adresse.trim()) : null))
-      : h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
-    h('div', {}, h('p', { class: 'surtitre' }, t('rp_surtitre', { a: a.annee })), h('h1', {}, t('rp_h1')), h('p', { class: 'r-client' }, d.nom || t('sansNom'))),
-    h('table', { class: 'r-fiche' },
-      ligne(t('rp_date'), date), ligne(t('rp_conseiller'), h('span', { class: 'r-conseiller' }, etat.conseiller || '—')),
-      ligne(t('canton'), a.canton ? `${a.canton} · ${t('ct_' + a.canton)}` : '—'), ligne(t('score'), `${a.score} / 100`)));
+  // l'anneau du score, pour la couverture à la marque
+  const anneau = () => {
+    const e = h('div', { class: 'r-anneau' }), tour = 2 * Math.PI * 52;
+    e.innerHTML = `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="52" class="r-anneau-fond"/>`
+      + `<circle cx="60" cy="60" r="52" class="r-anneau-part" stroke-dasharray="${(Math.max(0, Math.min(100, a.score)) / 100 * tour).toFixed(1)} ${tour.toFixed(1)}" transform="rotate(-90 60 60)"/></svg>`;
+    e.append(h('b', {}, String(a.score)), h('small', {}, t('score')));
+    return e;
+  };
+  const repere = (nom, valeur) => h('div', {}, h('small', {}, nom), valeur);
+  const couverture = teintes
+    // avec une marque : un grand aplat à sa couleur — logo, nom et adresse en haut, titre et anneau du score dessus —, puis les repères du dossier
+    ? page('couverture griffe',
+      h('div', { class: 'r-bandeau' },
+        h('div', { class: 'r-haut' },
+          marque.logo ? h('div', { class: 'r-plaque' + (teintes.plaque ? '' : ' nue'), style: teintes.plaque ? { background: teintes.plaque } : {} }, logo(92, 34, 'r-logo-plaque')) : h('span', {}),
+          h('div', { class: 'r-maison' }, h('p', { class: 'r-maison-nom' }, signature), marque.adresse?.trim() ? h('p', { class: 'r-maison-adresse' }, marque.adresse.trim()) : null)),
+        h('div', { class: 'r-corps' },
+          h('div', { class: 'r-titre' }, h('p', { class: 'r-sur' }, t('rp_surtitre', { a: a.annee })), h('p', { class: 'r-grand' }, t('rp_h1')), h('p', { class: 'r-pour' }, d.nom || t('sansNom'))),
+          anneau())),
+      h('div', { class: 'r-reperes' },
+        repere(t('rp_date'), h('b', {}, date)), repere(t('rp_conseiller'), h('b', { class: 'r-conseiller' }, etat.conseiller || '—')),
+        repere(t('canton'), h('b', {}, a.canton ? `${a.canton} · ${t('ct_' + a.canton)}` : '—'))))
+    : page('couverture',
+      h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
+      h('div', {}, h('p', { class: 'surtitre' }, t('rp_surtitre', { a: a.annee })), h('h1', {}, t('rp_h1')), h('p', { class: 'r-client' }, d.nom || t('sansNom'))),
+      h('table', { class: 'r-fiche' },
+        ligne(t('rp_date'), date), ligne(t('rp_conseiller'), h('span', { class: 'r-conseiller' }, etat.conseiller || '—')),
+        ligne(t('canton'), a.canton ? `${a.canton} · ${t('ct_' + a.canton)}` : '—'), ligne(t('score'), `${a.score} / 100`)));
 
   // ---- 2. synthèse
   const triees = [...a.alertes].sort((p, q) => GRAVITES.indexOf(p.gravite) - GRAVITES.indexOf(q.gravite));
@@ -179,5 +203,6 @@ export function afficher(ctx) {
   const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, (avecDeces ? 9 : 8) + decalage);
 
   zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' + (teintes ? ' griffe' : ''),
-    style: teintes ? { '--marque': teintes.couleur, '--marque-encre': teintes.encre, '--marque-texte': teintes.texte, '--marque-claire': teintes.claire } : {} }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, pageRoute, sources, ...legales].filter(Boolean)));
+    style: teintes ? { '--marque': teintes.bande, '--marque-encre': teintes.encre, '--marque-filet': teintes.filet, '--marque-filet-bande': teintes.filetBande,
+      '--marque-texte': teintes.texte, '--marque-claire': teintes.claire, '--marque-p1': teintes.piliers[0], '--marque-p2': teintes.piliers[1], '--marque-p3': teintes.piliers[2] } : {} }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, pageRoute, sources, ...legales].filter(Boolean)));
 }

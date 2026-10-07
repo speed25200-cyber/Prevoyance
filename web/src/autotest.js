@@ -51,16 +51,22 @@ export async function executer(finale = 'analyse') {
     noter('suivi : liste bornée', longue.length === Suivi.MAXIMUM && longue[longue.length - 1].s === 49);
     noter('suivi : le dossier ouvert a son point du jour', (p.etat.dossiers.find(x => x.id === p.etat.ouvert)?.suivi ?? []).length >= 1);
 
-    // couleur de la marque : lue sur le logo, puis déclinée pour rester lisible
+    // la marque tirée du logo : fond, marges, couleur principale et accent, puis un thème toujours lisible
     const Marque = await import('./marque.js');
-    const pixels = [];
-    for (let n = 0; n < 100; n++) pixels.push(...(n < 60 ? [255, 255, 255, 255] : n < 90 ? [0, 90, 200, 255] : n < 95 ? [120, 120, 120, 255] : [0, 0, 0, 0]));
-    noter('marque : couleur dominante du logo (bleu, malgré le blanc et le gris)', Marque.enHex(Marque.dominante(pixels)) === '#005ac8');
-    const noir = []; for (let n = 0; n < 100; n++) noir.push(...(n < 70 ? [255, 255, 255, 255] : [22, 22, 26, 255]));
-    noter('marque : logo noir, teinte sombre retenue', Marque.enHex(Marque.dominante(noir)) === '#16161a' && Marque.dominante([255, 255, 255, 0]) === null);
-    const jaune = Marque.palette('#ffd400'), marine = Marque.palette('#0a3d91');
-    noter('marque : texte lisible sur l’aplat et sur le papier', jaune.encre === '#14161a' && marine.encre === '#ffffff'
-      && Marque.contraste(Marque.deHex(jaune.texte), { r: 255, g: 255, b: 255 }) >= 4.5 && marine.texte === '#0a3d91' && Marque.palette('rouge') === null);
+    // logo 40 x 20 sur fond blanc : un mot noir (10 x 6) et un détail doré (4 x 2), avec de grandes marges
+    const L = 40, H = 20, logo = new Uint8ClampedArray(L * H * 4).fill(255);
+    const poser = (x0, y0, l, h, c) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + l; x++) logo.set([...c, 255], (y * L + x) * 4); };
+    poser(14, 8, 10, 6, [10, 10, 12]); poser(10, 12, 4, 2, [200, 150, 30]);
+    const lu = Marque.analyser(logo, L, H);
+    noter('marque : fond blanc reconnu, marges rognées autour du dessin', Marque.enHex(lu.fond) === '#ffffff' && lu.boite.x >= 9 && lu.boite.x <= 10 && lu.boite.l <= 16 && lu.boite.h <= 8);
+    noter('marque : couleur principale (noir) et accent (doré)', Marque.enHex(lu.principale) === '#0a0a0c' && Marque.enHex(lu.accent) === '#c8961e');
+    const elite = Marque.theme({ fond: '#ffffff', principale: '#0a0a0c', accent: '#c8961e' });
+    noter('marque : logo noir et doré, bande sombre, filet doré, plaque blanche', elite.bande === '#0a0a0c' && elite.filet === '#c8961e' && elite.encre === '#ffffff' && elite.plaque === '#ffffff' && elite.piliers[0] === '#0a0a0c' && elite.piliers[1] === '#c8961e'
+      && Marque.contraste(Marque.deHex(elite.texte), { r: 255, g: 255, b: 255 }) >= 4.5);
+    const blancSurBleu = Marque.theme({ fond: '#0a3d91', principale: '#ffffff', accent: null }), clair = Marque.theme({ fond: null, principale: '#ffffff', accent: '#ffd400' });
+    noter('marque : logo sur aplat ou dessiné en clair, posé sans plaque', blancSurBleu.bande === '#0a3d91' && blancSurBleu.plaque === null && clair.plaque === null && clair.bande === '#ffd400' && clair.encre === '#14161a');
+    noter('marque : couleur choisie à la main, et logo sans rien de lisible', Marque.theme({ principale: '#0a0a0c', choisie: '#0b6b4f' }).bande === '#0b6b4f'
+      && Marque.theme({}).bande === '#14161a' && Marque.analyser(new Uint8ClampedArray(16), 2, 2).boite === null && Marque.cadrer(4, 92, 34).h === 23);
 
     // les six écrans : chacun s'affiche seul, avec du contenu, sans dépasser la largeur
     const affiche = id => getComputedStyle(/** @type {HTMLElement} */ (document.getElementById(id))).display !== 'none';
