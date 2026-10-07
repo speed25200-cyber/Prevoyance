@@ -463,7 +463,8 @@ struct LigneDeVie: View {
                     }
                 }
             }
-            .chartLegend(position: .top, alignment: .leading)
+            // la légende sous le graphique : le haut reste au repère de la retraite
+            .chartLegend(position: .bottom, alignment: .leading)
             .frame(height: hauteur)
         }
         .padding(16)
@@ -619,8 +620,8 @@ struct ClientNatif: View {
     private func bandeau(_ a: AnalyseModele) -> some View {
         ZStack(alignment: .leading) {
             Panorama(ancrage: .trailing)
-                .mask(LinearGradient(colors: [.black.opacity(0.25), .black], startPoint: .leading, endPoint: .trailing))
-            LinearGradient(colors: [Teinte.nuit.opacity(0), Teinte.nuit.opacity(0.75)], startPoint: .top, endPoint: .bottom)
+                .mask(LinearGradient(colors: [.black.opacity(0.55), .black], startPoint: .leading, endPoint: .trailing))
+            LinearGradient(colors: [Teinte.nuit.opacity(0.55), Teinte.nuit.opacity(0)], startPoint: .leading, endPoint: .center)
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(navigation.textes["bonjour"] ?? "").font(.system(size: 14)).foregroundStyle(Color.secondary)
