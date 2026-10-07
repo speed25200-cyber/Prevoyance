@@ -150,7 +150,7 @@ final class ScanCertificat: NSObject, VNDocumentCameraViewControllerDelegate, UI
     }
 
     /// Reconnaissance de texte, page par page, hors du fil principal.
-    private static func lire(_ pages: [CGImage]) async -> String {
+    static func lire(_ pages: [CGImage]) async -> String {
         await Task.detached(priority: .userInitiated) {
             var lignes: [String] = []
             for page in pages {

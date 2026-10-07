@@ -26,7 +26,14 @@ if not app.get('analyse') or app.get('risques') != 5 or (app.get('ligne') or 0) 
 for vue, minimum in (('scenarios', 4), ('plan', 3), ('rapport', 1), ('donnees', 3)):
     if ((app.get('ecrans') or {}).get(vue) or 0) < minimum:
         echecs.append({'nom': f'écran natif {vue} : cartes reçues de la page', 'detail': str(app.get('ecrans'))})
-print(f"BILAN {appareil} : {len(resultats) + 9 - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
+# fonctions de l'app elle-même : certificat photographié, signature, logo, PDF du rapport
+natif = app.pop('natif', None) or []
+if len(natif) < 5:
+    echecs.append({'nom': 'essais des fonctions de l’app exécutés', 'detail': f'{len(natif)} sur 5'})
+echecs += [r for r in natif if not r.get('ok')]
+for r in natif:
+    print(f"  {'✓' if r.get('ok') else '✗'} {r.get('nom')} — {r.get('detail', '')}")
+print(f"BILAN {appareil} : {len(resultats) + 9 + len(natif) - len(echecs)} réussis, {len(echecs)} échecs — {contexte} — app {app}")
 for r in echecs:
     print(f"error: {appareil} — {r.get('nom')} : {r.get('detail', '')}")
 sys.exit(1 if echecs or not resultats else 0)

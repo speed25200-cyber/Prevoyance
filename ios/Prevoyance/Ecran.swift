@@ -258,6 +258,8 @@ final class Navigation: ObservableObject {
         if let retour = try? await vue.callAsyncJavaScript(corps, arguments: ["finale": finale], in: nil, contentWorld: .page) as? String {
             page = retour
         }
+        // les fonctions de l'app elle-même : certificat photographié, signature, logo, PDF du rapport
+        let natif = await essaisNatifs()
         // l'écran demandé pour la capture, une fois les contrôles passés
         switch demandee {
         case "accueil": break
@@ -273,7 +275,7 @@ final class Navigation: ObservableObject {
         try? await Task.sleep(nanoseconds: 2_000_000_000)
         let app = "{\"barre\":\(barreVisible),\"onglet\":\"\(onglet)\",\"noms\":\(noms.count),\"dossiers\":\(dossiers.count),\"textes\":\(textes.count),"
             + "\"rubriques\":\(rubriques.count),\"champs\":\(rubriques.reduce(0) { $0 + $1.champs.count }),\"analyse\":\(analyse != nil),\"risques\":\(analyse?.risques.count ?? 0),\"ligne\":\(analyse?.ligne.count ?? 0),"
-            + "\"ecrans\":{" + ["scenarios", "plan", "rapport", "donnees"].map { "\"\($0)\":\(cartesRecues[$0] ?? 0)" }.joined(separator: ",") + "}}"
+            + "\"natif\":\(natif),\"ecrans\":{" + ["scenarios", "plan", "rapport", "donnees"].map { "\"\($0)\":\(cartesRecues[$0] ?? 0)" }.joined(separator: ",") + "}}"
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         try? "{\"page\":\(page),\"app\":\(app)}".write(to: documents.appendingPathComponent("autotest.json"), atomically: true, encoding: .utf8)
         // tour des écrans (PREVOYANCE_TOUR=1) : chacun est montré, puis signalé au script qui le photographie
