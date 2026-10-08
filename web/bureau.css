@@ -233,3 +233,12 @@ dialog.palette::backdrop { background: rgba(4, 8, 16, .5); -webkit-backdrop-filt
   color: color-mix(in srgb, var(--encre) 56%, transparent); display: flex; align-items: center; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { dialog.palette[open] { animation: none; } }
 @media print { dialog.palette, .chercher { display: none !important; } }
+
+/* Scénarios et Données sur grand écran : deux colonnes équilibrées, les cartes s'emboîtent sans trous ;
+   la carte des options (rente ou capital) prend toute la largeur pour que ses trois colonnes respirent. */
+@media screen and (min-width: 1200px) {
+  html:not(.natif) .pile-cartes { display: block; columns: 2; column-gap: 20px; }
+  html:not(.natif) .pile-cartes > * { break-inside: avoid; margin: 0 0 20px; }
+  html:not(.natif) .pile-cartes > .carte:has(.options), html:not(.natif) .pile-cartes > .avertissement, html:not(.natif) .pile-cartes > p { column-span: all; }
+  html:not(.natif) .pile-cartes > .carte:has(.options) .options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+}
