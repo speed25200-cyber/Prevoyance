@@ -45,10 +45,31 @@ function marquer() {
   const actif = document.body.dataset.panneau === 'dossier' ? 'dossier' : etat.vue;
   for (const b of $('onglets').children) b.setAttribute('aria-selected', String(/** @type {HTMLElement} */ (b).dataset.vue === actif));
   placerBulle();
+  enTete();
   // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
   appNative()?.postMessage({ actif, visible: true, analyse: Natif.analyse(ctx), dossiers: resumeDossiers(),
     textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil'), suivant: ctx.t('accueilSuivant'), terminer: ctx.t('accueilTerminer'), presentation: ctx.t('vi_presentation'), risques: ctx.t('vi_risques'), synthese: ctx.t('vi_synthese'), sousTitre: ctx.t('vi_sousTitre'), devise: ctx.t('vi_devise'), bonjour: ctx.t('vi_bonjour'), slogan: ctx.t('vi_slogan'), metiers: ctx.t('vi_metiers') },
     langue: etat.langue, langues: LANGUES, annee: etat.annee, annees: ANNEES, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
+}
+/** En-tête de page du grand écran : le dossier ouvert, le titre de la vue, la couverture et les deux gestes courants. */
+function enTete() {
+  const zone = document.getElementById('entete-page');
+  if (!zone) return;
+  const actif = document.body.dataset.panneau === 'dossier' ? 'dossier' : etat.vue, d = dossier();
+  const score = Math.round(ctx.analyse?.score ?? 0), tour = 2 * Math.PI * 21;
+  zone.hidden = false;
+  zone.replaceChildren(
+    h('div', { class: 'ep-texte' },
+      h('p', { class: 'ep-sur' }, [d.nom || ctx.t('sansNom'), d.canton, `${ctx.t('bu_regles')} ${etat.annee}`].filter(Boolean).join('  ·  ')),
+      h('h1', {}, ctx.t(actif === 'dossier' ? 'dossier' : 'v_' + actif)),
+      h('p', { class: 'ep-sous' }, ctx.t('bu_' + actif))),
+    h('div', { class: 'ep-droite' },
+      h('div', { class: 'ep-score', title: ctx.t('bu_couverture') }),
+      h('button', { class: 'bouton discret', type: 'button', onclick: () => $('presentation').click() }, $('presentation').textContent ?? ''),
+      h('button', { class: 'bouton', type: 'button', onclick: () => aller('rapport') }, ctx.t('bu_pdf'))));
+  /** @type {HTMLElement} */ (zone.querySelector('.ep-score')).innerHTML =
+    `<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><circle cx="24" cy="24" r="21" stroke-dasharray="${(tour * score / 100).toFixed(1)} ${tour.toFixed(1)}"/></svg>`
+    + `<b>${score}</b><small>${ctx.t('bu_couverture')}</small>`;
 }
 const appNative = () => /** @type {any} */ (window).webkit?.messageHandlers?.onglet ?? null;
 /** Les dossiers pour l'accueil de l'app : nom, date, score de couverture. */
@@ -78,8 +99,23 @@ function placerBulle() {
   if (!actif) return;
   menu.style.setProperty('--bulle-x', `${actif.offsetLeft}px`);
   menu.style.setProperty('--bulle-l', `${actif.offsetWidth}px`);
+  // rail du grand écran : la même bulle glisse de haut en bas
+  menu.style.setProperty('--bulle-y', `${actif.offsetTop}px`);
+  menu.style.setProperty('--bulle-h', `${actif.offsetHeight}px`);
 }
 new ResizeObserver(placerBulle).observe($('onglets'));
+// un menu déroulant ouvert (portefeuille de dossiers) se referme quand on clique ailleurs ou qu'on presse Échap
+document.addEventListener('pointerdown', evenement => {
+  for (const d of document.querySelectorAll('details.portefeuille[open]')) if (!d.contains(/** @type {Node} */ (evenement.target))) d.removeAttribute('open');
+});
+// clavier : 1 à 6 ouvrent les six entrées du menu, Échap referme les menus
+document.addEventListener('keydown', evenement => {
+  if (evenement.key === 'Escape') { for (const d of document.querySelectorAll('details.portefeuille[open]')) d.removeAttribute('open'); return; }
+  const cible = /** @type {HTMLElement} */ (evenement.target);
+  if (evenement.ctrlKey || evenement.metaKey || evenement.altKey || cible.closest?.('input, textarea, select, [contenteditable]')) return;
+  const entree = ['dossier', ...VUES][+evenement.key - 1];
+  if (entree && !(document.body.classList.contains('presentation') && (entree === 'dossier' || entree === 'donnees'))) aller(entree);
+});
 function aller(cible) {
   if (cible === 'dossier') { document.body.dataset.panneau = 'dossier'; marquer(); scrollTo({ top: 0 }); return; }
   document.body.dataset.panneau = 'analyse';
@@ -145,6 +181,7 @@ async function calculer() {
     if (note.change) { suivi.suivi = note.suivi; garder(); }
   }
   MODULES[etat.vue].afficher(ctx);
+  enTete();
   // l'app dessine elle-même l'analyse : on lui remet le modèle d'affichage à chaque calcul
   appNative()?.postMessage({ analyse: Natif.analyse(ctx) });
 }
@@ -203,6 +240,7 @@ $('presentation').addEventListener('click', () => {
   const active = document.body.classList.toggle('presentation');
   $('presentation').textContent = ctx.t(active ? 'quitterPresentation' : 'presentation');
   $('presentation').dataset.t = active ? 'quitterPresentation' : 'presentation';
+  enTete();
   if (active) document.documentElement.requestFullscreen?.().catch(() => {}); else if (document.fullscreenElement) document.exitFullscreen?.();
 });
 

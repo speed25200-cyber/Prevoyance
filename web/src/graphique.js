@@ -215,6 +215,8 @@ export function creerGraphique(canvas, bulle) {
     if (glisse) { try { canvas.setPointerCapture(evenement.pointerId); } catch { /* pointeur synthétique */ } cacherBulle(); evenement.preventDefault(); } else montrerBulle(evenement);
   });
   canvas.addEventListener('pointermove', evenement => {
+    // bouton relâché hors de la fenêtre : le repère ne doit pas rester accroché au pointeur
+    if (glisse && evenement.pointerType === 'mouse' && evenement.buttons === 0) { lacher(evenement); return; }
     if (glisse) { options.surGlisser?.(ageSous(evenement), false); return; }
     canvas.style.cursor = repereSous(evenement) ? 'ew-resize' : '';
     montrerBulle(evenement);
@@ -222,7 +224,18 @@ export function creerGraphique(canvas, bulle) {
   const lacher = evenement => { if (!glisse) return; glisse = null; options.surGlisser?.(ageSous(evenement), true); };
   canvas.addEventListener('pointerup', lacher);
   canvas.addEventListener('pointercancel', lacher);
+  canvas.addEventListener('lostpointercapture', lacher);
   canvas.addEventListener('pointerleave', () => { if (!glisse) cacherBulle(); });
+  canvas.style.touchAction = 'pan-y';          // au doigt : glisser le repère de côté sans faire défiler la page
+  // au doigt, la bulle n'a pas de « sortie » : elle se ferme quand on touche ailleurs ou qu'on fait défiler
+  const ailleurs = evenement => {
+    if (!canvas.isConnected) { removeEventListener('scroll', defile); document.removeEventListener('pointerdown', ailleurs); return; }
+    if (evenement.target !== canvas) cacherBulle();
+  };
+  const defile = () => { if (!glisse) cacherBulle(); };
+  document.addEventListener('pointerdown', ailleurs);
+  addEventListener('scroll', defile, { passive: true });
+  addEventListener('blur', () => { if (glisse) { glisse = null; lancer(); } });
   new ResizeObserver(dimensionner).observe(canvas);
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { couleurs = lireCouleurs(); lancer(); });
   dimensionner();

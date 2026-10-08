@@ -18,19 +18,34 @@
   html:not(.natif) .marque b { display: block; font: 700 13px/1.1 var(--police); letter-spacing: .26em; }
   html:not(.natif) .marque span { display: block; margin-top: 5px; font: 500 12px/1.2 var(--police); letter-spacing: 0; text-transform: none; color: color-mix(in srgb, var(--encre) 62%, transparent); }
 
-  html:not(.natif) .onglets { position: static !important; transform: none !important; inset: auto !important; display: flex; flex-direction: column !important; align-items: stretch !important;
+  html:not(.natif) .onglets { position: relative !important; transform: none !important; inset: auto !important; display: flex; flex-direction: column !important; align-items: stretch !important;
     gap: 4px !important; width: auto !important; padding: 0 !important; margin: 0; background: none !important; border: 0 !important; border-radius: 0 !important;
     box-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; overflow: visible; }
-  html:not(.natif) .onglets::before { display: none !important; }
+  /* la bulle du menu glisse de haut en bas jusqu'à l'entrée ouverte */
+  html:not(.natif) .onglets::before { content: ""; display: block !important; position: absolute; left: 0; right: 0; top: 0; bottom: auto; width: auto !important;
+    height: var(--bulle-h, 0px); transform: translate3d(0, var(--bulle-y, 0px), 0) !important; border-radius: 14px; z-index: 0; pointer-events: none;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 42%, transparent), color-mix(in srgb, var(--accent) 8%, transparent));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent), inset 3px 0 0 0 var(--accent), 0 16px 34px -18px var(--accent);
+    transition: transform .55s cubic-bezier(.3, 1.25, .4, 1), height .3s var(--aise); }
   html:not(.natif) .onglets button { flex: none !important; flex-direction: row !important; justify-content: flex-start !important; gap: 14px !important; min-height: 0 !important;
     padding: 13px 14px !important; border-radius: 14px !important; font: 500 15.5px/1 var(--police) !important; letter-spacing: 0 !important;
     color: color-mix(in srgb, var(--encre) 74%, transparent) !important; transition: background .35s var(--aise), color .35s var(--aise), transform .35s var(--aise); }
   html:not(.natif) .onglets button .icone { display: grid !important; width: 22px; height: 22px; color: inherit; }
   html:not(.natif) .onglets button svg { width: 22px; height: 22px; }
-  html:not(.natif) .onglets button:hover { background: color-mix(in srgb, var(--encre) 8%, transparent) !important; color: var(--encre) !important; transform: translateX(3px); }
-  html:not(.natif) .onglets button[aria-selected="true"] { color: var(--encre) !important; font-weight: 650 !important;
-    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 38%, transparent), color-mix(in srgb, var(--accent) 8%, transparent)) !important;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 46%, transparent), 0 14px 30px -18px var(--accent) !important; }
+  html:not(.natif) .onglets button .icone { transition: transform .5s cubic-bezier(.3, 1.4, .4, 1); }
+  html:not(.natif) .onglets button[aria-selected="true"] { color: var(--encre) !important; font-weight: 650 !important; }
+  html:not(.natif) .onglets button[aria-selected="true"] .icone { transform: scale(1.14); }
+  @media (hover: hover) {
+    html:not(.natif) .onglets button:not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--encre) 7%, transparent) !important; color: var(--encre) !important; }
+    html:not(.natif) .onglets button:not([aria-selected="true"]):hover .icone { transform: translateX(3px); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.natif) .onglets button { animation: entree-rail .7s var(--aise) both; }
+    html:not(.natif) .onglets button:nth-child(2) { animation-delay: .05s; } html:not(.natif) .onglets button:nth-child(3) { animation-delay: .1s; }
+    html:not(.natif) .onglets button:nth-child(4) { animation-delay: .15s; } html:not(.natif) .onglets button:nth-child(5) { animation-delay: .2s; }
+    html:not(.natif) .onglets button:nth-child(6) { animation-delay: .25s; }
+    @keyframes entree-rail { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+  }
 
   html:not(.natif) .actions { margin-top: auto !important; flex-direction: column !important; align-items: stretch !important; gap: 12px !important;
     padding: 18px 6px 0 !important; border-top: 1px solid color-mix(in srgb, var(--encre) 12%, transparent) !important; }
@@ -43,6 +58,25 @@
   html:not(.natif) #vue, html:not(.natif) #saisie { width: 100%; max-width: 1600px; }
   html:not(.natif) #saisie { max-width: 1360px; }
   html:not(.natif) #erreur-calcul { left: calc(var(--rail) + 24px); }
+
+  /* ---------- en-tête de page : le dossier, le titre de la vue, la couverture, les gestes courants */
+  html:not(.natif) .entete-page { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; width: 100%; max-width: 1600px;
+    padding: 6px 4px 26px; margin-bottom: 4px; border-bottom: 1px solid color-mix(in srgb, var(--encre) 12%, transparent); }
+  html:not(.natif) body[data-panneau="dossier"] .entete-page { max-width: 1360px; }
+  html:not(.natif) .ep-sur { margin: 0 0 12px; font: 600 12.5px/1 var(--police); letter-spacing: .2em; text-transform: uppercase; color: color-mix(in srgb, var(--accent) 60%, var(--encre)); }
+  html:not(.natif) .entete-page h1 { margin: 0; font: 500 clamp(52px, 4.6vw, 84px)/.95 'Fraunces', Georgia, serif; letter-spacing: -.025em; color: var(--encre); }
+  html:not(.natif) .ep-sous { margin: 14px 0 0; font: 450 18px/1.4 var(--police); color: var(--encre-2); }
+  html:not(.natif) .ep-droite { display: flex; align-items: center; gap: 12px; flex: none; padding-bottom: 4px; }
+  html:not(.natif) .ep-score { position: relative; display: grid; grid-template-columns: 56px auto; align-items: center; column-gap: 12px; margin-right: 10px; }
+  html:not(.natif) .ep-score svg { grid-row: 1 / span 2; width: 56px; height: 56px; transform: rotate(-90deg); }
+  html:not(.natif) .ep-score circle { fill: none; stroke-width: 4; stroke: color-mix(in srgb, var(--encre) 14%, transparent); }
+  html:not(.natif) .ep-score circle + circle { stroke: var(--accent); stroke-linecap: round; }
+  html:not(.natif) .ep-score b { font: 650 26px/1 var(--police); letter-spacing: -.03em; align-self: end; }
+  html:not(.natif) .ep-score small { font: 600 11px/1 var(--police); letter-spacing: .16em; text-transform: uppercase; color: var(--encre-2); align-self: start; margin-top: 5px; }
+  html:not(.natif) .ep-droite .bouton { min-height: 46px; padding: 0 22px; border-radius: 999px; font-size: 14.5px; white-space: nowrap; }
+  html:not(.natif) .ep-droite .bouton.discret { background: color-mix(in srgb, var(--encre) 8%, transparent); color: var(--encre); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--encre) 16%, transparent); }
+  html:not(.natif) .ecran-titre { display: none; }
+  html:not(.natif) body.presentation .ep-droite .bouton:last-child, html:not(.natif) body[data-vue="rapport"][data-panneau="analyse"] .ep-droite .bouton:last-child { display: none; }
 
   /* ---------- lisibilité : graisses et contrastes */
   html:not(.natif) .carte h2 { font: 650 22px/1.2 var(--titre); letter-spacing: -.015em; }
@@ -110,7 +144,7 @@
 
   /* ---------- mouvement : les cartes entrent l'une après l'autre et se soulèvent sous le pointeur */
   html:not(.natif) .carte, html:not(.natif) .risque { transition: transform .5s var(--aise), box-shadow .5s var(--aise), border-color .5s var(--aise); }
-  html:not(.natif) #vue .carte:not(.tete):hover { transform: translateY(-3px); }
+  @media (hover: hover) { html:not(.natif) #vue .carte:not(.tete):hover { transform: translateY(-3px); } }
   @media (prefers-reduced-motion: no-preference) {
     html:not(.natif) #vue > *, html:not(.natif) .pile-cartes > *, html:not(.natif) body[data-vue="analyse"] #vue > .deux > .carte { animation: entree-bureau .8s var(--aise) both; }
     html:not(.natif) #vue > :nth-child(2), html:not(.natif) .pile-cartes > :nth-child(2) { animation-delay: .07s; }
@@ -124,3 +158,21 @@
   /* textes secondaires : plus clairs sur le verre sombre */
   html:not(.natif) { --encre-2: rgba(238, 244, 255, .8); --encre-3: rgba(238, 244, 255, .6); }
 }
+
+/* Écran tactile : un « survol » reste collé après le toucher. Aucun élément ne doit rester soulevé ou décalé. */
+@media (hover: none) {
+  .onglets button:hover, .bouton:hover, .risque:hover, .scene-puce:hover, .carte:hover, .pastille:hover, .option:hover, .lien:hover { transform: none !important; }
+}
+
+/* Grand écran, thème sombre : le même sommet que la page d'entrée derrière l'analyse, très assombri, sans film. */
+@media screen and (min-width: 1200px) and (prefers-color-scheme: dark) {
+  html:not(.natif) .fond img { content: url(images/panorama.jpg); object-position: 62% 22%; filter: saturate(.85) brightness(.7); }
+  html:not(.natif) .fond video { display: none !important; }
+  html:not(.natif) .fond i { background: linear-gradient(180deg, rgba(5, 9, 20, .5) 0%, rgba(5, 9, 20, .8) 46%, rgba(5, 9, 20, .95) 100%) !important; }
+  html:not(.natif) .carte:not(.tete), html:not(.natif) .bloc, html:not(.natif) .risque {
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--fond) 58%, transparent), color-mix(in srgb, var(--fond) 74%, transparent)); }
+}
+@media not all and (min-width: 1200px) { .entete-page { display: none !important; } }
+html.natif .entete-page { display: none !important; }
+@media print { .entete-page { display: none !important; } }
+@media screen and (min-width: 1200px) { html:not(.natif) .actions #presentation { display: none; } }

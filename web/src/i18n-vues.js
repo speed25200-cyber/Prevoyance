@@ -18,6 +18,7 @@ const cantons = i => Object.fromEntries(Object.entries(NOMS_CANTONS).map(([c, no
 export const VUES_T = {
   fr: {
     ...cantons(0),
+    bu_dossier: 'La situation du client. Chaque saisie recalcule tout.', bu_analyse: 'Ce qui est couvert, ce qui manque, et pourquoi.', bu_scenarios: 'Ce qui change quand les hypothèses bougent.', bu_plan: 'Les mesures, leur effet et leur ordre.', bu_rapport: 'Le document à remettre au client.', bu_donnees: 'Les règles et les barèmes appliqués.', bu_couverture: 'Couverture', bu_pdf: 'Rapport PDF', bu_regles: 'Règles',
     v_analyse: 'Analyse', v_scenarios: 'Scénarios', v_plan: 'Conseil', v_rapport: 'Rapport', v_donnees: 'Données',
     dossier: 'Dossier', sansNom: 'Dossier sans nom', nouveau: 'Nouveau', dupliquer: 'Dupliquer', exporter: 'Exporter', importer: 'Importer', supprimer: 'Supprimer',
     confirmerSuppression: 'Supprimer ce dossier ? Il sera effacé de cet appareil.', importImpossible: 'Ce fichier n’est pas un dossier lisible.',
@@ -82,6 +83,7 @@ export const VUES_T = {
   },
   de: {
     ...cantons(1),
+    bu_dossier: 'Die Situation des Kunden. Jede Eingabe rechnet alles neu.', bu_analyse: 'Was gedeckt ist, was fehlt und weshalb.', bu_scenarios: 'Was sich ändert, wenn die Annahmen sich bewegen.', bu_plan: 'Die Massnahmen, ihre Wirkung und ihre Reihenfolge.', bu_rapport: 'Das Dokument für den Kunden.', bu_donnees: 'Die angewandten Regeln und Tarife.', bu_couverture: 'Deckung', bu_pdf: 'PDF-Bericht', bu_regles: 'Regeln',
     v_analyse: 'Analyse', v_scenarios: 'Szenarien', v_plan: 'Empfehlung', v_rapport: 'Bericht', v_donnees: 'Daten',
     dossier: 'Dossier', sansNom: 'Dossier ohne Namen', nouveau: 'Neu', dupliquer: 'Duplizieren', exporter: 'Exportieren', importer: 'Importieren', supprimer: 'Löschen',
     confirmerSuppression: 'Dieses Dossier löschen? Es wird von diesem Gerät entfernt.', importImpossible: 'Diese Datei ist kein lesbares Dossier.',
@@ -146,6 +148,7 @@ export const VUES_T = {
   },
   it: {
     ...cantons(2),
+    bu_dossier: 'La situazione del cliente. Ogni dato ricalcola tutto.', bu_analyse: 'Ciò che è coperto, ciò che manca e perché.', bu_scenarios: 'Che cosa cambia quando le ipotesi si muovono.', bu_plan: 'Le misure, il loro effetto e il loro ordine.', bu_rapport: 'Il documento da consegnare al cliente.', bu_donnees: 'Le regole e le tariffe applicate.', bu_couverture: 'Copertura', bu_pdf: 'Rapporto PDF', bu_regles: 'Regole',
     v_analyse: 'Analisi', v_scenarios: 'Scenari', v_plan: 'Consulenza', v_rapport: 'Rapporto', v_donnees: 'Dati',
     dossier: 'Dossier', sansNom: 'Dossier senza nome', nouveau: 'Nuovo', dupliquer: 'Duplica', exporter: 'Esporta', importer: 'Importa', supprimer: 'Elimina',
     confirmerSuppression: 'Eliminare questo dossier? Sarà cancellato da questo dispositivo.', importImpossible: 'Questo file non è un dossier leggibile.',
@@ -210,6 +213,7 @@ export const VUES_T = {
   },
   en: {
     ...cantons(3),
+    bu_dossier: 'The client’s situation. Every entry recalculates everything.', bu_analyse: 'What is covered, what is missing, and why.', bu_scenarios: 'What changes when the assumptions move.', bu_plan: 'The measures, their effect and their order.', bu_rapport: 'The document to hand to the client.', bu_donnees: 'The rules and scales applied.', bu_couverture: 'Coverage', bu_pdf: 'PDF report', bu_regles: 'Rules',
     v_analyse: 'Analysis', v_scenarios: 'Scenarios', v_plan: 'Advice', v_rapport: 'Report', v_donnees: 'Data',
     dossier: 'Case', sansNom: 'Unnamed case', nouveau: 'New', dupliquer: 'Duplicate', exporter: 'Export', importer: 'Import', supprimer: 'Delete',
     confirmerSuppression: 'Delete this case? It will be erased from this device.', importImpossible: 'This file is not a readable case.',
