@@ -242,3 +242,7 @@ dialog.palette::backdrop { background: rgba(4, 8, 16, .5); -webkit-backdrop-filt
   html:not(.natif) .pile-cartes > .carte:has(.options), html:not(.natif) .pile-cartes > .avertissement, html:not(.natif) .pile-cartes > p { column-span: all; }
   html:not(.natif) .pile-cartes > .carte:has(.options) .options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 }
+@media screen and (min-width: 1200px) and (prefers-color-scheme: light) {
+  /* thème clair : les textes secondaires restent nettement lisibles sur le verre clair */
+  html:not(.natif) { --encre-2: rgba(18, 26, 44, .76); --encre-3: rgba(18, 26, 44, .6); }
+}
