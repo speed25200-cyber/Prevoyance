@@ -24,6 +24,7 @@ import * as Natif from './natif.js';
 import * as Suivi from './suivi.js';
 import * as Verrou from './verrou.js';
 import * as EcranVerrou from './verrou-ecran.js';
+import * as Palette from './palette.js';
 
 installerFond();
 
@@ -104,6 +105,11 @@ function placerBulle() {
   menu.style.setProperty('--bulle-h', `${actif.offsetHeight}px`);
 }
 new ResizeObserver(placerBulle).observe($('onglets'));
+// dossier : la hauteur de la liste des rubriques, pour que « Voir l'analyse » reste collé juste dessous au défilement
+const mesureRubriques = new ResizeObserver(entrees => document.documentElement.style.setProperty('--rubriques-h', `${Math.round(entrees[0].target.getBoundingClientRect().height)}px`));
+const suivreRubriques = () => { const liste = document.querySelector('.rubriques'); mesureRubriques.disconnect(); if (liste) mesureRubriques.observe(liste); };
+new MutationObserver(suivreRubriques).observe($('saisie'), { childList: true });
+suivreRubriques();
 // un menu déroulant ouvert (portefeuille de dossiers) se referme quand on clique ailleurs ou qu'on presse Échap
 document.addEventListener('pointerdown', evenement => {
   for (const d of document.querySelectorAll('details.portefeuille[open]')) if (!d.contains(/** @type {Node} */ (evenement.target))) d.removeAttribute('open');
@@ -235,6 +241,25 @@ Formulaire.initialiser(ctx);
 $('langues').replaceChildren(...LANGUES.map(l => h('button', { type: 'button', 'data-langue': l, onclick: () => { etat.langue = l; garder(); traduire(); } }, l.toUpperCase())));
 $('annee').replaceChildren(...ANNEES.map(a => h('option', { value: a, selected: a === etat.annee }, String(a))));
 $('annee').addEventListener('change', async e => { etat.annee = +/** @type {HTMLSelectElement} */ (e.target).value; garder(); await calculer(); monterVue(); });
+
+// palette de commandes (Ctrl + K ou « / ») : tout ce qu'on peut ouvrir ou lancer, dans la langue du moment
+const palette = Palette.installer(() => {
+  const pages = ['dossier', ...VUES].map((v, i) => ({ titre: ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v), groupe: ctx.t('pa_pages'), touche: String(i + 1), faire: () => aller(v) }));
+  const rubriques = [.../** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.rubriques button'))].map(b => ({
+    titre: (b.lastChild?.textContent ?? b.textContent ?? '').trim(), groupe: ctx.t('pa_rubriques'), faire: () => { aller('dossier'); b.click(); } }));
+  const dossiers = etat.dossiers.length > 1 ? etat.dossiers.map(d => ({ titre: d.nom || ctx.t('sansNom'), groupe: ctx.t('pa_dossiers'), faire: () => ouvrirDossier(d.id) })) : [];
+  const actions = [
+    { titre: $('presentation').textContent ?? '', groupe: ctx.t('pa_actions'), faire: () => $('presentation').click() },
+    { titre: ctx.t('bu_pdf'), groupe: ctx.t('pa_actions'), faire: () => aller('rapport') },
+    { titre: ctx.t('pa_nouveau'), groupe: ctx.t('pa_actions'), faire: () => creerDossier(false) },
+    { titre: ctx.t('pa_exemple'), groupe: ctx.t('pa_actions'), faire: () => creerDossier(true) },
+    ...ANNEES.map(a => ({ titre: `${ctx.t('pa_regles')} ${a}`, groupe: ctx.t('pa_actions'), faire: () => { const s = /** @type {HTMLSelectElement} */ ($('annee')); s.value = String(a); s.dispatchEvent(new Event('change')); } })),
+    ...LANGUES.map(l => ({ titre: `${ctx.t('pa_langue')} · ${l.toUpperCase()}`, groupe: ctx.t('pa_actions'), faire: () => /** @type {HTMLElement|null} */ (document.querySelector(`#langues [data-langue="${l}"]`))?.click() })),
+    { titre: ctx.t('pa_entree'), groupe: ctx.t('pa_actions'), faire: () => { location.href = 'bienvenue.html'; } },
+  ];
+  return [...pages, ...rubriques, ...dossiers, ...actions];
+}, cle => ctx.t(cle));
+$('chercher')?.addEventListener('click', () => palette.ouvrir());
 
 $('presentation').addEventListener('click', () => {
   const active = document.body.classList.toggle('presentation');

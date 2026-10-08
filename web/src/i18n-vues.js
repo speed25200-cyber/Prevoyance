@@ -18,6 +18,7 @@ const cantons = i => Object.fromEntries(Object.entries(NOMS_CANTONS).map(([c, no
 export const VUES_T = {
   fr: {
     ...cantons(0),
+    pa_bouton: 'Rechercher', pa_chercher: 'Aller à une page, une rubrique, un dossier, une action…', pa_naviguer: 'choisir', pa_ouvrir: 'ouvrir', pa_rien: 'Rien ne correspond.', pa_pages: 'Pages', pa_rubriques: 'Rubriques du dossier', pa_dossiers: 'Dossiers', pa_actions: 'Actions', pa_langue: 'Langue', pa_nouveau: 'Nouveau dossier', pa_exemple: 'Charger le dossier d’exemple', pa_entree: 'Revenir à la page d’entrée', pa_regles: 'Règles de l’année',
     bu_dossier: 'La situation du client. Chaque saisie recalcule tout.', bu_analyse: 'Ce qui est couvert, ce qui manque, et pourquoi.', bu_scenarios: 'Ce qui change quand les hypothèses bougent.', bu_plan: 'Les mesures, leur effet et leur ordre.', bu_rapport: 'Le document à remettre au client.', bu_donnees: 'Les règles et les barèmes appliqués.', bu_couverture: 'Couverture', bu_pdf: 'Rapport PDF', bu_regles: 'Règles',
     v_analyse: 'Analyse', v_scenarios: 'Scénarios', v_plan: 'Conseil', v_rapport: 'Rapport', v_donnees: 'Données',
     dossier: 'Dossier', sansNom: 'Dossier sans nom', nouveau: 'Nouveau', dupliquer: 'Dupliquer', exporter: 'Exporter', importer: 'Importer', supprimer: 'Supprimer',
@@ -83,6 +84,7 @@ export const VUES_T = {
   },
   de: {
     ...cantons(1),
+    pa_bouton: 'Suchen', pa_chercher: 'Zu einer Seite, einer Rubrik, einem Dossier, einer Aktion…', pa_naviguer: 'wählen', pa_ouvrir: 'öffnen', pa_rien: 'Kein Treffer.', pa_pages: 'Seiten', pa_rubriques: 'Rubriken des Dossiers', pa_dossiers: 'Dossiers', pa_actions: 'Aktionen', pa_langue: 'Sprache', pa_nouveau: 'Neues Dossier', pa_exemple: 'Beispieldossier laden', pa_entree: 'Zurück zur Startseite', pa_regles: 'Regeln des Jahres',
     bu_dossier: 'Die Situation des Kunden. Jede Eingabe rechnet alles neu.', bu_analyse: 'Was gedeckt ist, was fehlt und weshalb.', bu_scenarios: 'Was sich ändert, wenn die Annahmen sich bewegen.', bu_plan: 'Die Massnahmen, ihre Wirkung und ihre Reihenfolge.', bu_rapport: 'Das Dokument für den Kunden.', bu_donnees: 'Die angewandten Regeln und Tarife.', bu_couverture: 'Deckung', bu_pdf: 'PDF-Bericht', bu_regles: 'Regeln',
     v_analyse: 'Analyse', v_scenarios: 'Szenarien', v_plan: 'Empfehlung', v_rapport: 'Bericht', v_donnees: 'Daten',
     dossier: 'Dossier', sansNom: 'Dossier ohne Namen', nouveau: 'Neu', dupliquer: 'Duplizieren', exporter: 'Exportieren', importer: 'Importieren', supprimer: 'Löschen',
@@ -148,6 +150,7 @@ export const VUES_T = {
   },
   it: {
     ...cantons(2),
+    pa_bouton: 'Cerca', pa_chercher: 'Vai a una pagina, una rubrica, un dossier, un’azione…', pa_naviguer: 'scegliere', pa_ouvrir: 'aprire', pa_rien: 'Nessun risultato.', pa_pages: 'Pagine', pa_rubriques: 'Rubriche del dossier', pa_dossiers: 'Dossier', pa_actions: 'Azioni', pa_langue: 'Lingua', pa_nouveau: 'Nuovo dossier', pa_exemple: 'Carica il dossier d’esempio', pa_entree: 'Torna alla pagina iniziale', pa_regles: 'Regole dell’anno',
     bu_dossier: 'La situazione del cliente. Ogni dato ricalcola tutto.', bu_analyse: 'Ciò che è coperto, ciò che manca e perché.', bu_scenarios: 'Che cosa cambia quando le ipotesi si muovono.', bu_plan: 'Le misure, il loro effetto e il loro ordine.', bu_rapport: 'Il documento da consegnare al cliente.', bu_donnees: 'Le regole e le tariffe applicate.', bu_couverture: 'Copertura', bu_pdf: 'Rapporto PDF', bu_regles: 'Regole',
     v_analyse: 'Analisi', v_scenarios: 'Scenari', v_plan: 'Consulenza', v_rapport: 'Rapporto', v_donnees: 'Dati',
     dossier: 'Dossier', sansNom: 'Dossier senza nome', nouveau: 'Nuovo', dupliquer: 'Duplica', exporter: 'Esporta', importer: 'Importa', supprimer: 'Elimina',
@@ -213,6 +216,7 @@ export const VUES_T = {
   },
   en: {
     ...cantons(3),
+    pa_bouton: 'Search', pa_chercher: 'Go to a page, a section, a case, an action…', pa_naviguer: 'choose', pa_ouvrir: 'open', pa_rien: 'Nothing matches.', pa_pages: 'Pages', pa_rubriques: 'Case sections', pa_dossiers: 'Cases', pa_actions: 'Actions', pa_langue: 'Language', pa_nouveau: 'New case', pa_exemple: 'Load the sample case', pa_entree: 'Back to the landing page', pa_regles: 'Rules of the year',
     bu_dossier: 'The client’s situation. Every entry recalculates everything.', bu_analyse: 'What is covered, what is missing, and why.', bu_scenarios: 'What changes when the assumptions move.', bu_plan: 'The measures, their effect and their order.', bu_rapport: 'The document to hand to the client.', bu_donnees: 'The rules and scales applied.', bu_couverture: 'Coverage', bu_pdf: 'PDF report', bu_regles: 'Rules',
     v_analyse: 'Analysis', v_scenarios: 'Scenarios', v_plan: 'Advice', v_rapport: 'Report', v_donnees: 'Data',
     dossier: 'Case', sansNom: 'Unnamed case', nouveau: 'New', dupliquer: 'Duplicate', exporter: 'Export', importer: 'Import', supprimer: 'Delete',
