@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#050914">
+<meta name="robots" content="noindex">
+<title>Prévoyance — votre retraite, vue d’en haut</title>
+<meta name="description" content="L’analyse de prévoyance suisse : les trois piliers, la lacune chiffrée au franc près, un plan daté.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="images/icone-192.png">
+<link rel="apple-touch-icon" href="images/icone-180.png">
+<link rel="preload" href="polices/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="polices/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="images/film/f-001.webp" as="image">
+<link rel="stylesheet" href="polices/polices.css">
+<link rel="stylesheet" href="bienvenue.css?v=1">
+<script type="module" src="src/bienvenue.js?v=1"></script>
+</head>
+<body>
+<div class="ecran" aria-hidden="true">
+  <canvas id="film" width="1600" height="900"></canvas>
+  <i class="voile"></i>
+  <i class="grain"></i>
+</div>
+
+<header class="haut">
+  <a class="griffe" href="#top" aria-label="Prévoyance"><img src="images/icone-192.png" alt="" width="30" height="30"><span>Prévoyance</span></a>
+  <div class="langues" id="langues" role="group" aria-label="Langue"></div>
+  <a class="bouton plein petit" href="index.html" data-t="ouvrir">Ouvrir l’analyse</a>
+</header>
+
+<nav class="reperes" id="reperes" aria-hidden="true"></nav>
+
+<main id="top">
+  <section class="piste" id="piste" aria-label="Présentation">
+    <div class="scene">
+      <article class="chapitre debut" data-de="-0.1" data-a="0.15">
+        <p class="sur" data-t="c0_sur">Prévoyance suisse · 1er, 2e et 3e pilier</p>
+        <h1 data-t="c0_titre">Votre retraite,<br><em>vue d’en haut.</em></h1>
+        <p class="chapo" data-t="c0_texte">Ce que vous toucherez, ce qu’il manquera, et ce qu’il faut faire — chiffré au franc près.</p>
+        <p class="defiler"><i></i><span data-t="defiler">Défiler</span></p>
+      </article>
+
+      <article class="chapitre gauche" data-de="0.2" data-a="0.39">
+        <p class="sur"><b>01</b><span data-t="c1_sur">Le point de départ</span></p>
+        <h2 data-t="c1_titre">Trois piliers.<br><em>Une seule image.</em></h2>
+        <p class="chapo" data-t="c1_texte">AVS, caisse de pension, 3e pilier : chaque rente est calculée selon les règles de l’année, puis réunie sur une ligne de vie.</p>
+        <ul class="piliers">
+          <li><b>1</b><span data-t="p1">AVS / AI</span></li>
+          <li><b>2</b><span data-t="p2">Caisse de pension</span></li>
+          <li><b>3</b><span data-t="p3">Épargne privée</span></li>
+        </ul>
+      </article>
+
+      <article class="chapitre droite" data-de="0.43" data-a="0.61">
+        <p class="sur"><b>02</b><span data-t="c2_sur">Le constat</span></p>
+        <h2 data-t="c2_titre">La lacune,<br><em>chiffrée.</em></h2>
+        <p class="grandchiffre"><small>CHF</small><output id="compteur">0</output><small data-t="parMois">par mois</small></p>
+        <p class="chapo" data-t="c2_texte">Retraite, invalidité, décès : pour chaque risque, le revenu garanti, le besoin et l’écart entre les deux.</p>
+      </article>
+
+      <article class="chapitre gauche" data-de="0.65" data-a="0.82">
+        <p class="sur"><b>03</b><span data-t="c3_sur">La suite</span></p>
+        <h2 data-t="c3_titre">Un plan,<br><em>daté.</em></h2>
+        <p class="chapo" data-t="c3_texte">Rachats, versements 3a, retraits échelonnés : chaque mesure a son gain, son coût et sa dernière date utile.</p>
+        <ol class="route">
+          <li><time data-t="r1_quand">Chaque année</time><span data-t="r1_quoi">Versement 3a avant le 31 décembre</span></li>
+          <li><time data-t="r2_quand">Dès 50 ans</time><span data-t="r2_quoi">Rachats dans la caisse de pension</span></li>
+          <li><time data-t="r3_quand">5 ans avant</time><span data-t="r3_quoi">Retraits du 3a, échelonnés</span></li>
+        </ol>
+      </article>
+
+      <article class="chapitre fin" data-de="0.87" data-a="1.2">
+        <h2 data-t="c4_titre">Voyez clair.<br><em>Décidez tôt.</em></h2>
+        <p class="chapo" data-t="c4_texte">L’analyse complète se fait en quelques minutes. Vos données restent sur votre appareil.</p>
+        <p class="actions">
+          <a class="bouton plein" href="index.html" data-t="ouvrir">Ouvrir l’analyse</a>
+          <a class="bouton verre" href="#essai" data-t="essayer">Essayer en 10 secondes</a>
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="bloc" id="essai">
+    <div class="tete">
+      <p class="sur"><b>04</b><span data-t="s_sur">À vous</span></p>
+      <h2 data-t="s_titre">Votre lacune, <em>en direct.</em></h2>
+      <p class="chapo" data-t="s_texte">Trois réglages, le vrai moteur de calcul. Une estimation : l’analyse complète tient compte de vos certificats.</p>
+    </div>
+    <div class="simulateur verre-carte">
+      <form class="reglages" id="reglages" autocomplete="off">
+        <label><span data-t="s_age">Âge</span><output id="o-age">40</output>
+          <input type="range" id="age" min="25" max="62" step="1" value="40"></label>
+        <label><span data-t="s_revenu">Revenu annuel brut</span><output id="o-revenu">CHF 90’000</output>
+          <input type="range" id="revenu" min="30000" max="250000" step="1000" value="90000"></label>
+        <label><span data-t="s_depart">Départ à la retraite</span><output id="o-depart">65</output>
+          <input type="range" id="depart" min="58" max="70" step="1" value="65"></label>
+        <div class="ligne">
+          <label class="choix"><span data-t="s_canton">Canton</span><select id="canton"></select></label>
+          <label class="choix"><span data-t="s_statut">Statut</span>
+            <select id="statut"><option value="salarie" data-t="s_salarie">Salarié</option><option value="independant" data-t="s_independant">Indépendant</option></select></label>
+        </div>
+      </form>
+      <div class="resultat" aria-live="polite">
+        <p class="etiquette" data-t="s_resultat">Lacune à la retraite</p>
+        <p class="grandchiffre petit"><small>CHF</small><output id="r-lacune">—</output><small data-t="parMois">par mois</small></p>
+        <div class="jauge"><i id="r-jauge"></i></div>
+        <p class="couverture"><b id="r-couverture">—</b> <span data-t="s_couvert">du besoin couvert</span></p>
+        <ul class="sources" id="r-sources"></ul>
+        <a class="bouton plein" href="index.html#dossier" data-t="s_complet">Faire l’analyse complète</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloc" id="fonctions">
+    <div class="tete">
+      <p class="sur"><b>05</b><span data-t="f_sur">Dans l’analyse</span></p>
+      <h2 data-t="f_titre">Tout ce qu’un bon conseil <em>doit montrer.</em></h2>
+    </div>
+    <div class="grille" id="grille"></div>
+  </section>
+
+  <section class="bloc confiance">
+    <ul class="preuves" id="preuves"></ul>
+    <p class="actions">
+      <a class="bouton plein" href="index.html" data-t="ouvrir">Ouvrir l’analyse</a>
+      <a class="bouton verre" href="index.html#analyse" data-t="exemple">Voir un dossier d’exemple</a>
+    </p>
+  </section>
+</main>
+
+<footer class="pied">
+  <p><b>Prévoyance</b> · <span data-t="pied">Estimations selon les règles légales de l’année ; elles ne remplacent ni un certificat de prévoyance ni un conseil personnalisé.</span></p>
+</footer>
+</body>
+</html>
