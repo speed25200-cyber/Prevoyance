@@ -81,18 +81,26 @@ export function creerGraphique(canvas, bulle) {
     ctx.beginPath(); ctx.rect(marge.g, 0, largeur - marge.g - marge.d, hauteur - marge.b + 1); ctx.clip();
     // couches empilées, une colonne par année
     const base = new Map(ages.map(a => [a, 0]));
+    // chaque couche reçoit un reflet (clair en haut, plus dense en bas) et une arête lumineuse : de la matière, pas un aplat
+    const reflet = ctx.createLinearGradient(0, marge.h, 0, hauteur - marge.b);
+    reflet.addColorStop(0, 'rgba(255, 255, 255, .26)'); reflet.addColorStop(0.5, 'rgba(255, 255, 255, 0)'); reflet.addColorStop(1, 'rgba(0, 0, 0, .22)');
     for (const cle of COUCHES) {
       ctx.beginPath();
+      const arete = new Path2D();
       let trace = false;
       for (const a of ages) {
         const v = courant.get(a)?.v[cle] ?? 0;
         if (v < 0.5) continue;
         const b = base.get(a) ?? 0, x0 = X(a), x1 = X(a + 1);
         ctx.rect(x0, Y(b + v), x1 - x0 + 0.6, Y(b) - Y(b + v));
+        arete.moveTo(x0, Y(b + v) + 0.75); arete.lineTo(x1 + 0.6, Y(b + v) + 0.75);
         base.set(a, b + v);
         trace = true;
       }
-      if (trace) { ctx.fillStyle = couleurs[cle]; ctx.fill(); }
+      if (!trace) continue;
+      ctx.fillStyle = couleurs[cle]; ctx.fill();
+      ctx.save(); ctx.clip(); ctx.fillStyle = reflet; ctx.fillRect(marge.g, 0, largeur, hauteur); ctx.restore();
+      ctx.strokeStyle = 'rgba(255, 255, 255, .38)'; ctx.lineWidth = 1.5; ctx.stroke(arete);
     }
     // lacune : entre le sommet de la pile et le besoin
     ctx.beginPath();

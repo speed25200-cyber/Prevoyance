@@ -1,7 +1,7 @@
 /* Page d'entrée : un film alpin piloté par le défilement, de grands titres, puis l'essentiel de l'application.
    Une seule idée visuelle : on monte du lac jusqu'aux trois piliers. */
 :root {
-  --nuit: #050914; --nuit-2: #0a1224; --glace: #a9c9ff; --glace-2: #6f9dff; --encre: #f2f6ff; --encre-2: #b6c3dc; --encre-3: #7f8eab;
+  --nuit: #050914; --nuit-2: #0a1224; --glace: #a9c9ff; --glace-2: #6f9dff; --encre: #f2f6ff; --encre-2: #d5dff2; --encre-3: #a3b2cf;
   --filet: rgba(169, 201, 255, .16); --verre: rgba(12, 22, 44, .62);
   --titre: 'Fraunces', 'Iowan Old Style', Georgia, serif;
   --texte: 'Inter', ui-sans-serif, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -12,10 +12,10 @@
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--nuit); color: var(--encre); font: 400 16px/1.55 var(--texte); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 a { color: inherit; text-decoration: none; }
-em { font-style: italic; font-weight: 300; color: var(--glace); }
-h1, h2 { font-family: var(--titre); font-weight: 300; letter-spacing: -.035em; line-height: .94; margin: 0; text-wrap: balance; }
-h1 { font-size: clamp(52px, 11.4vw, 176px); }
-h2 { font-size: clamp(44px, 8.6vw, 132px); }
+em { font-style: italic; font-weight: 500; color: #c4dbff; }
+h1, h2 { font-family: var(--titre); font-weight: 500; letter-spacing: -.022em; line-height: .98; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(48px, 9.4vw, 148px); }
+h2 { font-size: clamp(42px, 7.4vw, 116px); }
 button, input, select { font: inherit; color: inherit; }
 
 /* ---- le film, fixe derrière tout */
@@ -35,10 +35,10 @@ button, input, select { font: inherit; color: inherit; }
 .haut::before { content: ""; position: absolute; inset: 0; background: rgba(5, 9, 20, .72); border-bottom: 1px solid var(--filet);
   backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4); opacity: var(--fond, 0); pointer-events: none; }
 .haut > * { position: relative; }
-.griffe { display: flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 600; letter-spacing: .26em; text-transform: uppercase; font-size: 12px; }
+.griffe { display: flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; font-size: 13px; }
 .griffe img { border-radius: 8px; }
 .langues { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--verre); border: 1px solid var(--filet); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); }
-.langues button { border: 0; background: none; padding: 6px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .08em; color: var(--encre-2); cursor: pointer; }
+.langues button { border: 0; background: none; padding: 7px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; letter-spacing: .08em; color: var(--encre-2); cursor: pointer; }
 .langues button[aria-pressed="true"] { background: rgba(169, 201, 255, .2); color: var(--encre); }
 
 .bouton { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 28px; border-radius: 999px;
@@ -72,29 +72,29 @@ main { position: relative; z-index: 10; }
 .chapitre.fin, .chapitre.debut { align-items: center; text-align: center; justify-content: flex-end; padding-bottom: clamp(48px, 8vh, 96px); }
 .chapitre.fin h2 { font-size: clamp(40px, 6.4vw, 98px); }
 .chapitre.debut { justify-content: flex-end; padding-bottom: clamp(70px, 13vh, 150px); }
-.sur { margin: 0; display: flex; align-items: center; gap: 14px; font-size: 11.5px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: var(--glace); }
-.sur b { font-family: var(--titre); font-weight: 300; font-size: 22px; letter-spacing: 0; color: var(--encre); }
+.sur { margin: 0; display: flex; align-items: center; gap: 14px; font-size: 13px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--glace); }
+.sur b { font-family: var(--titre); font-weight: 500; font-size: 24px; letter-spacing: 0; color: var(--encre); }
 .droite .sur { flex-direction: row-reverse; }
-.chapo { margin: 0; max-width: 46ch; font-size: clamp(15px, 1.35vw, 19px); color: var(--encre-2); line-height: 1.5; text-wrap: pretty; }
+.chapo { margin: 0; max-width: 44ch; font-size: clamp(17px, 1.5vw, 22px); font-weight: 450; color: #e6edfb; line-height: 1.45; text-wrap: pretty; }
 .debut .chapo, .fin .chapo { max-width: 52ch; }
-.defiler { margin: clamp(10px, 3vh, 34px) 0 0; display: grid; justify-items: center; gap: 10px; font-size: 10.5px; letter-spacing: .34em; text-transform: uppercase; color: var(--encre-3); }
+.defiler { margin: clamp(10px, 3vh, 34px) 0 0; display: grid; justify-items: center; gap: 10px; font-size: 12px; letter-spacing: .34em; text-transform: uppercase; color: var(--encre-3); }
 .defiler i { width: 1px; height: 46px; background: linear-gradient(var(--glace), transparent); animation: tombe 2.2s var(--aise) infinite; transform-origin: top; }
 @keyframes tombe { 0% { transform: scaleY(0); opacity: 0; } 40% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(1) translateY(20px); opacity: 0; } }
 .actions { margin: clamp(8px, 2vh, 20px) 0 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 
 .piliers { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .piliers li { display: flex; align-items: center; gap: 12px; padding: 10px 18px 10px 10px; border-radius: 999px; background: var(--verre); border: 1px solid var(--filet);
-  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); font-size: 14px; font-weight: 500; }
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); font-size: 15.5px; font-weight: 500; }
 .piliers b { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(180deg, #cfe1ff, #8fb4ff); color: #06122b; font-family: var(--titre); font-weight: 500; font-size: 15px; }
 
-.grandchiffre { margin: 0; display: flex; align-items: baseline; gap: .22em; font-family: var(--titre); font-weight: 300; font-size: clamp(64px, 13vw, 210px); line-height: .9; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
-.grandchiffre small { font-family: var(--texte); font-size: clamp(12px, 1.1vw, 15px); font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: var(--glace); }
+.grandchiffre { margin: 0; display: flex; align-items: baseline; gap: .22em; font-family: var(--texte); font-weight: 600; font-size: clamp(60px, 11vw, 180px); line-height: .92; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.grandchiffre small { font-family: var(--texte); font-size: clamp(13px, 1.15vw, 16px); font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--glace); }
 .grandchiffre.petit { font-size: clamp(54px, 7.4vw, 104px); }
 
 .route { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; max-width: 520px; counter-reset: etape; }
 .route li { display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 16px; align-items: baseline; padding: 13px 18px; border-radius: 16px; background: var(--verre); border: 1px solid var(--filet);
-  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); font-size: 14.5px; }
-.route time { font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--glace); }
+  backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); font-size: 16px; }
+.route time { font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--glace); }
 
 /* ---- après le film : sections sur fond de nuit */
 .bloc { position: relative; padding: clamp(80px, 13vw, 170px) var(--bord); max-width: 1320px; margin: 0 auto; }
@@ -105,8 +105,8 @@ main { position: relative; z-index: 10; }
 
 .simulateur { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); overflow: hidden; }
 .reglages { display: grid; gap: 26px; padding: clamp(24px, 4vw, 52px); align-content: center; }
-.reglages label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; align-items: baseline; font-size: 13px; color: var(--encre-2); min-width: 0; }
-.reglages output { font-family: var(--titre); font-weight: 400; font-size: 24px; color: var(--encre); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.reglages label { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 16px; align-items: baseline; font-size: 15px; color: var(--encre-2); min-width: 0; }
+.reglages output { font-family: var(--texte); font-weight: 600; font-size: 22px; color: var(--encre); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .reglages input[type=range] { grid-column: 1 / -1; -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: none; margin: 0; cursor: pointer; }
 .reglages input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--glace) var(--p, 50%), rgba(169, 201, 255, .18) var(--p, 50%)); }
 .reglages input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: rgba(169, 201, 255, .18); }
@@ -120,27 +120,27 @@ main { position: relative; z-index: 10; }
 .reglages select option { color: #0b1020; }
 .resultat { display: grid; gap: 16px; align-content: center; justify-items: start; padding: clamp(24px, 4vw, 52px);
   background: radial-gradient(120% 90% at 100% 0%, rgba(111, 157, 255, .22), transparent 60%), rgba(169, 201, 255, .05); border-left: 1px solid var(--filet); }
-.etiquette { margin: 0; font-size: 11.5px; font-weight: 600; letter-spacing: .3em; text-transform: uppercase; color: var(--glace); }
+.etiquette { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--glace); }
 .jauge { width: 100%; height: 8px; border-radius: 8px; background: rgba(169, 201, 255, .14); overflow: hidden; }
 .jauge i { display: block; height: 100%; width: 100%; border-radius: 8px; background: linear-gradient(90deg, #6f9dff, #d7e6ff); transform: scaleX(var(--j, 0)); transform-origin: left; transition: transform .7s var(--aise); }
-.couverture { margin: 0; color: var(--encre-2); font-size: 14px; }
+.couverture { margin: 0; color: var(--encre-2); font-size: 15.5px; }
 .couverture b { color: var(--encre); font-weight: 600; font-variant-numeric: tabular-nums; }
 .sources { list-style: none; margin: 0 0 8px; padding: 0; width: 100%; display: grid; gap: 0; }
-.sources li { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-top: 1px solid var(--filet); font-size: 14px; color: var(--encre-2); }
+.sources li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--filet); font-size: 15.5px; color: var(--encre-2); }
 .sources li b { color: var(--encre); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .carte { padding: 30px 28px 32px; display: grid; gap: 12px; align-content: start; border-radius: 26px; min-width: 0; transition: transform .5s var(--aise), border-color .5s; }
 .carte:hover { transform: translateY(-6px); border-color: rgba(169, 201, 255, .4); }
 .carte svg { width: 30px; height: 30px; stroke: var(--glace); fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-.carte h3 { margin: 6px 0 0; font-family: var(--titre); font-weight: 400; font-size: 25px; letter-spacing: -.02em; line-height: 1.1; }
-.carte p { margin: 0; color: var(--encre-2); font-size: 14.5px; }
+.carte h3 { margin: 6px 0 0; font-family: var(--titre); font-weight: 500; font-size: 26px; letter-spacing: -.02em; line-height: 1.1; }
+.carte p { margin: 0; color: var(--encre-2); font-size: 16px; line-height: 1.5; }
 
 .confiance { text-align: center; padding-top: 0; }
 .preuves { list-style: none; margin: 0 0 clamp(34px, 5vw, 60px); padding: clamp(26px, 4vw, 44px) 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; border-top: 1px solid var(--filet); border-bottom: 1px solid var(--filet); }
-.preuves b { display: block; font-family: var(--titre); font-weight: 300; font-size: clamp(34px, 4.6vw, 62px); letter-spacing: -.03em; line-height: 1; }
-.preuves span { display: block; margin-top: 10px; font-size: 12.5px; color: var(--encre-3); letter-spacing: .04em; }
-.pied { position: relative; z-index: 10; padding: 34px var(--bord) max(40px, env(safe-area-inset-bottom)); color: var(--encre-3); font-size: 12.5px; text-align: center; }
+.preuves b { display: block; font-family: var(--texte); font-weight: 600; font-size: clamp(34px, 4.6vw, 62px); letter-spacing: -.03em; line-height: 1; }
+.preuves span { display: block; margin-top: 10px; font-size: 14.5px; color: var(--encre-2); }
+.pied { position: relative; z-index: 10; padding: 34px var(--bord) max(40px, env(safe-area-inset-bottom)); color: var(--encre-3); font-size: 13.5px; text-align: center; }
 .pied p { margin: 0 auto; max-width: 78ch; } .pied b { color: var(--encre-2); letter-spacing: .2em; text-transform: uppercase; font-size: 11px; }
 
 /* ---- apparition des blocs après le film */
