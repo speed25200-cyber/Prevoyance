@@ -26,5 +26,28 @@ shutil.copy2(racine / "moteur" / "manifeste.json", moteur / "manifeste.json")
     '<body><a href="web/bienvenue.html">Prévoyance</a></body></html>\n', encoding="utf-8")
 (sortie / "robots.txt").write_text("User-agent: *\nDisallow: /\n", encoding="utf-8")
 
+# Accès privé (site d'essai) : avec « --acces <fichier du code> », la racine devient une page de connexion et les
+# deux pages vérifient le passage. C'est une porte simple côté navigateur, pas une protection de serveur.
+if "--acces" in sys.argv:
+    code = Path(sys.argv[sys.argv.index("--acces") + 1]).read_text(encoding="utf-8").strip()
+
+    def empreinte(texte: str) -> str:
+        h = 0x811C9DC5
+        for octet in texte.encode("utf-8"):
+            h = ((h ^ octet) * 0x01000193) & 0xFFFFFFFF
+        return f"{h:08x}"
+
+    sel = "prevoyance-essai"
+    marque = empreinte(sel + code.upper()) + empreinte(code.upper() + sel)
+    modele = (racine / "outils" / "acces.html").read_text(encoding="utf-8")
+    (sortie / "index.html").write_text(modele.replace("__EMPREINTE__", marque).replace("__SEL__", sel), encoding="utf-8")
+    (sortie / "web" / "garde.js").write_text(
+        f"try {{ if (sessionStorage.getItem('prevoyance.acces') !== '{marque}') location.replace('../index.html'); }}"
+        " catch (e) { location.replace('../index.html'); }\n", encoding="utf-8")
+    for page in ("bienvenue.html", "index.html"):
+        p = sortie / "web" / page
+        p.write_text(p.read_text(encoding="utf-8").replace("<head>", '<head>\n<script src="garde.js"></script>', 1), encoding="utf-8")
+    (sortie / ".htaccess").write_text('Header set X-Robots-Tag "noindex, nofollow"\nOptions -Indexes\n', encoding="utf-8")
+
 fichiers = [f for f in sortie.rglob("*") if f.is_file()]
 print(f"{sortie} : {len(fichiers)} fichiers, {sum(f.stat().st_size for f in fichiers) / 1e6:.1f} Mo")
