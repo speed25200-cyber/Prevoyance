@@ -163,7 +163,8 @@ function monterVue() {
   // première image sans transition ; ensuite, fondu-glissé entre les vues quand le navigateur le permet
   const transition = /** @type {any} */ (document).startViewTransition;
   // écran tactile : pas de transition de vue du navigateur (elle photographie toute la page, fond compris : lent)
-  const tactile = matchMedia('(pointer: coarse)').matches;
+  // grand écran : les cartes ont leur propre entrée en cascade ; la transition du navigateur par-dessus saccade
+  const tactile = matchMedia('(pointer: coarse)').matches || matchMedia('(min-width: 1200px)').matches;
   if (tactile) {
     changer();
     if (montee && !matchMedia('(prefers-reduced-motion: reduce)').matches) $('vue').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });

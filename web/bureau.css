@@ -100,6 +100,14 @@
   html:not(.natif) body[data-vue="rapport"] #vue > div > .carte { grid-column: 1; }
   html:not(.natif) body[data-vue="rapport"] .rapport { grid-column: 2; grid-row: 1 / span 4; }
 
+  /* ---------- fluidité : pas de flou recalculé sous chaque carte à chaque image (un film passe derrière) ;
+     le verre devient un voile teinté, le flou reste réservé au rail */
+  html:not(.natif) .carte, html:not(.natif) .bloc, html:not(.natif) .risque, html:not(.natif) .rubriques, html:not(.natif) .chiffre {
+    -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  html:not(.natif) .carte:not(.tete), html:not(.natif) .bloc, html:not(.natif) .risque {
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--fond) 46%, transparent), color-mix(in srgb, var(--fond) 62%, transparent)); }
+  html:not(.natif) #vue > *, html:not(.natif) .pile-cartes > * { will-change: transform, opacity; }
+
   /* ---------- mouvement : les cartes entrent l'une après l'autre et se soulèvent sous le pointeur */
   html:not(.natif) .carte, html:not(.natif) .risque { transition: transform .5s var(--aise), box-shadow .5s var(--aise), border-color .5s var(--aise); }
   html:not(.natif) #vue .carte:not(.tete):hover { transform: translateY(-3px); }

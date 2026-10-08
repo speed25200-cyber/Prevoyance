@@ -176,7 +176,7 @@ $('langues').append(...LANGUES.map(l => {
 }));
 
 // ------------------------------------------------------------------------------------------------ le film
-const IMAGES = 144, PAS_MOBILE = 2;
+const IMAGES = 288, PAS_MOBILE = 2;
 const etroit = matchMedia('(max-width: 620px)').matches;
 const pas = etroit ? PAS_MOBILE : 1;
 const toile = /** @type {HTMLCanvasElement} */ ($('film')), encre = toile.getContext('2d', { alpha: false });
@@ -189,22 +189,30 @@ function charger(n) {
   const im = new Image();
   im.decoding = 'async';
   im.src = adresse(n);
-  im.onload = () => { vues[n] = im; if (derniere === -1 || n === voulue) dessiner(voulue); };
+  // décodée avant d'être utilisée : aucun à-coup au moment de la dessiner
+  const prete = () => { vues[n] = im; if (derniere === -1 || Math.abs(n - voulue) <= pas) { derniere = -1; dessiner(voulue); } };
+  im.onload = () => { (im.decode ? im.decode() : Promise.resolve()).then(prete, prete); };
 }
-function dessiner(n) {
+/** Dessine la position `p` du film (nombre à virgule) : l'image du dessous, et la suivante fondue par-dessus. */
+function dessiner(p) {
+  if (!encre || p === derniere) return;
+  const bas = Math.floor(p / pas) * pas, part = (p - bas) / pas;
   // l'image voulue, sinon la plus proche déjà chargée (jamais d'écran vide pendant le chargement)
-  let k = n;
-  for (let e = 0; !vues[k] && e < IMAGES; e++) { if (vues[n - e]) k = n - e; else if (vues[n + e]) k = n + e; }
+  let k = bas;
+  for (let e = 0; !vues[k] && e < IMAGES; e += pas) { if (vues[bas - e]) k = bas - e; else if (vues[bas + e]) k = bas + e; }
   const im = vues[k];
-  if (!im || !encre || k === derniere) return;
-  derniere = k;
+  if (!im) return;
+  derniere = p;
   if (toile.width !== im.naturalWidth) { toile.width = im.naturalWidth; toile.height = im.naturalHeight; }
+  encre.globalAlpha = 1;
   encre.drawImage(im, 0, 0);
+  const suivante = k === bas ? vues[bas + pas] : undefined;
+  if (suivante && part > 0.01) { encre.globalAlpha = part; encre.drawImage(suivante, 0, 0); encre.globalAlpha = 1; }
 }
 let voulue = 0;
 // d'abord une image sur douze (le film existe tout de suite, en gros), puis le reste par vagues
 const ordre = [];
-for (const saut of [12, 6, 3, 1]) for (let n = 0; n < IMAGES; n += saut * pas) if (!ordre.includes(n)) ordre.push(n);
+for (const saut of [24, 12, 6, 3, 1]) for (let n = 0; n < IMAGES; n += saut * pas) if (!ordre.includes(n)) ordre.push(n);
 if (calme) charger(0);
 else {
   let i = 0;
@@ -220,7 +228,7 @@ const acces = Object.assign(document.createElement('a'), { className: 'bouton pl
 acces.dataset.t = 'ouvrir';
 document.body.append(acces);
 const LACUNE_EXEMPLE = 1190;
-let cible = 0, courant = 0, anime = false;
+let cible = 0, courant = 0, anime = false, instant = 0;
 
 function mesurer() {
   const r = piste.getBoundingClientRect(), course = r.height - innerHeight;
@@ -232,18 +240,21 @@ function mesurer() {
   const utile = cible > 0.04 && !(cible > 0.84 && apres === 0);
   document.documentElement.style.setProperty('--acces', utile ? '1' : '0');
   acces.classList.toggle('la', utile);
-  if (!anime) { anime = true; requestAnimationFrame(avancer); }
+  if (!anime) { anime = true; instant = performance.now(); requestAnimationFrame(avancer); }
 }
-function avancer() {
-  courant += (cible - courant) * 0.12;
-  if (Math.abs(cible - courant) < 0.0004) courant = cible;
-  voulue = Math.round(courant * (IMAGES - 1) / pas) * pas;
+function avancer(maintenant = performance.now()) {
+  // amorti réglé sur le temps écoulé : la même douceur à 60 comme à 144 images par seconde
+  const ecoule = Math.min(64, Math.max(1, maintenant - instant));
+  instant = maintenant;
+  courant += (cible - courant) * (1 - Math.exp(-ecoule / 150));
+  if (Math.abs(cible - courant) < 0.00008) courant = cible;
+  voulue = courant * (IMAGES - 1);
   dessiner(voulue);
   chapitres.forEach((c, i) => {
-    const de = +c.dataset.de, a = +c.dataset.a, fondu = 0.045;
+    const de = +c.dataset.de, a = +c.dataset.a, fondu = 0.06;
     const entree = borne((courant - de) / fondu), sortie = borne((a - courant) / fondu), o = Math.min(entree, sortie);
     c.style.setProperty('--o', o.toFixed(3));
-    c.style.setProperty('--y', ((1 - entree) * 46 - (1 - sortie) * 46).toFixed(1));
+    c.style.setProperty('--y', ((1 - entree) * 36 - (1 - sortie) * 36).toFixed(2));
     c.classList.toggle('actif', o > 0.5);
     /** @type {HTMLElement} */ (reperes.children[i]).style.setProperty('--r', borne((courant - de) / (a - de)).toFixed(3));
   });
