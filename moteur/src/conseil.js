@@ -32,7 +32,8 @@ export function rediger(avant, mesures, apres, options = {}) {
   // la lacune retenue est la plus grande à venir : celle d'après les rentes d'enfants quand il y en a
   const pire = x => Math.max(x.lacune, x.lacuneMax ?? 0);
   if (pire(invalidite) > 0) {
-    point('cs_invalidite', 'maintenant', { mensuelChf: Math.round(pire(invalidite) / 12), couvertPct: invalidite.couverture, renteChf: mesures.renteInvalidite ?? 0 });
+    // la couverture citée est celle de la pire année (comme la lacune), pas celle d'aujourd'hui
+    point('cs_invalidite', 'maintenant', { mensuelChf: Math.round(pire(invalidite) / 12), couvertPct: invalidite.couvertureMin ?? invalidite.couverture, renteChf: mesures.renteInvalidite ?? 0 });
     if (r.invaliditeMaladie.lacune > r.invaliditeAccident.lacune + 1000) {
       point('cs_ecartMaladie', 'maintenant', { ecartChf: r.invaliditeMaladie.lacune - r.invaliditeAccident.lacune });
     }

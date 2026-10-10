@@ -54,6 +54,7 @@ export const COULEUR_PILIER = { 1: 'var(--p1)', 2: 'var(--p2)', 3: 'var(--p3)' }
  */
 export function colonnes(colonnes, { hauteur = 260, court, surClic }) {
   const largeur = 720, bas = 34, haut = 18, gauche = 44, n = colonnes.length;
+  const rayon = document.documentElement.classList.contains('natif') ? 3 : 0;   // dans le navigateur : des colonnes nettes, sans arrondi
   const max = Math.max(1, ...colonnes.map(c => Math.max(c.besoin ?? 0, c.couches.reduce((s, x) => s + x.valeur, 0)))) * 1.08;
   const y = v => hauteur - bas - v / max * (hauteur - bas - haut);
   const pas = (largeur - gauche - 8) / n, lc = Math.min(54, pas * 0.62);
@@ -70,10 +71,10 @@ export function colonnes(colonnes, { hauteur = 260, court, surClic }) {
     let base = 0;
     for (const couche of c.couches) {
       if (couche.valeur <= 0) continue;
-      groupe.append(h('rect', { x, width: lc, y: y(base + couche.valeur), height: Math.max(0, y(base) - y(base + couche.valeur)), fill: couche.couleur, rx: 3 }));
+      groupe.append(h('rect', { x, width: lc, y: y(base + couche.valeur), height: Math.max(0, y(base) - y(base + couche.valeur)), fill: couche.couleur, rx: rayon }));
       base += couche.valeur;
     }
-    if (c.besoin && c.besoin > base) groupe.append(h('rect', { x, width: lc, y: y(c.besoin), height: y(base) - y(c.besoin), class: 'manque', rx: 3 }));
+    if (c.besoin && c.besoin > base) groupe.append(h('rect', { x, width: lc, y: y(c.besoin), height: y(base) - y(c.besoin), class: 'manque', rx: rayon }));
     if (c.besoin) groupe.append(h('line', { x1: x - 5, x2: x + lc + 5, y1: y(c.besoin), y2: y(c.besoin), class: 'besoin' }));
     groupe.append(h('rect', { x: gauche + pas * i, width: pas, y: haut, height: hauteur - bas - haut, fill: 'transparent' }));
     groupe.append(h('text', { x: x + lc / 2, y: hauteur - bas + 18, class: 'axe fort', 'text-anchor': 'middle' }, c.libelle));

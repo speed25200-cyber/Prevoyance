@@ -5,6 +5,7 @@
  */
 
 import { VUES_T } from './i18n-vues.js';
+import { PLUS_T } from './i18n-plus.js';
 
 export const LANGUES = ['fr', 'de', 'it', 'en'];
 const REGION = { fr: 'fr-CH', de: 'de-CH', it: 'it-CH', en: 'en-CH' };
@@ -198,27 +199,51 @@ const T = {
 
 /** Traducteur d'une langue : `t('cle', {n: 3})`. */
 export function traducteur(langue) {
-  const table = { ...T.fr, ...VUES_T.fr, ...(T[langue] ?? {}), ...(VUES_T[langue] ?? {}) };
+  const table = { ...T.fr, ...VUES_T.fr, ...PLUS_T.fr, ...(T[langue] ?? {}), ...(VUES_T[langue] ?? {}), ...(PLUS_T[langue] ?? {}) };
   return (cle, valeurs = {}) => {
     let texte = table[cle] ?? cle;
     for (const [k, v] of Object.entries(valeurs)) texte = texte.replaceAll(`{${k}}`, String(v));
-    return texte;
+    const accorde = accorder(texte, langue);
+    // en français, la ponctuation double ne passe jamais seule à la ligne : espace insécable avant « : ; ? ! »
+    return langue === 'fr' ? accorde.replace(/ ([:;?!»])/g, '\u00a0$1').replace(/« /g, '«\u00a0') : accorde;
   };
+}
+
+/**
+ * Accords en nombre : « 1 année(s) manquante(s) » devient « 1 année manquante », « 3 lacune(s) » « 3 lacunes ».
+ * Chaque marque entre parenthèses s'accorde avec le dernier nombre écrit avant elle. Français et anglais : « (s) » au
+ * pluriel. Allemand : « (e) », « (n) » au pluriel, « (s) » au singulier (« 1 fehlendes Jahr », « 2 fehlende Jahre »).
+ * Sans nombre devant, le texte reste tel quel.
+ * @param {string} texte @param {string} langue
+ */
+export function accorder(texte, langue) {
+  if (!texte.includes('(')) return texte;
+  return texte.replace(/\((s|e|n)\)/g, (marque, lettre, position) => {
+    const nombres = texte.slice(0, position).match(/\d+/g);
+    if (!nombres) return marque;
+    const n = +nombres[nombres.length - 1];
+    if (langue === 'de') return lettre === 's' ? (n === 1 ? 's' : '') : (n === 1 ? '' : lettre);
+    if (lettre !== 's') return marque;
+    return (langue === 'fr' ? n >= 2 : n !== 1) ? 's' : '';
+  });
 }
 
 /** Mise en forme suisse des montants : 12’345 CHF, sans centimes. */
 export function formats(langue) {
   const region = REGION[langue] ?? REGION.fr;
-  const nombre = new Intl.NumberFormat(region, { maximumFractionDigits: 0 });
+  const brut = new Intl.NumberFormat(region, { maximumFractionDigits: 0 });
+  // Un seul usage dans les quatre langues, celui de la page d'entrée : l'apostrophe des milliers (83’200). L'espace
+  // fine du français disparaissait dans les grands chiffres (« CHF 298000 »). « CHF » ne se sépare pas de son montant.
+  const nombre = { format: x => brut.format(x).replace(/[\u202f\u00a0\u2009 '’]/g, '’') };
   return {
     nombre: x => nombre.format(Math.round(x)),
-    chf: x => `CHF ${nombre.format(Math.round(x))}`,
+    chf: x => `CHF\u00a0${nombre.format(Math.round(x))}`,
     court: x => Math.abs(x) >= 1e6 ? `${(x / 1e6).toFixed(1).replace('.0', '')} M` : Math.abs(x) >= 1000 ? `${Math.round(x / 1000)}k` : String(Math.round(x)),
-    pourcent: x => `${Math.round(x * 100)} %`,
+    pourcent: x => `${Math.round(x * 100)}\u00a0%`,
   };
 }
 
 /** Clés présentes dans une langue, sans repli sur le français : sert au contrôle de complétude des traductions. */
 export function clesDe(langue) {
-  return new Set([...Object.keys(T[langue] ?? {}), ...Object.keys(VUES_T[langue] ?? {})]);
+  return new Set([...Object.keys(T[langue] ?? {}), ...Object.keys(VUES_T[langue] ?? {}), ...Object.keys(PLUS_T[langue] ?? {})]);
 }

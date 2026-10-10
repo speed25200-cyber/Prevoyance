@@ -158,7 +158,9 @@ export function appliquerMesures(dossier, mesures, regles) {
   }
   const lpp = { ...(p.lpp ?? {}) };
   if (mesures.rachatLPP) {
-    lpp.avoir = (lpp.avoir ?? 0) + mesures.rachatLPP;
+    // Certificat saisi par sa rente seule (sans l'avoir) : l'avoir reste « non saisi », sinon le moteur prendrait le rachat
+    // pour tout l'avoir et fausserait l'effet d'un départ avancé ou retardé. La rente, elle, augmente ci-dessous.
+    if (lpp.avoir !== undefined || lpp.renteVieillesse === undefined) lpp.avoir = (lpp.avoir ?? 0) + mesures.rachatLPP;
     lpp.rachatPossible = Math.max(0, (lpp.rachatPossible ?? 0) - mesures.rachatLPP);
     if (lpp.renteVieillesse !== undefined) lpp.renteVieillesse += mesures.rachatLPP * (lpp.tauxConversion ?? regles.lpp.tauxConversion);
   }

@@ -5,7 +5,7 @@
  * (tests/run.mjs, intégration continue) et dans l'app iOS.
  */
 
-import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat, Conseil, Vie } from '../src/index.js';
+import { analyser, AVS, LPP, LAA, Impots, Scenarios, Certificat, Conseil, Vie, Evenements } from '../src/index.js';
 import * as Analyse from '../src/analyse.js';
 
 /** @param {(nom: string, obtenu: any, attendu: any, tolerance?: number) => void} egal @param {{r26: any, r27: any, i26?: any}} regles */
@@ -443,4 +443,59 @@ export function casScenarios(egal, { r26, r27, i26, c26 }) {
   egal('Offres : une seule offre saisie, pas de préférence', large.meilleure, null);
   egal('Offres : une offre vide ne change rien', Scenarios.comparerOffres(famille, r26, [{}]).offres[0], { saisie: false, prime: 0, score: plan.avant.score, gainScore: 0,
     lacuneInvalidite: large.avant.lacuneInvalidite, lacuneInvaliditeMensuelle: Math.round(large.avant.lacuneInvalidite / 12), capitalDecesManquant: large.avant.capitalDeces, couvre: false, excedentRente: 0, excedentCapital: 0 });
+
+  // ---- couverture sur toute la durée : une lacune qui n'apparaît que plus tard pèse sur le score
+  {
+    const seule = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'celibataire', personne: { dateNaissance: '1986-01-01', sexe: 'f', statut: 'salarie', revenu: 90000 } }, r26);
+    const im = seule.risques.invaliditeMaladie, re = seule.risques.retraite;
+    egal('Durée : lacune constante, la couverture sur la durée est 1 − lacune / besoin (invalidité)', im.couvertureDuree, 1 - im.lacune / im.besoin, 0.002);
+    egal('Durée : lacune constante, idem pour la retraite', re.couvertureDuree, 1 - re.lacune / re.besoin, 0.002);
+    egal('Durée : sans enfant, la pire année est celle d’aujourd’hui', [im.lacuneMax, im.couvertureMin], [im.lacune, 1 - im.lacune / im.besoin]);
+    const foyer = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie', enfants: [{ dateNaissance: '2019-01-01' }, { dateNaissance: '2022-01-01' }],
+      personne: { dateNaissance: '1987-01-01', sexe: 'f', statut: 'salarie', revenu: 104000, lpp: { avoir: 148000 } },
+      conjoint: { dateNaissance: '1985-01-01', sexe: 'h', statut: 'independant', revenu: 78000 } }, r26);
+    const fm = foyer.risques.invaliditeMaladie;
+    egal('Durée : avec des rentes d’enfants, la lacune grandit quand elles s’éteignent', [fm.lacune < 2000, fm.lacuneMax > 20000], [true, true]);
+    egal('Durée : la couverture d’aujourd’hui est presque entière, celle de la durée ne l’est pas, celle de la pire année encore moins',
+      [fm.couverture > 0.98, fm.couvertureDuree < 0.95, fm.couvertureMin < fm.couvertureDuree], [true, true, true]);
+    egal('Durée : le score compte la lacune à venir', foyer.score < 95, true);
+  }
+  // ---- avoir de libre passage d'une personne qui n'est plus affiliée : intérêt jusqu'à la retraite, puis capital
+  {
+    const independant = analyser({ dateAnalyse: '2026-01-01', etatCivil: 'marie',
+      personne: { dateNaissance: '1981-01-01', sexe: 'h', statut: 'independant', revenu: 90000, lpp: { affilie: false, avoir: 100000 } },
+      conjoint: { dateNaissance: '1981-01-01', sexe: 'f', statut: 'sans', revenu: 0 } }, r26);
+    const libre = independant.risques.retraite.sources.find(x => x.cle === 'librePassage');
+    egal('Libre passage : 100 000 à 1,25 % pendant 20 ans', libre?.capital, 128204, 2);
+    egal('Libre passage : capital consommé sur 25 ans à 1,5 %', libre?.montant, 6142, 3);
+    egal('Libre passage : l’avoir revient aux proches au décès', independant.risques.decesMaladie.capitauxDisponibles, 100000);
+    egal('Libre passage : aucune rente de caisse', independant.risques.retraite.sources.some(x => x.cle === 'lpp'), false);
+  }
+  // ---- rachat sur un certificat saisi par sa rente seule : l'avoir reste non saisi, la rente augmente
+  {
+    const base = { dateAnalyse: '2026-01-01', personne: { dateNaissance: '1980-01-01', sexe: 'h', statut: 'salarie', revenu: 100000, lpp: { renteVieillesse: 30000, rachatPossible: 20000 } } };
+    const apres = Scenarios.appliquerMesures(base, { rachatLPP: 10000 }, r26).personne.lpp;
+    egal('Rachat, certificat sans avoir : rente + 10 000 x 6,8 %, avoir toujours non saisi', [apres.renteVieillesse, apres.avoir, apres.rachatPossible], [30680, undefined, 10000]);
+    egal('Rachat, sans certificat : l’avoir augmente', Scenarios.appliquerMesures({ ...base, personne: { ...base.personne, lpp: { avoir: 50000 } } }, { rachatLPP: 10000 }, r26).personne.lpp.avoir, 60000);
+  }
+  // ---- « Et si… » : événements de vie
+  {
+    const foyer = { dateAnalyse: '2026-01-01', etatCivil: 'marie',
+      personne: { dateNaissance: '1988-01-01', sexe: 'h', statut: 'salarie', revenu: 110000, lpp: { avoir: 90000 }, ijm: { assure: true } },
+      conjoint: { dateNaissance: '1990-01-01', sexe: 'f', statut: 'salarie', revenu: 40000 }, enfants: [{ dateNaissance: '2021-05-01' }] };
+    const e = Evenements.evenements(foyer, r26), de = cle => e.evenements.find(x => x.cle === cle);
+    egal('Et si : six événements, dans l’ordre', e.evenements.map(x => x.cle), ['naissance', 'tempsPartiel', 'independant', 'hausse', 'logement', 'mariage']);
+    egal('Et si : l’état de départ est celui de l’analyse', e.avant.score, analyser(foyer, r26).score);
+    egal('Et si, naissance : un enfant de plus', [de('naissance').applicable, de('naissance').v.enfants], [true, 2]);
+    egal('Et si, temps partiel : 80 % du revenu', de('tempsPartiel').v.revenu, 88000);
+    egal('Et si, à son compte : la couverture recule, l’invalidité se creuse', [de('independant').ecart.score < 0, de('independant').ecart.invalidite > 0], [true, true]);
+    egal('Et si, augmentation : les prestations plafonnées ne suivent pas le besoin', [de('hausse').v.revenu, de('hausse').ecart.retraite > 0], [126500, true]);
+    egal('Et si, logement : 50 000 retirés, la retraite recule', [de('logement').v.montant, de('logement').ecart.retraite > 0], [50000, true]);
+    egal('Et si, mariage : sans objet pour un couple déjà marié', [de('mariage').applicable, de('mariage').ecart.score], [false, 0]);
+    const concubins = Evenements.evenements({ ...foyer, etatCivil: 'concubin' }, r26).evenements.find(x => x.cle === 'mariage');
+    egal('Et si, mariage de concubins : le capital à prévoir au décès ne monte pas', [concubins.applicable, concubins.ecart.deces <= 0], [true, true]);
+    egal('Et si : le dossier d’origine n’est pas modifié', [foyer.enfants.length, foyer.personne.revenu, foyer.personne.statut], [1, 110000, 'salarie']);
+    const seul = Evenements.evenements({ dateAnalyse: '2026-01-01', personne: { dateNaissance: '1990-01-01', sexe: 'f', statut: 'sans', revenu: 0 } }, r26).evenements;
+    egal('Et si, sans activité : ni temps partiel, ni mise à son compte, ni logement', seul.filter(x => x.applicable).map(x => x.cle), ['naissance']);
+  }
 }

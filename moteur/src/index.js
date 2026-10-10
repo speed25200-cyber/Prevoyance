@@ -18,9 +18,10 @@ export * as Scenarios from './scenarios.js';
 export * as Certificat from './certificat.js';
 export * as Conseil from './conseil.js';
 export * as Vie from './vie.js';
+export * as Evenements from './evenements.js';
 export * as outils from './util.js';
 
-export const VERSION = '1.1.0';
+export const VERSION = '1.2.0';
 export const ANNEES = [2026, 2027];
 
 /**

@@ -24,7 +24,9 @@ export async function executer(finale = 'analyse') {
     noter('en-tête de page retiré (titre et réglages natifs)', getComputedStyle(/** @type {HTMLElement} */ (document.querySelector('.barre'))).display === 'none');
     noter('aucune sélection de texte au toucher', getComputedStyle(document.body).webkitUserSelect === 'none' || getComputedStyle(document.body).userSelect === 'none');
     const ponts = w.webkit?.messageHandlers ?? {};
-    for (const nom of ['onglet', 'scanner', 'imprimer', 'coffre']) noter(`pont « ${nom} »`, !!ponts[nom]);
+    for (const nom of ['onglet', 'scanner', 'imprimer', 'coffre', 'partager']) noter(`pont « ${nom} »`, !!ponts[nom]);
+    // l'accueil de l'app propose deux exports (portefeuille en tableau, échéances pour l'agenda) : la page doit savoir les préparer
+    noter('exports du portefeuille disponibles pour l’accueil de l’app', typeof p.exporter === 'function');
 
     // chiffrement des dossiers, de bout en bout, par le chemin réellement utilisé ici (Web Crypto ou l'app)
     const Verrou = await import('./verrou.js');

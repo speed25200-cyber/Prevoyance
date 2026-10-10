@@ -52,7 +52,24 @@ function charger() {
   } catch { /* stockage indisponible : on travaille en mémoire */ }
   if (!base.dossiers.some(d => d.id === base.ouvert)) base.ouvert = base.dossiers[0].id;
   if (!VUES.includes(base.vue)) base.vue = 'analyse';
+  base.dossiers.forEach(d => vieillirEnfants(d));
   return base;
+}
+
+/**
+ * Les enfants sont saisis par leur âge : on garde la date de cette saisie (`enfantsLe`), et l'âge avance avec le
+ * temps. Un dossier rouvert deux ans plus tard montre des enfants de deux ans de plus, sans rien ressaisir.
+ * @param {any} d @param {string} [jour] AAAA-MM-JJ
+ */
+export function vieillirEnfants(d, jour = new Date().toISOString().slice(0, 10)) {
+  const depuis = String(d.enfantsLe ?? d.modifie ?? jour).slice(0, 10);
+  let ans = +jour.slice(0, 4) - +depuis.slice(0, 4);
+  if (jour.slice(5) < depuis.slice(5)) ans -= 1;
+  if (ans > 0 && Array.isArray(d.enfants)) {
+    d.enfants = d.enfants.map(a => a + ans);
+    d.enfantsLe = `${+depuis.slice(0, 4) + ans}${depuis.slice(4)}`;
+  } else d.enfantsLe = depuis;
+  return d;
 }
 
 export const etat = charger();
@@ -67,7 +84,7 @@ export function garder() {
 }
 
 function reprendre(donnees) {
-  Object.assign(etat, donnees, { dossiers: (donnees.dossiers?.length ? donnees.dossiers : [dossierVide()]).map(d => ({ ...dossierVide(), ...d })) });
+  Object.assign(etat, donnees, { dossiers: (donnees.dossiers?.length ? donnees.dossiers : [dossierVide()]).map(d => vieillirEnfants({ ...dossierVide(), ...d })) });
   if (!etat.dossiers.some(d => d.id === etat.ouvert)) etat.ouvert = etat.dossiers[0].id;
 }
 
@@ -125,8 +142,9 @@ export function dupliquerDossier(id) {
 
 export const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
-function naissanceDepuisAge(age) {
-  const d = new Date();
+/** Date de naissance d'un enfant qui avait `age` ans le jour `le` (AAAA-MM-JJ ; aujourd'hui à défaut). */
+function naissanceDepuisAge(age, le) {
+  const d = le ? new Date(`${le}T12:00:00`) : new Date();
   d.setFullYear(d.getFullYear() - age);
   return d.toISOString().slice(0, 10);
 }
@@ -164,7 +182,7 @@ export function versDossier(d = dossier(), cible = d.cible) {
     dateAnalyse: aujourdhui(), canton: d.canton, etatCivil: d.etatCivil,
     personne: versPersonne(premier, true),
     conjoint: d.avecConjoint ? versPersonne(second, false) : null,
-    enfants: d.enfants.map(a => ({ dateNaissance: naissanceDepuisAge(a) })),
+    enfants: d.enfants.map(a => ({ dateNaissance: naissanceDepuisAge(a, d.enfantsLe) })),
     besoins: { ...d.besoins }, hypotheses: { ageRetraite: d.ageRetraite },
   };
 }

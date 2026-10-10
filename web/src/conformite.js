@@ -168,7 +168,9 @@ export function bandeau(ctx) {
   const points = controle(), manquants = points.filter(p => !p.ok);
   return h('div', { class: 'carte conformite' + (manquants.length ? '' : ' complete') },
     h('h2', {}, ctx.t('lg_etat', { n: points.length - manquants.length, m: points.length })),
-    h('p', { class: 'note' }, manquants.length ? ctx.t('lg_manque', { l: manquants.map(p => ctx.t(p.cle)).join(' ; ') }) : ctx.t('lg_complet')),
+    // la phrase d'origine (« À compléter… : a ; b ; c. ») devient une amorce et une liste : un point par ligne
+    manquants.length ? h('p', { class: 'note' }, ctx.t('lg_manque', { l: '\u0001' }).split('\u0001')[0].trim()) : h('p', { class: 'note' }, ctx.t('lg_complet')),
+    manquants.length ? h('ul', { class: 'demande-lignes conformite-liste' }, ...manquants.map(p => h('li', {}, ctx.t(p.cle)))) : null,
     h('p', { class: 'petit' }, ctx.t('lg_avert')));
 }
 

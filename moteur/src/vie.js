@@ -104,7 +104,8 @@ export function feuilleDeRoute(dossier, regles, contexte = {}) {
   if (pot.rachatLPP.possible > 0) a_('rachatDernier', depart - 3, { montant: pot.rachatLPP.possible, depart });
   if (affilie) a_('logementDernier', depart - delai, { depart });
   if (affilie) a_('anticipationLPP', 58);
-  if (troisA) a_('retrait3a', ref.ans - 5);
+  // cinq ans avant l'âge de référence, au mois près (femmes de la génération transitoire : 64 ans et quelques mois)
+  if (troisA) { const tot = echeance(naissance, ref.ans - 5, ref.mois); a_('retrait3a', ref.ans - 5, {}, tot.annee); }
   a_('anticipationAVS', transitoire ? 62 : 63);
   a_('renteAVS', ref.ans, { mois: debutRente.mois, anneeRente: debutRente.annee, moisAge: ref.mois }, debutRente.annee);
   a_('ajournementFin', ref.ans + 5);

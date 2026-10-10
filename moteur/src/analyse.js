@@ -96,8 +96,14 @@ function risque(cle, besoin, sources, { annees = 0, escompte = 0, capitauxDispon
   // lacune constante : valeur actuelle d'une rente ; lacune variable (rentes d'enfants qui s'éteignent) : capital fourni
   const capitalRente = capitalCalcule ?? arrondi(valeurActuelleRente(lacune, annees, escompte), 100);
   const capital = Math.max(0, arrondi(capitalRente + capitalBesoin - capitauxDisponibles, 100));
+  const pire = Math.max(lacune, lacuneMax ?? 0);
+  // Couverture sur toute la durée du risque : la part du besoin financée année après année. Elle compte une lacune qui
+  // n'apparaît que plus tard (rentes d'enfants qui s'éteignent), là où `couverture` ne dit que la situation d'aujourd'hui.
+  const besoinSurLaDuree = valeurActuelleRente(besoin, annees, escompte);
+  const couvertureDuree = besoin <= 0 ? 1 : besoinSurLaDuree > 0 ? borne(1 - capitalRente / besoinSurLaDuree, 0, 1) : borne(total / besoin, 0, 1);
   return { cle, besoin: arrondi(besoin), sources: lignes, total, lacune, lacuneMensuelle: arrondi(lacune / 12),
-           couverture: besoin > 0 ? borne(total / besoin, 0, 1.5) : 1, annees, capitalRente, lacuneMax: Math.max(lacune, lacuneMax ?? 0), capitauxDisponibles: arrondi(capitauxDisponibles),
+           couverture: besoin > 0 ? borne(total / besoin, 0, 1.5) : 1, couvertureDuree, couvertureMin: besoin > 0 ? borne(1 - pire / besoin, 0, 1) : 1,
+           annees, capitalRente, lacuneMax: pire, capitauxDisponibles: arrondi(capitauxDisponibles),
            capitalBesoin: arrondi(capitalBesoin), capital };
 }
 
@@ -153,10 +159,15 @@ export function analyser(dossier, regles, contexte = {}) {
   const enRente = capital => renteDepuisCapital(capital, dureeRente, hyp.rendementFortune);
   // le 3a est imposé une fois à son retrait (barème des prestations en capital) : seul le net finance la retraite
   const impot3a = capital3a > 0 && dossier.canton && contexte.impots ? Impots.impotCapital(contexte.impots, dossier.canton, marie, capital3a) ?? 0 : 0;
+  // Avoir de libre passage (personne qui n'est plus affiliée à une caisse : indépendant, sans activité) : il reste à elle,
+  // porte intérêt jusqu'à la retraite, puis se retire en capital, imposé à part comme le 3a.
+  const librePassage = P.lpp.affilie ? 0 : P.lpp.capitalRetraite;
+  const impotLibrePassage = librePassage > 0 && dossier.canton && contexte.impots ? Impots.impotCapital(contexte.impots, dossier.canton, marie, librePassage) ?? 0 : 0;
   const retraite = risque('retraite', P.revenu * besoins.retraite, [
     { cle: 'avs', pilier: 1, montant: avsAnnuelle },
     { cle: 'avsSupplement', pilier: 1, montant: supplementAVS },
     { cle: 'lpp', pilier: 2, montant: P.lpp.renteVieillesse, estime: P.lpp.estime },
+    { cle: 'librePassage', pilier: 2, montant: enRente(librePassage - impotLibrePassage), capital: librePassage, impotRetrait: impotLibrePassage },
     { cle: 'pilier3a', pilier: 3, montant: enRente(capital3a - impot3a), capital: capital3a, impotRetrait: impot3a },
     { cle: 'pilier3b', pilier: 3, montant: enRente(capital3b), capital: capital3b },
     { cle: 'fortune', pilier: 3, montant: enRente(P.fortuneRetraite), capital: P.fortuneRetraite },
@@ -259,7 +270,7 @@ export function analyser(dossier, regles, contexte = {}) {
   const anneesEnfants = plusJeune === null ? 0 : Math.max(...aCharge.map(e => e.fin - e.age));
   const anneesConjoint = marie || etatCivil === 'concubin' ? (C ? Math.max(0, C.ref.ans - C.age) : anneesJusquaRetraite) : 0;
   const anneesDeces = Math.max(anneesEnfants, Math.min(anneesConjoint, anneesJusquaRetraite));
-  const capitauxDeces = P.lpp.capitalDeces + allocationLPP + somme(P.contrats.map(c => (c.capitalDeces ?? 0) + (c.forme === 'assurance' ? 0 : c.avoir ?? 0)))
+  const capitauxDeces = P.lpp.capitalDeces + (P.lpp.affilie ? 0 : P.lpp.avoirActuel) + allocationLPP + somme(P.contrats.map(c => (c.capitalDeces ?? 0) + (c.forme === 'assurance' ? 0 : c.avoir ?? 0)))
     + (dossier.personne.fortune ?? 0);
   const lppSurvivantsPour = n => (conjointAyantDroitLPP ? P.lpp.renteConjoint : 0) + P.lpp.renteEnfant * n;
   // Les capitaux disponibles au décès (capital de la caisse, 3e pilier, assurances, fortune) servent d'abord le besoin en
@@ -357,7 +368,8 @@ export function analyser(dossier, regles, contexte = {}) {
   const poids = aQuelquun ? { retraite: 0.35, invaliditeMaladie: 0.3, invaliditeAccident: 0.1, decesMaladie: 0.2, decesAccident: 0.05 }
     : { retraite: 0.45, invaliditeMaladie: 0.4, invaliditeAccident: 0.15, decesMaladie: 0, decesAccident: 0 };
   const risques = { retraite, invaliditeMaladie, invaliditeAccident, decesMaladie, decesAccident };
-  const score = arrondi(100 * somme(Object.entries(poids).map(([k, w]) => w * Math.min(1, risques[k].couverture))));
+  // le score lit la couverture sur toute la durée : une lacune à venir pèse, même si aujourd'hui tout est couvert
+  const score = arrondi(100 * somme(Object.entries(poids).map(([k, w]) => w * risques[k].couvertureDuree)));
 
   return {
     annee: regles.annee, dateAnalyse: quand, etatCivil, marie, canton: dossier.canton ?? null,

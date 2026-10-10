@@ -7,6 +7,7 @@
 import { h, compter, couleurCouverture, COULEUR_PILIER } from '../ui.js';
 import { creerGraphique, COUCHES } from '../graphique.js';
 import { creerScene } from '../scene.js';
+import { creerRelief } from '../relief.js';
 import { etat, garder, dossier } from '../etat.js';
 import * as Formulaire from '../formulaire.js';
 
@@ -17,6 +18,13 @@ const VAR_COUCHE = { salaire: '--salaire', attente: '--attente', pilier1: '--p1'
 
 /** @type {any} */ let graphique = null;
 /** @type {any} */ let scene = null;
+/** @type {ReturnType<typeof creerRelief>} */ let relief = null;
+/** @type {(() => void)|null} */ let surLargeur = null;
+/** @type {Record<string, string>} */ let ecrits = {};
+/** @type {(x: number) => string} */ let chf = String;
+// La vue du relief dans la synthèse : de biais, le massif à droite du chiffre (ou centré, au-dessus, sur un écran étroit).
+const VUE_LARGE = { azimut: 0.55, elevation: 0.36, distance: 3.7, cibleY: 0.46, dx: 0.46, dy: 0.1 };
+const VUE_ETROITE = { azimut: 0.55, elevation: 0.36, distance: 4.3, cibleY: 0.46, dx: 0, dy: 0 };
 
 /** Approche la caméra d'un pilier (1 à 3) et allume son point ; `null` : vue d'ensemble. */
 function viser(n) {
@@ -31,6 +39,10 @@ export function monter(ctx, racine) {
   const cibles = d.avecConjoint ? h('div', { class: 'segments cibles', role: 'group' }, ...['personne', 'conjoint'].map(c =>
     h('button', { type: 'button', 'aria-pressed': String(d.cible === c), onclick: () => { d.cible = c; garder(); ctx.recalculer(true); } }, t(c === 'personne' ? 'client' : 'conjointCourt')))) : null;
   const toile = h('canvas', {}), bulle = h('div', { class: 'bulle', hidden: true });
+  // dans le navigateur : le relief (les trois étages du massif, l'anneau du besoin) ; dans l'app : les colonnes photographiées
+  const avecRelief = !document.documentElement.classList.contains('natif');
+  relief?.detruire(); relief = null; ecrits = {};
+  if (surLargeur) { removeEventListener('resize', surLargeur); surLargeur = null; }
   racine.replaceChildren(
     h('div', { class: 'tete carte' },
       h('div', { class: 'jauge' }, ref('jauge', h('div', { class: 'jauge-anneau' },
@@ -48,6 +60,11 @@ export function monter(ctx, racine) {
       ref('sceneToile', h('canvas', { class: 'scene-toile', 'aria-hidden': 'true' })),
       h('div', { class: 'scene-voile', 'aria-hidden': 'true' }),
       ...[1, 2, 3].map(n => ref('repere' + n, h('i', { class: 'scene-point', 'aria-hidden': 'true' }))),
+      avecRelief ? ref('reliefToile', h('canvas', { class: 'relief-toile', 'aria-hidden': 'true' })) : null,
+      avecRelief ? ref('reliefReperes', h('div', { class: 'relief-reperes', 'aria-hidden': 'true' },
+        h('svg', {}, ref('repTrait', h('line', { x1: 0, y1: 0, x2: 0, y2: 0 }))),
+        ref('repSommet', h('p', { class: 'repere sommet' }, h('i'), h('span', {}, t('couvert')), ref('repSommetN', h('b')))),
+        ref('repBesoin', h('p', { class: 'repere besoin' }, h('span', {}, t('besoin')), ref('repBesoinN', h('b')))))) : null,
       // ce que verse chaque pilier : toucher ou survoler approche la caméra de sa colonne
       h('div', { class: 'scene-piliers' }, ...[1, 2, 3].map(n => ref('puce' + n, h('button', { type: 'button', class: 'scene-puce',
         onpointerenter: () => viser(n), onpointerleave: () => viser(null), onfocus: () => viser(n), onblur: () => viser(null) },
@@ -73,13 +90,41 @@ export function monter(ctx, racine) {
   }
   graphique = creerGraphique(toile, bulle);
   // la scène : trois colonnes photographiées, une caméra qui suit le pointeur et s'approche du pilier désigné
-  scene = creerScene(/** @type {HTMLCanvasElement} */ (r.sceneToile), [r.repere1, r.repere2, r.repere3]);
   const tete = /** @type {HTMLElement} */ (racine.querySelector('.tete'));
+  relief = avecRelief ? creerRelief(/** @type {HTMLCanvasElement} */ (r.reliefToile)) : null;
+  if (relief) {
+    const rel = relief;
+    tete.classList.add('avec-relief');
+    const vue = () => (matchMedia('(min-width: 1200px)').matches ? VUE_LARGE : VUE_ETROITE);
+    surLargeur = () => rel.viser(vue());
+    rel.viser(vue(), true);
+    addEventListener('resize', surLargeur);
+    rel.suivre(placerReperes);
+    // désigner un pilier allume son étage et éteint les deux autres
+    scene = { viser: n => rel.scene({ bandes: [0, 1, 2].map(k => (n === null || k === n ? 1 : 0.14)) }), pointer() {} };
+  } else {
+    r.reliefToile?.remove(); r.reliefReperes?.remove();
+    scene = creerScene(/** @type {HTMLCanvasElement} */ (r.sceneToile), [r.repere1, r.repere2, r.repere3]);
+  }
   tete.addEventListener('pointermove', e => { const b = tete.getBoundingClientRect(); scene.pointer((e.clientX - b.left) / b.width - 0.5, (e.clientY - b.top) / b.height - 0.5); });
   tete.addEventListener('pointerleave', () => scene.pointer(0, 0));
   // survoler une source dans le détail approche la caméra de son pilier
   r.detail.addEventListener('pointerover', e => { const li = /** @type {HTMLElement} */ (e.target).closest?.('[data-pilier]'); viser(li ? +/** @type {any} */ (li).dataset.pilier : null); });
   r.detail.addEventListener('pointerleave', () => viser(null));
+}
+
+/** Pose les étiquettes du relief là où tombent le sommet et l'anneau du besoin (appelé après chaque image). */
+function placerReperes(rel) {
+  if (!r.reliefReperes?.isConnected) return;
+  const m = rel.reperes(), comble = m.besoin - m.total <= m.besoin * 0.004;
+  const poser = (e, p) => { e.style.setProperty('--x', p.x.toFixed(1)); e.style.setProperty('--y', p.y.toFixed(1)); };
+  const noter = (cle, texte) => { if (ecrits[cle] !== texte) { ecrits[cle] = texte; r[cle].textContent = texte; } };
+  poser(r.repSommet, m.sommet); poser(r.repBesoin, m.dessus);
+  r.repTrait.setAttribute('x1', m.sommet.x.toFixed(1)); r.repTrait.setAttribute('y1', (m.sommet.y - 3).toFixed(1));
+  r.repTrait.setAttribute('x2', m.anneau.x.toFixed(1)); r.repTrait.setAttribute('y2', m.anneau.y.toFixed(1));
+  noter('repSommetN', chf(m.total)); noter('repBesoinN', chf(m.besoin));
+  r.reliefReperes.classList.toggle('atteint', comble);
+  r.reliefReperes.classList.toggle('proche', !comble && m.besoin - m.total <= m.besoin * 0.09);
 }
 
 export function pointsDuGraphique(a, x) {
@@ -121,11 +166,15 @@ export function afficher(ctx) {
   compter(r.cleBesoin, x.besoin, f.chf);
   compter(r.cleCapital, x.capital ?? 0, f.chf);
   // ce que chaque pilier verse pour le risque choisi, posé sur sa colonne
-  for (const n of [1, 2, 3]) {
-    const verse = x.sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0);
-    compter(r['montant' + n], verse, f.chf);
-    r['puce' + n].classList.toggle('vide', verse < 1);
-  }
+  const verses = [1, 2, 3].map(n => x.sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0));
+  verses.forEach((verse, i) => {
+    compter(r['montant' + (i + 1)], verse, f.chf);
+    r['puce' + (i + 1)].classList.toggle('vide', verse < 1);
+  });
+  // le relief prend la forme du risque affiché : trois étages (ce que verse chaque pilier) sous l'altitude du besoin
+  chf = f.chf;
+  relief?.regler({ p1: verses[0], p2: verses[1], p3: verses[2], besoin: x.besoin });
+  relief?.scene({ anneau: x.besoin > 0 ? 1 : 0 });
 
   for (const bouton of /** @type {HTMLElement[]} */ ([...r.risques.children])) {
     const y = a.risques[/** @type {string} */ (bouton.dataset.risque)];

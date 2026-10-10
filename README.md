@@ -16,8 +16,8 @@ on construit le plan avec le client, on lui remet un rapport PDF.
 | Vue | Contenu |
 |---|---|
 | **Analyse** | Couverture globale, les cinq risques (retraite, invalidité maladie / accident, décès maladie / accident), ce que verse chaque pilier, la « ligne de vie » du revenu année par année, le détail des sources, les leviers et les points d'attention. Le repère de la retraite se déplace à la main sur le graphique. |
-| **Scénarios** | Âge de départ de 60 à 70 ans ; rente ou capital après impôts, avec seuil de rentabilité ; retraits et rachats échelonnés ; simulation du placement du 3a (2000 trajectoires) ; tenue de l'hypothèque à la retraite. |
-| **Plan** | Les mesures proposées par le moteur (rente d'incapacité, capital décès, perte de gain, 3a, rachat, épargne), réglables, avec l'effet avant / après sur chaque lacune, l'économie d'impôt, et le budget du plan : épargne, primes des offres saisies par le conseiller, effort net par an et par mois. |
+| **Scénarios** | « Et si… » : six événements de vie (naissance, temps partiel, mise à son compte, augmentation, achat du logement avec le 2e pilier, mariage), chacun refaisant l'analyse complète ; âge de départ de 60 à 70 ans ; rente ou capital après impôts, avec seuil de rentabilité ; retraits et rachats échelonnés ; simulation du placement du 3a (2000 trajectoires) ; tenue de l'hypothèque à la retraite. |
+| **Plan** | Les mesures proposées par le moteur (rente d'incapacité, capital décès, perte de gain, 3a, rachat, épargne), réglables, avec l'effet avant / après sur chaque lacune, l'économie d'impôt, et le budget du plan : épargne, primes des offres saisies par le conseiller, effort net par an et par mois. La **demande d'offre** à transmettre aux assureurs (sans nom ni adresse : seulement ce qui sert au tarif) se copie ou s'ouvre dans un courriel. |
 | **Rapport** | Le document du client, en pages A4 : couverture, synthèse, retraite, invalidité, décès, plan, hypothèses et sources. « Enregistrer en PDF » par l'impression du navigateur. |
 | **Données** | Les montants officiels appliqués (2026 et 2027), les valeurs encore à confirmer, les impôts des 26 cantons avec la date du relevé, les sources, et la vérification des mises à jour. |
 
@@ -47,8 +47,33 @@ PBKDF2-SHA-256, 600 000 itérations). Le code est demandé à l'ouverture et apr
 enregistré nulle part : oublié, les dossiers sont perdus. Le chiffrement demande une adresse https ou locale ; dans
 l'app native (adresse interne `prevoyance://`), sa disponibilité reste à vérifier à la première compilation.
 
-S'y ajoutent aussi : un portefeuille de dossiers (créer, dupliquer, exporter, importer), l'analyse de chacun des deux
+S'y ajoutent aussi : un portefeuille de dossiers (créer, dupliquer, exporter, importer) et sa **vue d'ensemble** (touche P : tous les dossiers classés par ce qu'il reste à faire, 3a encore déductible, rachats possibles, rentes et capitaux de risque à assurer, export CSV), ses **segments** (invalidité, décès, retraite, 3a, rachat : la liste d'une campagne, du plus gros montant au plus petit), l'**agenda des échéances** (fichier .ics pour Outlook, Apple Calendrier ou Google Agenda : les dates légales d'un dossier ou de tout le portefeuille, tirées de la feuille de route du moteur), l'analyse de chacun des deux
 membres d'un couple, un mode présentation plein écran, le clair et le sombre selon l'appareil.
+
+## L'apparence : la carte
+
+Dans le navigateur, la page d'entrée et l'application partagent un même parti pris : **la prévoyance se lit comme une
+carte nationale**. La retraite est un relief dont les trois étages sont les trois piliers ; le besoin est une altitude
+à atteindre (l'anneau en pointillé) ; la lacune est le dénivelé qui reste ; le plan est l'itinéraire. Papier le jour,
+encre la nuit, Fraunces pour les titres et les montants, Inter pour le reste, le triangle des sommets comme jalon.
+
+- **Le relief** (`web/src/relief.js`) est calculé en direct (WebGL, sans bibliothèque) à partir des montants du
+  moteur : une montagne en courbes de niveau, vue d'en haut ou de biais. Sans WebGL, la page garde sa version sans
+  relief ; en mouvement réduit, une image fixe.
+- **La page d'entrée** (`web/bienvenue.html`) : la carte vue d'en haut, puis un récit épinglé qui incline le relief,
+  allume ses étages, pose l'anneau du besoin et fait monter le massif jusqu'à lui ; le simulateur fait du relief
+  celui du visiteur (vrai moteur) ; à la fin, la photographie aérienne d'un sommet tient dans l'anneau.
+  `?fige` fige la page pour une capture (`?fige&recit=0.5`, `?fige&vers=essai`).
+- **L'application** : `web/carte.css` est la peau du navigateur. Les feuilles d'origine restent chargées, rangées
+  dans la couche CSS « socle » (voir `index.html`) ; la peau, hors couche, passe toujours devant. Tous ses sélecteurs
+  commencent par `html:not(.natif)` : **l'app iPhone / iPad garde son apparence**. Les pages A4 du rapport reviennent
+  aux feuilles d'origine (ce qu'on voit est ce qui s'imprime) ; sans marque, leur couverture porte le relief du client.
+- Les images `web/images/apercus/` sont de vraies captures de l'application (dossier d'exemple) ; `web/images/sommet.webp`
+  est une image de synthèse (aucun lieu réel).
+- **Fluidité.** Le relief ne dessine jamais plus de 2,4 millions de points par image, et réduit encore d'un cran si
+  les images tardent. Mesuré sur une carte graphique intégrée modeste (Intel UHD 630, octobre 2026) : 9 à 12 ms par
+  image en plein écran, soit sous les 16,7 ms d'un écran à 60 Hz ; sans cette limite, un écran à densité 2 demandait
+  17 à 23 ms.
 
 ## Structure
 
@@ -59,9 +84,9 @@ membres d'un couple, un mode présentation plein écran, le clair et le sombre s
 | `moteur/donnees/` | Les impôts par canton, relevés auprès du calculateur de l'Administration fédérale des contributions. |
 | `moteur/manifeste.json` | La version des données : l'application la compare à celle du dépôt pour se mettre à jour. |
 | `moteur/tests/` | Les cas de test du moteur : chaque valeur attendue est calculée à la main d'après les textes et montants officiels. |
-| `web/` | L'application : `index.html`, `src/` (vues, graphiques, textes), `essais.html` (essais de l'interface). |
+| `web/` | La page d'entrée (`bienvenue.html`) et l'application (`index.html`), `src/` (vues, graphiques, relief, textes), `essais.html` (essais de l'interface). |
 | `ios/` | L'application native : une enveloppe qui embarque `web/` et `moteur/`. |
-| `outils/` | Relevé des impôts (`donnees/maj_impots.py`), essais et captures en arrière-plan (`essais.ps1`, `capture.ps1`). |
+| `outils/` | Relevé des impôts (`donnees/maj_impots.py`), essais et captures en arrière-plan (`essais.ps1`, `capture.ps1`), contrôle de l'interface comme un visiteur (`pilote.py`, `cadre.html`). |
 
 ## Le moteur
 
@@ -97,7 +122,11 @@ et une chronologie des revenus. Le moteur ne produit aucun texte : il renvoie de
   grilles relevées, puis ramenés à la commune du client et à sa confession (facteur de chaque commune de Suisse et
   impôt d'Église, contrôlés contre le calculateur officiel).
 - **Scénarios** : âge de départ, rente ou capital, échelonnements, simulation de placement, charge hypothécaire,
-  plan de mesures et comparaison avant / après.
+  plan de mesures et comparaison avant / après, événements de vie (`moteur/src/evenements.js`).
+- **Couverture sur la durée** : le score et chaque risque comptent une lacune qui n'apparaît que plus tard (rentes
+  d'enfants qui s'éteignent), en plus de la couverture d'aujourd'hui (`couvertureDuree`, `couvertureMin`).
+- **Libre passage** : l'avoir d'une personne qui n'est plus affiliée (indépendant, sans activité) porte intérêt jusqu'à
+  la retraite, puis compte comme un capital consommé, après l'impôt sur son retrait ; il revient aux proches au décès.
 
 ## Mettre les données à jour
 
@@ -116,9 +145,14 @@ proposent la mise à jour dans la vue « Données ». Les règles d'une nouvelle
 python -m http.server 8790                       # depuis la racine du dépôt
 ```
 
-- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (153 cas).
-- Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (35 essais : parcours, quatre langues complètes, largeur de téléphone,
-  pages légales du rapport, chiffrement).
+- Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (259 cas).
+- Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (63 essais : parcours, quatre langues complètes, largeur de téléphone,
+  pages légales du rapport, chiffrement, peau du navigateur, agenda des échéances, segments du portefeuille).
+- App iPhone / iPad, moitié « page » : `web/src/autotest.js` (celui que l'app exécute dans le simulateur) se rejoue hors
+  de l'app avec `outils/pilote.py`, la page chargée comme l'app la charge (classe `natif`, ponts présents).
+- À l'œil : `outils/pilote.py` pilote Edge sans fenêtre (largeur d'un vrai téléphone, clair ou sombre, mouvement
+  réduit, défilement, captures, erreurs de la console) ; `outils/cadre.html` montre une page dans un cadre de la
+  taille voulue.
 - Vitesse : une analyse complète prend environ 0,06 ms sur un PC de bureau (mesure dans un navigateur ouvert).
 
 ## Limites connues

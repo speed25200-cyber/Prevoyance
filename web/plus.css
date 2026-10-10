@@ -1,0 +1,110 @@
+/* Prévoyance — ajouts d'octobre 2026 : « Et si… », demande d'offre, portefeuille du conseiller, finitions de mouvement.
+   Mêmes jetons que le reste (app.css) : rien n'est codé en dur, le clair et le sombre suivent. */
+
+/* ------------------------------------------------------------------ « Et si… » : un événement par rangée */
+.evenements { display: grid; gap: 0; margin-top: 4px; }
+.evenement { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 16px 0; border-top: 1px solid var(--filet); }
+.evenement:first-child { border-top: 0; padding-top: 6px; }
+.evenement .levier { border: 0; padding: 0; }
+.evenement .levier b { font-size: 16px; letter-spacing: -.01em; }
+.evenement .chiffres { margin-top: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.evenement .chiffre { padding: 10px 12px; min-width: 0; }
+.evenement .chiffre b { font-size: clamp(15px, 1.35vw, 18px); overflow-wrap: anywhere; }
+.evenement .chiffre small, .evenement .chiffre span { overflow-wrap: anywhere; }
+@media (min-width: 760px) { .evenement .chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.evenement .chiffre span { font-weight: 600; }
+.evenement .chiffre.plus span { color: var(--opportunite); }
+.evenement .chiffre.moins span { color: var(--lacune); }
+@media (min-width: 1200px) {
+  .evenement { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: center; column-gap: 28px; }
+}
+
+/* ------------------------------------------------------------------ demande d'offre */
+.demande-lignes { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 0; }
+.demande-lignes li { position: relative; padding: 10px 0 10px 20px; border-top: 1px solid var(--filet); font-size: 14.5px; line-height: 1.45; }
+.demande-lignes li:first-child { border-top: 0; }
+.demande-lignes li::before { content: ""; position: absolute; left: 2px; top: 1.05em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.demande-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.demande-actions .pastille { text-decoration: none; display: inline-flex; align-items: center; border-radius: 999px; white-space: nowrap; }
+.demande-actions small { flex-basis: 100%; text-align: right; min-height: 1em; }
+/* grand écran : « Et si… » et la demande d'offre prennent toute la largeur de la page */
+@media (min-width: 1200px) { html:not(.natif) .pile-cartes > .carte:has(.evenements) { column-span: all; } }
+
+/* ------------------------------------------------------------------ portefeuille du conseiller */
+dialog.portefeuille-vue { width: min(980px, calc(100vw - 24px)); max-height: min(860px, 88vh); margin: 6vh auto auto; padding: 0; border-radius: 28px; overflow: hidden auto;
+  color: var(--encre); border: 1px solid color-mix(in srgb, var(--encre) 16%, transparent); background: color-mix(in srgb, var(--fond) 90%, transparent);
+  -webkit-backdrop-filter: blur(34px) saturate(1.6); backdrop-filter: blur(34px) saturate(1.6); overscroll-behavior: contain;
+  box-shadow: 0 50px 120px -30px rgba(0, 0, 0, .75), inset 0 1px 0 color-mix(in srgb, var(--encre) 12%, transparent); }
+dialog.portefeuille-vue[open] { animation: palette-entree .34s cubic-bezier(.22, 1, .36, 1); }
+dialog.portefeuille-vue::backdrop { background: rgba(4, 8, 16, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.pf-tete { display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; flex-wrap: wrap; padding: 26px 28px 6px; }
+.pf-tete h2 { font: 400 clamp(28px, 3.4vw, 40px)/1.02 var(--titre); letter-spacing: -.03em; margin: 0; }
+.pf-tete p { color: var(--encre-2); margin: 8px 0 0; max-width: 46ch; font-size: 14.5px; }
+.pf-gestes { display: flex; gap: 8px; flex-wrap: wrap; }
+.pf-gestes .pastille { border-radius: 999px; }
+.pf-totaux { padding: 0 28px; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.pf-totaux .chiffre { min-width: 0; }
+.pf-totaux .chiffre b { font-size: clamp(18px, 1.7vw, 24px) !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-totaux .chiffre small { min-height: 2.4em; }
+@media (max-width: 640px) { .pf-totaux { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+dialog.portefeuille-vue > p.petit { padding: 0 28px; }
+.pf-liste { list-style: none; margin: 14px 0 0; padding: 0 16px 20px; display: grid; gap: 0; }
+.pf-liste > li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 14px 12px; border-top: 1px solid var(--filet);
+  border-radius: 16px; transition: background .25s; }
+.pf-liste > li:first-child { border-top: 0; }
+.pf-liste > li:hover { background: color-mix(in srgb, var(--encre) 5%, transparent); }
+.pf-liste .pastille { border-radius: 999px; padding: 9px 16px; font-size: 14px; }
+.pf-corps { min-width: 0; display: grid; gap: 4px; }
+.pf-corps > b { font-size: 16px; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-corps > small { color: var(--encre-3); font-size: 12.5px; }
+.pf-raisons { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-raisons li { font-size: 12.5px; font-weight: 600; padding: 5px 10px 5px 22px; border-radius: 999px; position: relative; white-space: nowrap;
+  background: color-mix(in srgb, var(--c, var(--info)) 13%, transparent); color: var(--encre); }
+.pf-raisons li::before { content: ""; position: absolute; left: 9px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--c, var(--info)); }
+.pf-score { position: relative; width: 52px; height: 52px; display: grid; place-items: center; }
+.pf-score svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.pf-score circle { fill: none; stroke-width: 3.5; stroke: color-mix(in srgb, var(--encre) 13%, transparent); }
+.pf-score circle + circle { stroke: var(--accent); stroke-linecap: round; }
+.pf-score b { font: 650 16px/1 var(--police); letter-spacing: -.02em; }
+.pf-liste li.incomplet { opacity: .62; }
+@media (max-width: 640px) {
+  .pf-tete { padding: 20px 18px 4px; } .pf-totaux, dialog.portefeuille-vue > p.petit { padding: 0 18px; } .pf-liste { padding: 0 8px 14px; }
+  .pf-liste > li { grid-template-columns: 44px minmax(0, 1fr); } .pf-liste > li > .pastille { grid-column: 2; justify-self: start; }
+  .pf-raisons li { white-space: normal; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pf-liste > li { animation: pf-ligne .5s cubic-bezier(.22, 1, .36, 1) backwards; animation-delay: calc(60ms * var(--i, 0) + 120ms); }
+  @keyframes pf-ligne { from { opacity: 0; transform: translateY(10px); } }
+}
+@media print { dialog.portefeuille-vue { display: none !important; } }
+
+/* segments du portefeuille : ne garder que les dossiers concernés par un sujet (la liste d'une campagne) */
+.pf-segments { display: flex; flex-wrap: wrap; gap: 6px; padding: 16px 28px 0; }
+.pf-segments .pastille { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; }
+.pf-segments .pastille i { font-style: normal; font-weight: 600; opacity: .6; font-variant-numeric: tabular-nums; }
+.pf-segments .pastille[aria-pressed="true"] { background: var(--encre); color: var(--fond); border-color: var(--encre); }
+.pf-segments .pastille:disabled { opacity: .35; cursor: default; }
+.pf-bilan { min-height: 1.4em; margin: 10px 28px 0; color: var(--encre-2); font-size: 13.5px; font-weight: 600; }
+.agenda-actions { margin-top: 14px; }
+@media (max-width: 640px) { .pf-segments { padding: 14px 18px 0; } .pf-bilan { margin: 8px 18px 0; } }
+
+/* ------------------------------------------------------------------ grand écran : quatre chiffres de front par événement */
+@media (min-width: 1200px) {
+  html:not(.natif) .pile-cartes .evenement .chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  html:not(.natif) .pile-cartes .evenement .chiffre b { font-size: clamp(16px, 1.2vw, 20px) !important; }
+  html:not(.natif) .pile-cartes .evenement .chiffre small { min-height: 2.5em; }
+}
+
+/* ------------------------------------------------------------------ portefeuille : les anneaux se tracent à l'ouverture */
+@media (prefers-reduced-motion: no-preference) {
+  .pf-score circle + circle { animation: pf-anneau 1.1s cubic-bezier(.22, 1, .36, 1) backwards; animation-delay: calc(60ms * var(--i, 0) + 200ms); }
+  @keyframes pf-anneau { from { stroke-dasharray: 0 107; } }
+}
+
+/* ------------------------------------------------------------------ rapport : rien ne doit être coupé en bas d'une feuille
+   À l'impression, la feuille A4 fait 794 points de large : les règles « écran étroit » (860 points et moins) s'y
+   appliquaient et empilaient les blocs à deux colonnes — la synthèse dépassait alors de la feuille, et sa fin était
+   coupée dans le PDF. Une feuille A4 a la place de deux colonnes ; les points d'attention sont un peu plus serrés. */
+@media print { .page .r-deux { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8mm; } }
+.page .alertes { gap: 4px; }
+.page .alertes li { font-size: 13px; line-height: 1.4; padding: 7px 12px; }

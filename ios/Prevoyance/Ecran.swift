@@ -117,6 +117,8 @@ final class Navigation: ObservableObject {
         reglages.userContentController.addScriptMessageHandler(coffre, contentWorld: .page, name: "coffre")
         // Vue ouverte, libellés du menu, barre à montrer ou à retirer.
         reglages.userContentController.add(pont, name: "onglet")
+        // Partage d'un texte ou d'un fichier préparé par la page (demande d'offre, portefeuille, échéances) : feuille de partage d'iOS.
+        reglages.userContentController.add(pont, name: "partager")
 
         let vue = WKWebView(frame: .zero, configuration: reglages)
         vue.isOpaque = false
@@ -240,6 +242,13 @@ final class Navigation: ObservableObject {
         vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.annoncer && window.__prevoyance.annoncer()")
     }
 
+    /// Accueil : le portefeuille en tableau (« csv ») ou les échéances de tous les dossiers pour l'agenda (« ics »).
+    /// La page prépare le fichier et le remet à la feuille de partage (pont « partager »).
+    func exporter(_ quoi: String) {
+        guard ["csv", "ics"].contains(quoi) else { return }
+        vue.evaluateJavaScript("window.__prevoyance && window.__prevoyance.exporter && window.__prevoyance.exporter('\(quoi)')")
+    }
+
     /// Changer de section d'un client : Synthèse (`nil`), Risques, Conseil, Scénarios, Rapport, Dossier. Sans glissement :
     /// ce sont des écrans voisins, pas un écran dans lequel on entre.
     func section(_ lieu: Lieu?) {
@@ -323,7 +332,7 @@ final class Navigation: ObservableObject {
         guard ProcessInfo.processInfo.environment["PREVOYANCE_TOUR"] == "1" else { return }
         try? await Task.sleep(nanoseconds: 7_000_000_000)
         let tour: [(String, [Lieu])] = [
-            ("client", [.client]), ("risques", [.client, .risques]), ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]), ("offres", [.client, .conseil, .carte("plan", 4)]),
+            ("client", [.client]), ("risques", [.client, .risques]), ("risque", [.client, .risque("retraite")]), ("conseil", [.client, .conseil]), ("reglages", [.client, .conseil, .carte("plan", 2)]), ("offres", [.client, .conseil, .carte("plan", 5)]),
             ("scenarios", [.client, .scenarios]), ("question", [.client, .scenarios, .carte("scenarios", 0)]),
             ("rapport", [.client, .rapport]), ("dossier", [.client, .dossier]),
             ("rubrique", [.client, .dossier, .rubrique(rubriques.first?.id ?? "client")]), ("donnees", [.client, .donnees]), ("accueil", []),
@@ -360,7 +369,8 @@ final class Navigation: ObservableObject {
             let resumes = liste.compactMap { d -> DossierResume? in
                 guard let id = d["id"] as? String else { return nil }
                 return DossierResume(id: id, nom: d["nom"] as? String ?? "", date: d["date"] as? String ?? "",
-                                     score: d["score"] as? Int ?? 0, ouvert: d["ouvert"] as? Bool ?? false)
+                                     score: d["score"] as? Int ?? 0, ouvert: d["ouvert"] as? Bool ?? false,
+                                     reste: d["reste"] as? String ?? "", urgent: d["urgent"] as? Bool ?? false)
             }
             if resumes != dossiers { dossiers = resumes }
         }
@@ -417,6 +427,24 @@ final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate, UIScro
             }
             return
         }
+        if message.name == "partager" {
+            // La page remet un texte, ou un fichier (nom et contenu) : Copier, Mail, Messages, Fichiers. Un agenda « .ics »
+            // s'ajoute au calendrier en l'ouvrant depuis Fichiers ou un courriel (à confirmer sur un appareil).
+            // Rien n'est envoyé d'ici : c'est la personne qui choisit où va le contenu.
+            guard let vue, let corps = message.body as? [String: Any] else { return }
+            var elements: [Any] = []
+            if let nom = corps["nom"] as? String, let contenu = corps["contenu"] as? String {
+                let propre = nom.components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>")).joined(separator: " ").trimmingCharacters(in: .whitespaces)
+                let fichier = FileManager.default.temporaryDirectory.appendingPathComponent(propre.isEmpty ? "prevoyance.txt" : propre)
+                guard (try? Data(contenu.utf8).write(to: fichier, options: .atomic)) != nil else { return }
+                elements = [fichier]
+            } else if let texte = corps["texte"] as? String, !texte.isEmpty {
+                elements = [texte]
+            }
+            guard !elements.isEmpty else { return }
+            presenter(UIActivityViewController(activityItems: elements, applicationActivities: nil), depuis: vue)
+            return
+        }
         guard message.name == "imprimer", let vue else { return }
         // Le PDF est fabriqué ici, en feuilles A4 exactes (la mise en page vient de la feuille de style d'impression de
         // la page), puis remis par la feuille de partage : enregistrer dans Fichiers, envoyer, imprimer.
@@ -426,6 +454,16 @@ final class Pont: NSObject, WKScriptMessageHandler, WKNavigationDelegate, UIScro
         let fichier = FileManager.default.temporaryDirectory.appendingPathComponent(nom + ".pdf")
         guard pdf.pages > 0, (try? pdf.donnees.write(to: fichier, options: .atomic)) != nil else { return }
         let partage = UIActivityViewController(activityItems: [fichier], applicationActivities: nil)
+        partage.popoverPresentationController?.sourceView = vue
+        partage.popoverPresentationController?.sourceRect = CGRect(x: vue.bounds.midX, y: vue.bounds.midY, width: 1, height: 1)
+        partage.popoverPresentationController?.permittedArrowDirections = []
+        var hote = vue.window?.rootViewController
+        while let suivant = hote?.presentedViewController { hote = suivant }
+        hote?.present(partage, animated: true)
+    }
+
+    /// Présente une feuille de partage au-dessus de ce qui est à l'écran (ancrée au centre de la vue, pour l'iPad).
+    private func presenter(_ partage: UIActivityViewController, depuis vue: WKWebView) {
         partage.popoverPresentationController?.sourceView = vue
         partage.popoverPresentationController?.sourceRect = CGRect(x: vue.bounds.midX, y: vue.bounds.midY, width: 1, height: 1)
         partage.popoverPresentationController?.permittedArrowDirections = []

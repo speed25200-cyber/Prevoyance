@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#050914">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f2eee5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0d12" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex">
 <title>Prévoyance — votre retraite, vue d’en haut</title>
 <meta name="description" content="L’analyse de prévoyance suisse : les trois piliers, la lacune chiffrée au franc près, un plan daté.">
@@ -13,57 +14,88 @@
 <link rel="apple-touch-icon" href="images/icone-180.png">
 <link rel="preload" href="polices/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="polices/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="images/film/f-001.webp" as="image">
 <link rel="stylesheet" href="polices/polices.css">
-<link rel="stylesheet" href="bienvenue.css?v=3">
-<script type="module" src="src/bienvenue.js?v=3"></script>
+<link rel="stylesheet" href="bienvenue.css?v=6">
+<script src="src/pret.js?v=6"></script>
+<script type="module" src="src/bienvenue.js?v=6"></script>
 </head>
 <body>
-<div class="ecran" aria-hidden="true">
-  <canvas id="film" width="1600" height="900"></canvas>
-  <i class="voile"></i>
-  <i class="grain"></i>
+<!-- Le relief : une montagne en courbes de niveau, calculée en direct. Son altitude est un revenu annuel. -->
+<canvas class="relief" id="relief" aria-hidden="true"></canvas>
+
+<!-- Le cadre de la carte : coins, graduations, légende. Décor, sans rôle. -->
+<div class="cadre" aria-hidden="true">
+  <i class="coin hg"></i><i class="coin hd"></i><i class="coin bg"></i><i class="coin bd"></i>
+  <i class="regle gauche"></i><i class="regle droite"></i>
+  <p class="cadre-note gauche"><span data-t="l_altitude">Altitude = revenu annuel</span></p>
+  <p class="cadre-note droite"><span data-t="l_equi">Équidistance des courbes</span> <b id="equidistance">CHF 4’000</b></p>
 </div>
 
-<header class="haut">
-  <a class="griffe" href="#top" aria-label="Prévoyance"><img src="images/icone-192.png" alt="" width="30" height="30"><span>Prévoyance</span></a>
+<!-- Les repères posés sur le relief : sommet, besoin, dénivelé. Placés par le script, à chaque image. -->
+<div class="reperes" id="reperes" aria-hidden="true">
+  <p class="repere sommet" id="rep-sommet"><i></i><span data-t="l_atteint">Revenu garanti</span><b id="rep-sommet-n"></b></p>
+  <p class="repere besoin" id="rep-besoin"><i></i><span data-t="s_besoin">Besoin à la retraite</span><b id="rep-besoin-n"></b></p>
+  <p class="repere ecart" id="rep-ecart"><span data-t="l_lacune">Lacune</span><b id="rep-ecart-n"></b></p>
+  <svg class="denivele" id="rep-trait"><line x1="0" y1="0" x2="0" y2="0"/></svg>
+</div>
+
+<!-- Le territoire : la photographie aérienne d'un sommet, vue dans l'anneau à la fin de la page (la carte devient le terrain). -->
+<div class="territoire" id="territoire" aria-hidden="true"><i></i></div>
+
+<div class="chargement" id="chargement" aria-hidden="true">
+  <svg viewBox="0 0 200 200">
+    <path d="M100 24c38 0 70 26 74 66 4 42-28 84-74 86-44 2-78-34-76-78 2-40 36-74 76-74z"/>
+    <path d="M100 48c28 0 50 18 52 46 2 30-22 58-52 58-30 0-54-24-52-54 2-28 24-50 52-50z"/>
+    <path d="M100 72c16 0 28 10 30 26 2 16-12 32-30 32s-32-14-30-30c2-16 14-28 30-28z"/>
+    <path d="M100 92c6 0 10 4 10 9s-4 9-10 9-10-4-10-9 4-9 10-9z"/>
+  </svg>
+  <p><span data-t="l_charge">Levé du relief</span><b id="chargement-n">0</b></p>
+</div>
+
+<header class="haut" id="haut">
+  <a class="griffe" href="#top" aria-label="Prévoyance"><i aria-hidden="true"></i><span data-t="marque">Prévoyance</span></a>
   <div class="langues" id="langues" role="group" aria-label="Langue"></div>
-  <a class="bouton plein petit" href="index.html" data-t="ouvrir">Ouvrir l’analyse</a>
+  <a class="bouton plein petit" href="index.html"><span data-t="ouvrir">Ouvrir l’analyse</span></a>
 </header>
 
-<nav class="reperes" id="reperes" aria-hidden="true"></nav>
+<nav class="itineraire" id="itineraire" aria-hidden="true"></nav>
 
-<main id="top">
-  <section class="piste" id="piste" aria-label="Présentation">
-    <div class="scene">
-      <article class="chapitre debut" data-de="-0.1" data-a="0.15">
-        <p class="sur" data-t="c0_sur">Prévoyance suisse · 1er, 2e et 3e pilier</p>
-        <h1 data-t="c0_titre">Votre retraite,<br><em>vue d’en haut.</em></h1>
-        <p class="chapo" data-t="c0_texte">Ce que vous toucherez, ce qu’il manquera, et ce qu’il faut faire — chiffré au franc près.</p>
-        <p class="defiler"><i></i><span data-t="defiler">Défiler</span></p>
-      </article>
+<main>
+  <section class="hero" id="top" data-repere="c0_sur">
+    <p class="sur voir"><b>N° 00</b><span data-t="c0_sur">Prévoyance suisse · 1er, 2e et 3e pilier</span></p>
+    <h1 data-t="c0_titre" data-mots>Votre retraite,<br><em>vue d’en haut.</em></h1>
+    <div class="hero-pied">
+      <p class="chapo voir" data-t="c0_texte">Ce que vous toucherez, ce qu’il manquera, et ce qu’il faut faire — chiffré au franc près.</p>
+      <p class="actions voir">
+        <a class="bouton plein" href="#essai"><span data-t="essayer">Essayer en 10 secondes</span></a>
+        <a class="bouton fil" href="index.html"><span data-t="ouvrir">Ouvrir l’analyse</span></a>
+      </p>
+    </div>
+    <p class="defiler voir" aria-hidden="true"><i></i><span data-t="defiler">Défiler</span></p>
+  </section>
 
-      <article class="chapitre gauche" data-de="0.2" data-a="0.39">
+  <section class="recit" id="recit" aria-label="Présentation">
+    <div class="recit-cadre">
+      <article class="chapitre" data-repere="c1_sur">
         <p class="sur"><b>01</b><span data-t="c1_sur">Le point de départ</span></p>
-        <h2 data-t="c1_titre">Trois piliers.<br><em>Une seule image.</em></h2>
+        <h2 data-t="c1_titre" data-mots>Trois piliers.<br><em>Une seule image.</em></h2>
         <p class="chapo" data-t="c1_texte">AVS, caisse de pension, 3e pilier : chaque rente est calculée selon les règles de l’année, puis réunie sur une ligne de vie.</p>
-        <ul class="piliers">
-          <li><b>1</b><span data-t="p1">AVS / AI</span></li>
-          <li><b>2</b><span data-t="p2">Caisse de pension</span></li>
-          <li><b>3</b><span data-t="p3">Épargne privée</span></li>
+        <ul class="etages">
+          <li data-etage="3"><i></i><span data-t="p3">Épargne privée</span><b id="e-p3"></b></li>
+          <li data-etage="2"><i></i><span data-t="p2">Caisse de pension</span><b id="e-p2"></b></li>
+          <li data-etage="1"><i></i><span data-t="p1">AVS / AI</span><b id="e-p1"></b></li>
         </ul>
+        <p class="exemple" id="exemple"></p>
       </article>
-
-      <article class="chapitre droite" data-de="0.43" data-a="0.61">
+      <article class="chapitre" data-repere="c2_sur">
         <p class="sur"><b>02</b><span data-t="c2_sur">Le constat</span></p>
-        <h2 data-t="c2_titre">La lacune,<br><em>chiffrée.</em></h2>
-        <p class="grandchiffre"><small>CHF</small><output id="compteur">0</output><small data-t="parMois">par mois</small></p>
+        <h2 data-t="c2_titre" data-mots>La lacune,<br><em>chiffrée.</em></h2>
+        <p class="grandchiffre"><small>− CHF</small><span id="compteur">—</span><small data-t="parMois">par mois</small></p>
         <p class="chapo" data-t="c2_texte">Retraite, invalidité, décès : pour chaque risque, le revenu garanti, le besoin et l’écart entre les deux.</p>
       </article>
-
-      <article class="chapitre gauche" data-de="0.65" data-a="0.82">
+      <article class="chapitre" data-repere="c3_sur">
         <p class="sur"><b>03</b><span data-t="c3_sur">La suite</span></p>
-        <h2 data-t="c3_titre">Un plan,<br><em>daté.</em></h2>
+        <h2 data-t="c3_titre" data-mots>Un plan,<br><em>daté.</em></h2>
         <p class="chapo" data-t="c3_texte">Rachats, versements 3a, retraits échelonnés : chaque mesure a son gain, son coût et sa dernière date utile.</p>
         <ol class="route">
           <li><time data-t="r1_quand">Chaque année</time><span data-t="r1_quoi">Versement 3a avant le 31 décembre</span></li>
@@ -71,26 +103,15 @@
           <li><time data-t="r3_quand">5 ans avant</time><span data-t="r3_quoi">Retraits du 3a, échelonnés</span></li>
         </ol>
       </article>
-
-      <article class="chapitre fin" data-de="0.87" data-a="1.2">
-        <h2 data-t="c4_titre">Voyez clair.<br><em>Décidez tôt.</em></h2>
-        <p class="chapo" data-t="c4_texte">L’analyse complète se fait en quelques minutes. Vos données restent sur votre appareil.</p>
-        <p class="actions">
-          <a class="bouton plein" href="index.html" data-t="ouvrir">Ouvrir l’analyse</a>
-          <a class="bouton verre" href="#essai" data-t="essayer">Essayer en 10 secondes</a>
-        </p>
-      </article>
     </div>
   </section>
 
-  <section class="bloc" id="essai">
-    <div class="tete">
-      <p class="sur"><b>04</b><span data-t="s_sur">À vous</span></p>
-      <h2 data-t="s_titre">Votre lacune, <em>en direct.</em></h2>
-      <p class="chapo" data-t="s_texte">Trois réglages, le vrai moteur de calcul. Une estimation : l’analyse complète tient compte de vos certificats.</p>
-    </div>
-    <div class="simulateur verre-carte">
-      <form class="reglages" id="reglages" autocomplete="off">
+  <section class="essai" id="essai" data-repere="s_sur">
+    <div class="essai-tete">
+      <p class="sur voir"><b>04</b><span data-t="s_sur">À vous</span></p>
+      <h2 class="voir" data-t="s_titre" data-mots>Votre lacune, <em>en direct.</em></h2>
+      <p class="chapo voir" data-t="s_texte">Trois réglages, le vrai moteur de calcul. Une estimation : l’analyse complète tient compte de vos certificats.</p>
+      <form class="reglages voir" id="reglages" autocomplete="off">
         <label><span data-t="s_age">Âge</span><output id="o-age">40</output>
           <input type="range" id="age" min="25" max="62" step="1" value="40"></label>
         <label><span data-t="s_revenu">Revenu annuel brut</span><output id="o-revenu">CHF 90’000</output>
@@ -103,36 +124,54 @@
             <select id="statut"><option value="salarie" data-t="s_salarie">Salarié</option><option value="independant" data-t="s_independant">Indépendant</option></select></label>
         </div>
       </form>
-      <div class="resultat" aria-live="polite">
-        <p class="etiquette" data-t="s_resultat">Lacune à la retraite</p>
-        <p class="grandchiffre petit"><small>CHF</small><output id="r-lacune">—</output><small data-t="parMois">par mois</small></p>
-        <div class="jauge"><i id="r-jauge"></i></div>
-        <p class="couverture"><b id="r-couverture">—</b> <span data-t="s_couvert">du besoin couvert</span></p>
-        <ul class="sources" id="r-sources"></ul>
-        <a class="bouton plein" href="index.html#dossier" data-t="s_complet">Faire l’analyse complète</a>
-      </div>
+    </div>
+    <div class="essai-cote">
+    <!-- la fenêtre du relief : le script y tient la montagne du visiteur, à la bonne taille, et elle la suit au défilement -->
+    <div class="essai-scene" id="essai-scene" aria-hidden="true"></div>
+    <div class="resultat voir" aria-live="polite">
+      <p class="etiquette" data-t="s_resultat">Lacune à la retraite</p>
+      <p class="grandchiffre"><small>CHF</small><output id="r-lacune">—</output><small data-t="parMois">par mois</small></p>
+      <p class="couverture"><b id="r-couverture">—</b> <span data-t="s_couvert">du besoin couvert</span></p>
+      <ul class="sources" id="r-sources"></ul>
+      <a class="bouton plein" href="index.html#dossier"><span data-t="s_complet">Faire l’analyse complète</span></a>
+    </div>
     </div>
   </section>
 
-  <section class="bloc" id="fonctions">
-    <div class="tete">
-      <p class="sur"><b>05</b><span data-t="f_sur">Dans l’analyse</span></p>
-      <h2 data-t="f_titre">Tout ce qu’un bon conseil <em>doit montrer.</em></h2>
+  <section class="fonctions" id="fonctions" data-repere="f_sur">
+    <div class="fonctions-tete">
+      <p class="sur voir"><b>05</b><span data-t="f_sur">Dans l’analyse</span></p>
+      <h2 class="voir" data-t="f_titre" data-mots>Tout ce qu’un bon conseil <em>doit montrer.</em></h2>
     </div>
-    <div class="grille" id="grille"></div>
+    <ol class="index" id="grille"></ol>
+    <figure class="apercu" id="apercu" aria-hidden="true"><img alt="" width="1200" height="800" decoding="async"></figure>
   </section>
 
-  <section class="bloc confiance">
+  <div class="bande" id="bande" aria-hidden="true"><p></p></div>
+
+  <section class="preuves-bloc">
     <ul class="preuves" id="preuves"></ul>
-    <p class="actions">
-      <a class="bouton plein" href="index.html" data-t="ouvrir">Ouvrir l’analyse</a>
-      <a class="bouton verre" href="index.html#analyse" data-t="exemple">Voir un dossier d’exemple</a>
+  </section>
+
+  <section class="fin" id="fin" data-repere="ouvrir">
+    <div class="itin" aria-hidden="true">
+      <svg class="trace" viewBox="0 0 1200 220" preserveAspectRatio="none">
+        <path d="M0 196 C140 190 190 150 290 152 S420 118 520 122 S640 70 730 74 S850 34 930 30 S1010 20 1040 12"/>
+      </svg>
+      <i></i>
+    </div>
+    <h2 class="voir" data-t="c4_titre" data-mots>Voyez clair.<br><em>Décidez tôt.</em></h2>
+    <p class="chapo voir" data-t="c4_texte">L’analyse complète se fait en quelques minutes. Vos données restent sur votre appareil.</p>
+    <p class="actions voir">
+      <a class="bouton plein grand" href="index.html"><span data-t="ouvrir">Ouvrir l’analyse</span></a>
+      <a class="bouton fil grand" href="index.html#analyse"><span data-t="exemple">Voir un dossier d’exemple</span></a>
     </p>
   </section>
 </main>
 
 <footer class="pied">
-  <p><b>Prévoyance</b> · <span data-t="pied">Estimations selon les règles légales de l’année ; elles ne remplacent ni un certificat de prévoyance ni un conseil personnalisé.</span></p>
+  <a class="griffe" href="#top" aria-label="Prévoyance"><i aria-hidden="true"></i><span data-t="marque">Prévoyance</span></a>
+  <p data-t="pied">Estimations selon les règles légales de l’année ; elles ne remplacent ni un certificat de prévoyance ni un conseil personnalisé.</p>
 </footer>
 </body>
 </html>

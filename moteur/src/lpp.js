@@ -67,8 +67,10 @@ export function prestationsLPP(regles, p) {
   const coordonne = salaireCoordonne(regles, p.salaireAVS);
   const affilie = c.affilie ?? coordonne > 0;
   if (!affilie) {
-    return { affilie: false, estime: false, salaireCoordonne: 0, avoirActuel: c.avoir ?? 0, avoirRetraite: c.avoir ?? 0,
-             renteVieillesse: 0, capitalRetraite: c.avoir ?? 0, renteInvalidite: 0, renteConjoint: 0, renteEnfant: 0,
+    // avoir de libre passage : plus de bonifications, mais il porte intérêt jusqu'à la retraite
+    const libre = arrondi((c.avoir ?? 0) * Math.pow(1 + (p.interet ?? regles.lpp.tauxInteretMinimal), Math.max(0, (p.ageRetraite ?? regles.lpp.ageReference ?? 65) - p.age)));
+    return { affilie: false, estime: false, salaireCoordonne: 0, avoirActuel: c.avoir ?? 0, avoirRetraite: libre,
+             renteVieillesse: 0, capitalRetraite: libre, renteInvalidite: 0, renteConjoint: 0, renteEnfant: 0,
              capitalDeces: c.capitalDeces ?? 0, rachatPossible: 0, projection: [] };
   }
   const ageReference = regles.lpp.ageReference ?? 65, ageRetraite = p.ageRetraite ?? ageReference, ecart = ageRetraite - ageReference;

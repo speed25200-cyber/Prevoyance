@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#070b12" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f1f3f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0d12" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f2eee5" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Prévoyance">
@@ -15,13 +15,22 @@
 <link rel="icon" href="images/icone-192.png">
 <link rel="apple-touch-icon" href="images/icone-180.png">
 <link rel="preload" href="polices/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="polices/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="polices/polices.css">
-<link rel="stylesheet" href="app.css">
-<link rel="stylesheet" href="vues.css">
-<link rel="stylesheet" href="apple.css">
-<link rel="stylesheet" href="haut.css">
-<link rel="stylesheet" href="verre.css">
-<link rel="stylesheet" href="bureau.css">
+<!-- Les feuilles d'origine sont rangées dans la couche « socle » : l'app iPhone / iPad s'y tient. Dans le navigateur,
+     la peau « carte » (carte.css, hors couche) passe toujours devant ; « force », déclarée avant le socle, reprend ce
+     qu'il impose avec !important. -->
+<style>
+@layer force, socle;
+@import url("app.css") layer(socle);
+@import url("vues.css") layer(socle);
+@import url("apple.css") layer(socle);
+@import url("haut.css") layer(socle);
+@import url("verre.css") layer(socle);
+@import url("bureau.css") layer(socle);
+@import url("plus.css") layer(socle);
+</style>
+<link rel="stylesheet" href="carte.css">
 <script type="module" src="src/app.js"></script>
 </head>
 <body>

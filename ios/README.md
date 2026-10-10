@@ -17,6 +17,20 @@ Ce que l'app ajoute à la version web : l'icône sur l'écran d'accueil sans pas
 120 Hz sur iPhone Pro (`CADisableMinimumFrameDurationOnPhone`), et « Enregistrer en PDF » par la feuille
 d'impression d'iOS (AirPrint, partage, Fichiers).
 
+**Octobre 2026 — portefeuille et partage.** L'accueil montre, sous chaque dossier, ce qu'il reste à faire en premier
+(envoyé par la page : `reste`, `urgent`), le bilan du portefeuille dès deux dossiers, et deux exports : les échéances
+de tous les dossiers pour l'agenda (`.ics`) et le portefeuille en tableau (`.csv`). Un nouveau pont, `partager`
+(`Ecran.swift`), ouvre la feuille de partage d'iOS pour un texte ou un fichier préparé par la page ; la demande
+d'offre et la feuille de route s'en servent. Un agenda `.ics` part vers Fichiers ou Mail ; son ajout au calendrier
+depuis là reste à confirmer sur un appareil. La nouvelle peau du navigateur (`web/carte.css`) ne s'applique pas à
+l'app : ses sélecteurs excluent la classe `natif`.
+
+Ces ajouts Swift ont été écrits sans compilateur (PC sans Xcode), en reprenant les tournures déjà présentes dans les
+mêmes fichiers. Ce qui a été vérifié : la moitié « page », en rejouant `web/src/autotest.js` hors de l'app (page
+chargée avec la classe `natif` et les cinq ponts, tailles iPhone et iPad : 37 contrôles sur 37), et les messages que
+l'app recevrait. Ce qui reste à vérifier par le premier passage de Codemagic : la compilation, puis l'autotest dans
+les simulateurs (il contrôle désormais la présence du pont `partager`).
+
 ## Construire sur un Mac
 
 ```bash

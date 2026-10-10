@@ -21,6 +21,7 @@ function ecrire(chemin, valeur) {
   const objet = cles.reduce((o, k) => (o[k] ??= {}), dossier());
   if (valeur === undefined) delete objet[fin]; else objet[fin] = valeur;
   dossier().modifie = new Date().toISOString();
+  if (chemin.startsWith('enfants')) dossier().enfantsLe = new Date().toISOString().slice(0, 10);   // l'âge saisi vaut pour aujourd'hui
   ctx.apresChangement();
 }
 
@@ -217,7 +218,7 @@ export function construire() {
       ...client.identite()),
     bloc('menage', ouvert('menage', true),
       champChoix('etatCivil', 'etatCivil', ['celibataire', 'marie', 'partenariat', 'concubin', 'divorce', 'veuf']),
-      compteur('enfants', d.enfants.length, 0, 6, n => { d.enfants = n > d.enfants.length ? [...d.enfants, 5] : d.enfants.slice(0, n); ctx.apresChangement(); construire(); }),
+      compteur('enfants', d.enfants.length, 0, 6, n => { d.enfants = n > d.enfants.length ? [...d.enfants, 5] : d.enfants.slice(0, n); d.enfantsLe ??= new Date().toISOString().slice(0, 10); ctx.apresChangement(); construire(); }),
       ...d.enfants.map((_, i) => curseur(`enfants.${i}`, 'ageEnfant', 0, 24, 1, v => `${v} ${t('ans')}`)),
       bascule('avecConjoint', 'avecConjoint', false, { structure: true })),
     ...(conjoint ? [bloc('conjoint', ouvert('conjoint', true), ...conjoint.identite(), intertitre(t('lpp')), ...conjoint.lpp(),

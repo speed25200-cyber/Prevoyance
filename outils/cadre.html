@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>Cadre de capture</title>
+<!-- Cadre de capture : montre une page dans un cadre de la taille voulue, pour la photographier avec Edge sans fenêtre.
+     Deux raisons : une capture d'Edge part toujours du haut du document (une page qui a défilé y paraît vide), et sa
+     fenêtre ne descend pas sous 500 px de large. Ici la page défile dans son cadre, à la largeur d'un vrai téléphone.
+     Usage : cadre.html?l=390&h=844&u=/web/bienvenue.html%3Ffige%26recit%3D0.5 -->
+<style>
+  html, body { margin: 0; height: 100%; background: #777; overflow: hidden; }
+  iframe { position: fixed; left: 0; top: 0; border: 0; background: #fff; }
+</style>
+</head>
+<body>
+<script>
+  const q = new URLSearchParams(location.search), cadre = document.createElement('iframe');
+  cadre.style.width = q.get('l') ? q.get('l') + 'px' : '100%';
+  cadre.style.height = q.get('h') ? q.get('h') + 'px' : '100%';
+  cadre.src = q.get('u') || '/web/index.html';
+  document.body.append(cadre);
+</script>
+</body>
+</html>

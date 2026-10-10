@@ -26,6 +26,8 @@ export function creerGraphique(canvas, bulle) {
   let glisse = /** @type {any} */ (null);                    // repère en cours de déplacement
   let largeur = 0, hauteur = 0, enCours = false, avant = 0, survol = /** @type {number|null} */ (null), couleurs = lireCouleurs();
   const marge = { g: 46, d: 14, h: 14, b: 30 };
+  // dans le navigateur (peau « carte ») : des aplats nets, comme sur une carte ; dans l'app : la matière d'origine
+  const plat = !document.documentElement.classList.contains('natif');
 
   function lireCouleurs() {
     const s = getComputedStyle(document.documentElement), c = {};
@@ -50,7 +52,7 @@ export function creerGraphique(canvas, bulle) {
     const motif = document.createElement('canvas');
     motif.width = motif.height = 8;
     const m = /** @type {CanvasRenderingContext2D} */ (motif.getContext('2d'));
-    m.strokeStyle = couleurs.lacune; m.lineWidth = 2.2; m.lineCap = 'square';
+    m.strokeStyle = couleurs.lacune; m.lineWidth = plat ? 1.3 : 2.2; m.lineCap = 'square';
     for (const d of [-8, 0, 8]) { m.beginPath(); m.moveTo(d, 8); m.lineTo(d + 8, 0); m.stroke(); }
     return /** @type {CanvasPattern} */ (ctx.createPattern(motif, 'repeat'));
   }
@@ -98,9 +100,20 @@ export function creerGraphique(canvas, bulle) {
         trace = true;
       }
       if (!trace) continue;
-      ctx.fillStyle = couleurs[cle]; ctx.fill();
-      ctx.save(); ctx.clip(); ctx.fillStyle = reflet; ctx.fillRect(marge.g, 0, largeur, hauteur); ctx.restore();
-      ctx.strokeStyle = 'rgba(255, 255, 255, .38)'; ctx.lineWidth = 1.5; ctx.stroke(arete);
+      ctx.fillStyle = couleurs[cle];
+      if (plat) {
+        // comme sur la carte : une teinte légère, des courbes de niveau dans la couleur de la couche, une crête nette
+        ctx.globalAlpha = cle === 'salaire' ? 0.5 : 0.2; ctx.fill(); ctx.globalAlpha = 1;
+        ctx.save(); ctx.clip();
+        ctx.strokeStyle = couleurs[cle]; ctx.globalAlpha = cle === 'salaire' ? 0.75 : 0.6; ctx.lineWidth = 1; ctx.beginPath();
+        for (let trait = hauteur - marge.b - 6; trait > marge.h; trait -= 7) { ctx.moveTo(marge.g, trait + 0.5); ctx.lineTo(largeur - marge.d, trait + 0.5); }
+        ctx.stroke(); ctx.restore(); ctx.globalAlpha = 1;
+        ctx.strokeStyle = cle === 'salaire' ? couleurs.encre3 : couleurs[cle]; ctx.lineWidth = 1.6; ctx.stroke(arete);
+      } else {
+        ctx.fill();
+        ctx.save(); ctx.clip(); ctx.fillStyle = reflet; ctx.fillRect(marge.g, 0, largeur, hauteur); ctx.restore();
+        ctx.strokeStyle = 'rgba(255, 255, 255, .38)'; ctx.lineWidth = 1.5; ctx.stroke(arete);
+      }
     }
     // lacune : entre le sommet de la pile et le besoin
     ctx.beginPath();
@@ -132,10 +145,14 @@ export function creerGraphique(canvas, bulle) {
       ctx.fillText(r.libelle, x + (x > largeur - 90 ? -(r.glissable ? 16 : 6) : (r.glissable ? 16 : 6)), marge.h + 6);
       if (r.glissable) {                                        // poignée : on peut saisir le repère et le déplacer
         ctx.restore(); ctx.save();
-        ctx.fillStyle = couleurs.encre; ctx.beginPath(); ctx.roundRect(x - 9, marge.h - 4, 18, 20, 7); ctx.fill();
-        ctx.strokeStyle = couleurs.surface; ctx.lineWidth = 1.4; ctx.beginPath();
-        for (const dx of [-3, 0, 3]) { ctx.moveTo(x + dx, marge.h + 2); ctx.lineTo(x + dx, marge.h + 10); }
-        ctx.stroke();
+        if (plat) {                                             // le jalon de la carte : un triangle posé sur le trait
+          ctx.fillStyle = couleurs.encre; ctx.beginPath(); ctx.moveTo(x, marge.h + 13); ctx.lineTo(x - 9, marge.h - 3); ctx.lineTo(x + 9, marge.h - 3); ctx.closePath(); ctx.fill();
+        } else {
+          ctx.fillStyle = couleurs.encre; ctx.beginPath(); ctx.roundRect(x - 9, marge.h - 4, 18, 20, 7); ctx.fill();
+          ctx.strokeStyle = couleurs.surface; ctx.lineWidth = 1.4; ctx.beginPath();
+          for (const dx of [-3, 0, 3]) { ctx.moveTo(x + dx, marge.h + 2); ctx.lineTo(x + dx, marge.h + 10); }
+          ctx.stroke();
+        }
         ctx.beginPath(); ctx.rect(marge.g, 0, largeur - marge.g - marge.d, hauteur - marge.b + 1); ctx.clip();
       }
     }

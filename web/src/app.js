@@ -18,15 +18,18 @@ import * as VueScenarios from './vues/scenarios.js';
 import * as VuePlan from './vues/plan.js';
 import * as VueRapport from './vues/rapport.js';
 import * as VueDonnees from './vues/donnees.js';
-import { h, $ } from './ui.js';
+import { h, $, compter } from './ui.js';
 import { installerFond } from './fond.js';
 import * as Natif from './natif.js';
 import * as Suivi from './suivi.js';
 import * as Verrou from './verrou.js';
 import * as EcranVerrou from './verrou-ecran.js';
 import * as Palette from './palette.js';
+import * as Portefeuille from './portefeuille.js';
+import { installerCarte, titrer } from './carte.js';
 
-installerFond();
+// dans l'app iPhone / iPad : le mur filmé derrière le verre ; dans le navigateur : la carte (papier, relief, feuilles qui entrent)
+if (document.documentElement.classList.contains('natif')) installerFond(); else installerCarte();
 
 /** Icônes de la navigation (traits simples, comme celles du système). */
 const ICONES = {'dossier': '<path d="M12 12a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2z"/><path d="M4.8 19.6c.9-3.1 3.7-4.9 7.2-4.9s6.3 1.8 7.2 4.9"/>',
@@ -48,39 +51,60 @@ function marquer() {
   placerBulle();
   enTete();
   // dans l'app iPhone / iPad, le menu est la barre native : on lui dit la vue ouverte et les libellés
-  appNative()?.postMessage({ actif, visible: true, analyse: Natif.analyse(ctx), dossiers: resumeDossiers(),
-    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil'), suivant: ctx.t('accueilSuivant'), terminer: ctx.t('accueilTerminer'), presentation: ctx.t('vi_presentation'), risques: ctx.t('vi_risques'), synthese: ctx.t('vi_synthese'), sousTitre: ctx.t('vi_sousTitre'), devise: ctx.t('vi_devise'), bonjour: ctx.t('vi_bonjour'), slogan: ctx.t('vi_slogan'), metiers: ctx.t('vi_metiers') },
+  const accueil = appNative() ? resumeDossiers() : { dossiers: [], bilan: '' };
+  appNative()?.postMessage({ actif, visible: true, analyse: Natif.analyse(ctx), dossiers: accueil.dossiers,
+    textes: { titre: ctx.t('titre'), accroche: ctx.t('accueilAccroche'), dossiers: ctx.t('accueilDossiers'), nouveau: ctx.t('accueilNouveau'), exemple: ctx.t('accueilExemple'), accueil: ctx.t('accueil'), suivant: ctx.t('accueilSuivant'), terminer: ctx.t('accueilTerminer'), presentation: ctx.t('vi_presentation'), risques: ctx.t('vi_risques'), synthese: ctx.t('vi_synthese'), sousTitre: ctx.t('vi_sousTitre'), devise: ctx.t('vi_devise'), bonjour: ctx.t('vi_bonjour'), slogan: ctx.t('vi_slogan'), metiers: ctx.t('vi_metiers'),
+      // accueil de l'app : le bilan du portefeuille (dès deux dossiers) et les deux exports, en libellés courts (deux
+      // boutons côte à côte sur un iPhone) ; l'app lit ces textes comme des chaînes : jamais de nombre ni de valeur vide ici
+      echeances: ctx.t('ag_court'), exporter: ctx.t('pf_csv_court'), portefeuille: accueil.bilan },
     langue: etat.langue, langues: LANGUES, annee: etat.annee, annees: ANNEES, noms: Object.fromEntries(['dossier', ...VUES].map(v => [v, ctx.t(v === 'dossier' ? 'dossier' : 'v_' + v)])) });
 }
 /** En-tête de page du grand écran : le dossier ouvert, le titre de la vue, la couverture et les deux gestes courants. */
+let enteteMontee = '';
 function enTete() {
   const zone = document.getElementById('entete-page');
   if (!zone) return;
   const actif = document.body.dataset.panneau === 'dossier' ? 'dossier' : etat.vue, d = dossier();
   const score = Math.round(ctx.analyse?.score ?? 0), tour = 2 * Math.PI * 21;
+  // l'en-tête n'est remonté que si la vue, la langue ou le mode changent : sinon seuls le dossier et la couverture bougent
+  const montee = [actif, etat.langue, document.body.classList.contains('presentation'), $('presentation').textContent].join('|');
   zone.hidden = false;
-  zone.replaceChildren(
-    h('div', { class: 'ep-texte' },
-      h('p', { class: 'ep-sur' }, [d.nom || ctx.t('sansNom'), d.canton, `${ctx.t('bu_regles')} ${etat.annee}`].filter(Boolean).join('  ·  ')),
-      h('h1', {}, ctx.t(actif === 'dossier' ? 'dossier' : 'v_' + actif)),
-      h('p', { class: 'ep-sous' }, ctx.t('bu_' + actif))),
-    h('div', { class: 'ep-droite' },
-      h('div', { class: 'ep-score', title: ctx.t('bu_couverture') }),
-      h('button', { class: 'bouton discret', type: 'button', onclick: () => $('presentation').click() }, $('presentation').textContent ?? ''),
-      h('button', { class: 'bouton', type: 'button', onclick: () => aller('rapport') }, ctx.t('bu_pdf'))));
-  /** @type {HTMLElement} */ (zone.querySelector('.ep-score')).innerHTML =
-    `<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><circle cx="24" cy="24" r="21" stroke-dasharray="${(tour * score / 100).toFixed(1)} ${tour.toFixed(1)}"/></svg>`
-    + `<b>${score}</b><small>${ctx.t('bu_couverture')}</small>`;
+  if (montee !== enteteMontee || !zone.firstChild) {
+    enteteMontee = montee;
+    const titre = h('h1', {}, ctx.t(actif === 'dossier' ? 'dossier' : 'v_' + actif));
+    titrer(titre);
+    zone.replaceChildren(
+      h('div', { class: 'ep-texte' }, h('p', { class: 'ep-sur' }), titre, h('p', { class: 'ep-sous' }, ctx.t('bu_' + actif))),
+      h('div', { class: 'ep-droite' },
+        h('div', { class: 'ep-score', title: ctx.t('bu_couverture') }),
+        document.body.classList.contains('presentation') ? null
+          : h('button', { class: 'bouton discret', type: 'button', onclick: ouvrirPortefeuille }, ctx.t('pf_bouton')),
+        h('button', { class: 'bouton discret', type: 'button', onclick: () => $('presentation').click() }, $('presentation').textContent ?? ''),
+        h('button', { class: 'bouton', type: 'button', onclick: () => aller('rapport') }, ctx.t('bu_pdf'))));
+    /** @type {HTMLElement} */ (zone.querySelector('.ep-score')).innerHTML =
+      `<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21"/><circle cx="24" cy="24" r="21" stroke-dasharray="0 ${tour.toFixed(1)}"/></svg><b>0</b><small>${ctx.t('bu_couverture')}</small>`;
+    zone.classList.remove('change'); void zone.offsetWidth; zone.classList.add('change');
+  }
+  /** @type {HTMLElement} */ (zone.querySelector('.ep-sur')).textContent = [d.nom || ctx.t('sansNom'), d.canton, `${ctx.t('bu_regles')} ${etat.annee}`].filter(Boolean).join('  ·  ');
+  /** @type {Element} */ (zone.querySelector('.ep-score circle + circle')).setAttribute('stroke-dasharray', `${(tour * score / 100).toFixed(1)} ${tour.toFixed(1)}`);
+  compter(/** @type {HTMLElement} */ (zone.querySelector('.ep-score b')), score, v => String(Math.round(v)));
 }
 const appNative = () => /** @type {any} */ (window).webkit?.messageHandlers?.onglet ?? null;
-/** Les dossiers pour l'accueil de l'app : nom, date, score de couverture. */
+/**
+ * Les dossiers pour l'accueil de l'app : nom, date, score de couverture, et — tiré du portefeuille du conseiller — ce
+ * qu'il reste à faire en premier (`reste`), signalé (`urgent`) quand un risque d'invalidité ou de décès est ouvert.
+ */
 function resumeDossiers() {
-  return etat.dossiers.map(d => {
-    let score = 0;
-    try { if (ctx.regles) score = analyser(versDossier(d, d.cible), ctx.regles, { impots: ctx.impots }).score; } catch { /* dossier incomplet : score 0 */ }
+  // un seul passage par dossier : la personne analysée dans ce dossier, avec les impôts de sa propre commune
+  // (le score, la ligne « reste à faire » et le bilan parlent ainsi de la même personne)
+  const resumes = etat.dossiers.map(d => (ctx.regles && ctx.impotsBase ? Portefeuille.resumer(d, ctx, d.avecConjoint && d.cible === 'conjoint' ? 'conjoint' : 'personne') : null));
+  const valides = resumes.filter(x => !!x), somme = cle => valides.reduce((s, x) => s + (x?.[cle] ?? 0), 0);
+  const bilan = valides.length > 1 ? ctx.t('pf_bilan', { n: valides.length, c: Math.round(somme('score') / valides.length), m: ctx.f.chf(somme('potentiel3a')) }) : '';
+  return { bilan, dossiers: etat.dossiers.map((d, i) => {
+    const x = resumes[i], premiere = x ? Portefeuille.raisons(x, ctx)[0] : null;
     return { id: String(d.id), nom: d.nom || ctx.t('sansNom'), date: new Date(d.modifie ?? Date.now()).toLocaleDateString(etat.langue + '-CH', { day: 'numeric', month: 'long', year: 'numeric' }),
-             score, ouvert: d.id === dossier().id };
-  });
+             score: x?.score ?? 0, ouvert: d.id === dossier().id, reste: premiere && premiere[0] !== 'info' ? premiere[1] : '', urgent: !!x && (x.invalidite > 0 || x.deces > 0) };
+  }) };
 }
 /** Demandes de l'accueil de l'app : ouvrir un dossier sur son analyse, en créer un (vide ou d'exemple) et le saisir. */
 function ouvrirDossier(id) {
@@ -88,6 +112,11 @@ function ouvrirDossier(id) {
   etat.ouvert = etat.dossiers.find(d => String(d.id) === String(id)).id; garder();
   ctx.reconstruire();
   aller('analyse');
+}
+/** Le portefeuille du conseiller : tous les dossiers, classés par ce qu'il reste à faire. */
+function ouvrirPortefeuille() {
+  // dans l'app iPhone / iPad, l'accueil natif tient ce rôle : la page ne pose pas de fenêtre par-dessus
+  if (ctx.regles && !document.documentElement.classList.contains('natif')) Portefeuille.ouvrir(ctx, { ouvrir: ouvrirDossier });
 }
 function creerDossier(exemple = false) {
   nouveauDossier(exemple ? dossierExemple() : undefined);
@@ -119,10 +148,13 @@ document.addEventListener('keydown', evenement => {
   if (evenement.key === 'Escape') { for (const d of document.querySelectorAll('details.portefeuille[open]')) d.removeAttribute('open'); return; }
   const cible = /** @type {HTMLElement} */ (evenement.target);
   if (evenement.ctrlKey || evenement.metaKey || evenement.altKey || cible.closest?.('input, textarea, select, [contenteditable]')) return;
+  if (evenement.key.toLowerCase() === 'p' && !document.body.classList.contains('presentation')) { ouvrirPortefeuille(); return; }
   const entree = ['dossier', ...VUES][+evenement.key - 1];
   if (entree && !(document.body.classList.contains('presentation') && (entree === 'dossier' || entree === 'donnees'))) aller(entree);
 });
 function aller(cible) {
+  // l'adresse suit la vue : un rechargement ou un lien copié rouvre le même écran
+  if (location.hash.slice(1) !== cible) history.replaceState(null, '', `#${cible}`);
   if (cible === 'dossier') { document.body.dataset.panneau = 'dossier'; marquer(); scrollTo({ top: 0 }); return; }
   document.body.dataset.panneau = 'analyse';
   if (etat.vue !== cible) { etat.vue = cible; garder(); monterVue(); } else marquer();
@@ -251,6 +283,9 @@ const palette = Palette.installer(() => {
   const actions = [
     { titre: $('presentation').textContent ?? '', groupe: ctx.t('pa_actions'), faire: () => $('presentation').click() },
     { titre: ctx.t('bu_pdf'), groupe: ctx.t('pa_actions'), faire: () => aller('rapport') },
+    { titre: ctx.t('pf_titre'), groupe: ctx.t('pa_actions'), touche: 'P', faire: ouvrirPortefeuille },
+    { titre: ctx.t('ev_titre'), groupe: ctx.t('pa_actions'), faire: () => aller('scenarios') },
+    { titre: ctx.t('do_titre'), groupe: ctx.t('pa_actions'), faire: () => aller('plan') },
     { titre: ctx.t('pa_nouveau'), groupe: ctx.t('pa_actions'), faire: () => creerDossier(false) },
     { titre: ctx.t('pa_exemple'), groupe: ctx.t('pa_actions'), faire: () => creerDossier(true) },
     ...ANNEES.map(a => ({ titre: `${ctx.t('pa_regles')} ${a}`, groupe: ctx.t('pa_actions'), faire: () => { const s = /** @type {HTMLSelectElement} */ ($('annee')); s.value = String(a); s.dispatchEvent(new Event('change')); } })),
@@ -307,4 +342,6 @@ async function regler({ langue, annee } = {}) {
   }
 }
 /** @type {any} */ (window).__prevoyance = { etat, ctx, aller, regler, ouvrirDossier, creerDossier, annoncer: marquer,
+  // accueil de l'app : le portefeuille en tableau (« csv ») ou les échéances de tous les dossiers (« ics »)
+  exporter: quoi => { if (ctx.regles && ['csv', 'ics'].includes(quoi)) Portefeuille.exporter(quoi, ctx); },
   champ: Formulaire.agir, action: (id, valeur) => { Natif.agir(id, valeur); annoncerEcran(); }, ecran: () => Natif.ecran($('vue')), risque: choisirRisque, cible: choisirCible, modeles: () => ({ analyse: Natif.analyse(ctx) }) };

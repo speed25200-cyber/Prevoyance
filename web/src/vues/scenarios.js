@@ -5,8 +5,10 @@
  */
 
 import { h, colonnes, couloir } from '../ui.js';
-import { Scenarios, Impots, Vie } from '../../../moteur/src/index.js';
+import { Scenarios, Impots, Vie, Evenements } from '../../../moteur/src/index.js';
 import { dossier, garder, PROFILS } from '../etat.js';
+import * as Agenda from '../agenda.js';
+import * as Partage from '../partage.js';
 
 export function monter(ctx, racine) {
   racine.replaceChildren(h('div', { id: 'scenarios', class: 'pile-cartes' }));
@@ -26,11 +28,39 @@ export function afficher(ctx) {
   // ---- feuille de route : les échéances légales à venir, dans l'ordre
   const route = Vie.feuilleDeRoute(dossierMoteur, regles, { impots });
   if (route.length) {
-    const valeurs = e => ({ m: f.chf(e.v.montant ?? 0), e: f.chf(e.v.economie ?? 0), a: e.v.depart ?? '', d: e.v.mois ? `${String(e.v.mois).padStart(2, '0')}.${e.v.anneeRente}` : '' });
     blocs.push(carte(t('vi_route'), t('vi_route_d'),
       h('ol', { class: 'etapes' }, ...route.map((e, i) => h('li', { 'data-prochaine': String(i === 0) },
-        h('b', {}, String(e.annee)), h('small', {}, t('vi_ans', { n: e.age })), h('p', {}, t('vr_' + e.cle, valeurs(e)))))),
+        h('b', {}, String(e.annee)), h('small', {}, t('vi_ans', { n: e.age })), h('p', {}, Agenda.texteEtape(e, ctx))))),
+      // les mêmes échéances, en fichier d'agenda (Outlook, Apple Calendrier, Google Agenda)
+      h('div', { class: 'demande-actions agenda-actions' },
+        h('button', { type: 'button', class: 'pastille', title: t('ag_aide'),
+          onclick: () => Partage.fichier('echeances.ics', Agenda.enICS(Agenda.echeances([dossier()], ctx), ctx), 'text/calendar;charset=utf-8') }, t('ag_bouton'))),
       h('p', { class: 'petit' }, t('vi_route_note'))));
+  }
+
+  // ---- et si… : six événements de vie, chacun refait l'analyse complète
+  const vie = Evenements.evenements(dossierMoteur, regles, { impots }), possibles = vie.evenements.filter(e => e.applicable);
+  if (possibles.length) {
+    const pct = x => `${Math.round((x ?? 0) * 100)} %`;
+    const nom = e => t('ev_' + e.cle, { p: pct(e.v.part) });
+    const detail = e => t(`ev_${e.cle}_d`, { enfants: e.v.enfants ?? '', a: f.chf(e.v.avoir ?? 0), m: f.chf(e.v.montant ?? 0), n: f.chf(e.v.net ?? 0),
+      r: f.chf(e.cle === 'logement' ? e.v.rente ?? 0 : e.v.revenu ?? 0) });
+    const signe = x => (x > 0 ? '+ ' : x < 0 ? '− ' : '');
+    // un écart se lit en bien ou en mal selon ce qu'il mesure : plus de revenu est un bien, plus de lacune un mal
+    const ecart = (libelle, valeur, delta, bienSiPlus, unite) => chiffre(libelle, valeur,
+      delta === 0 ? t('ev_inchange') : `${signe(delta)}${unite(Math.abs(delta))}`, delta === 0 ? '' : (delta > 0) === bienSiPlus ? 'plus' : 'moins');
+    const pire = possibles.reduce((m, e) => (e.ecart.score < m.ecart.score ? e : m), possibles[0]);
+    // en tête de la vue, sur toute la largeur : c'est par là qu'un entretien commence
+    blocs.unshift(carte(t('ev_titre'), t('ev_d'),
+      h('div', { class: 'evenements' }, ...possibles.map(e => h('div', { class: 'evenement' },
+        h('div', { class: 'levier' }, h('b', {}, nom(e)), h('p', {}, detail(e))),
+        h('div', { class: 'chiffres' },
+          ecart(t('ev_couverture'), `${vie.avant.score} → ${e.apres.score}`, e.ecart.score, true, x => t('ev_points', { n: x })),
+          ecart(`${t('ev_revenuRetraite')}, ${t('parMois')}`, f.chf(e.apres.revenuRetraite), e.ecart.revenuRetraite, true, f.chf),
+          ecart(`${t('ev_invalidite')}, ${t('parMois')}`, e.apres.invalidite > 0 ? `− ${f.chf(e.apres.invalidite)}` : t('ev_aucune'), e.ecart.invalidite, false, f.chf),
+          ecart(t('ev_deces'), e.apres.deces > 0 ? f.chf(e.apres.deces) : t('ev_aucune'), e.ecart.deces, false, f.chf))))),
+      pire.ecart.score < 0 ? h('p', { class: 'remarque' }, t('ev_sensible', { n: nom(pire) })) : null,
+      h('p', { class: 'petit' }, t('ev_note'))));
   }
 
   // ---- âge de départ

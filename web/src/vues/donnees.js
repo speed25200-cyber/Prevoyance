@@ -17,6 +17,16 @@ const CLES = [
   ['dn_3a', r => r.pilier3a.plafondAvecLPP], ['dn_3aSans', r => r.pilier3a.plafondSansLPP], ['dn_laa', r => r.laa.gainAssureMax],
 ];
 
+/** Nom des régimes cités dans les sources (les fichiers de règles les rangent sous une clé). */
+const REGIMES = {
+  fr: { avs: 'AVS', ai: 'AI', lpp: 'LPP', pilier3a: 'Pilier 3a', laa: 'LAA', treizieme: '13e rente AVS' },
+  de: { avs: 'AHV', ai: 'IV', lpp: 'BVG', pilier3a: 'Säule 3a', laa: 'UVG', treizieme: '13. AHV-Rente' },
+  it: { avs: 'AVS', ai: 'AI', lpp: 'LPP', pilier3a: 'Pilastro 3a', laa: 'LAINF', treizieme: '13a rendita AVS' },
+  en: { avs: 'AHV', ai: 'IV', lpp: 'BVG', pilier3a: 'Pillar 3a', laa: 'UVG', treizieme: '13th AHV pension' },
+};
+/** Les notes et les sources des fichiers de données sont rédigées en français : dans une autre langue, l'écran le dit. */
+const ORIGINAL = { de: 'Anmerkungen und Quellenangaben: französische Originaltexte.', it: 'Note e fonti: testi originali in francese.', en: 'Notes and sources are the original French texts.' };
+
 /** Libellé lisible des valeurs encore à confirmer (clés du fichier de règles). */
 const A_CONFIRMER = { 'lpp.tauxInteretMinimal': 'dn_interet', 'laa.gainAssureMax': 'dn_laa', 'ac.plafond': 'dn_ac', 'avs.bonificationEducative': 'dn_bonification', 'avs.flexibilisation': 'dn_flexAVS' };
 
@@ -25,7 +35,8 @@ export async function monter(ctx, racine) {
   const [r1, r2, manifeste, impots] = await Promise.all([Donnees.regles(ANNEES[0]), Donnees.regles(ANNEES[1]), Donnees.manifeste(), ctx.impotsBase ?? Donnees.impots(ANNEES[0])]);
   // les données ont pu arriver après un changement d'onglet : on n'écrit pas par-dessus une autre vue
   if (etat.vue !== 'donnees') return;
-  const mise = (v, nature) => (nature === 'taux' ? `${(v * 100).toFixed(2).replace(/0$/, '')} %` : f.chf(v));
+  const mise = (v, nature) => (nature === 'taux' ? `${(v * 100).toFixed(2).replace(/0$/, '')}\u00a0%` : f.chf(v));
+  const regime = cle => (REGIMES[etat.langue] ?? REGIMES.fr)[cle] ?? cle;
   const etatMaj = h('p', { class: 'note' }, Donnees.dernierControle()
     ? t('dn_controle', { d: new Date(/** @type {string} */ (Donnees.dernierControle())).toLocaleString(etat.langue + '-CH') }) : t('dn_jamais'));
   const bouton = h('button', { type: 'button', class: 'bouton', onclick: async () => {
@@ -39,7 +50,7 @@ export async function monter(ctx, racine) {
   const blocs = [
     h('div', { class: 'carte donnees-tete' },
       h('div', {}, h('p', { class: 'surtitre' }, t('dn_surtitre')), h('p', { class: 'grand petit-grand' }, t('dn_version', { v: manifeste?.version ?? '—' })),
-        h('p', { class: 'note' }, manifeste?.notes ?? ''), etatMaj),
+        h('p', { class: 'note', lang: 'fr' }, manifeste?.notes ?? ''), ORIGINAL[etat.langue] ? h('p', { class: 'petit' }, ORIGINAL[etat.langue]) : null, etatMaj),
       h('div', { class: 'donnees-actions' }, bouton, h('small', {}, t('dn_moteur', { v: VERSION })),
         h('a', { class: 'lien', href: '../moteur/tests/index.html', target: '_blank', rel: 'noopener' }, t('dn_tests')))),
     h('div', { class: 'carte' }, h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('dn_regles')), h('p', {}, t('dn_regles_d')))),
@@ -51,7 +62,7 @@ export async function monter(ctx, racine) {
             h('td', { class: change ? 'change' : 'meme' }, change ? (nature === 'taux' ? '' : (b > a ? '+ ' : '− ') + f.chf(Math.abs(b - a))) : '='));
         }))),
       r2.aConfirmer?.length ? h('p', { class: 'remarque' }, t('dn_aConfirmer', { l: r2.aConfirmer.map(c => t(A_CONFIRMER[c] ?? c)).join(' ; ') })) : null,
-      h('p', { class: 'petit' }, `${r1.annee} : ${r1.etat} · ${r2.annee} : ${r2.etat}`)),
+      h('p', { class: 'petit', lang: 'fr' }, `${r1.annee} : ${r1.etat} · ${r2.annee} : ${r2.etat}`)),
   ];
 
   if (impots) {
@@ -69,8 +80,8 @@ export async function monter(ctx, racine) {
       h('p', { class: 'petit' }, `${impots.source}. ${impots.hypotheses}.`)));
   }
   blocs.push(h('div', { class: 'carte' }, h('h2', {}, t('rp_sources')),
-    h('ul', { class: 'r-sources' }, ...Object.entries(r1.sources).map(([k, s]) => h('li', {}, h('b', {}, k.toUpperCase() + ' — '), String(s))),
-      ...Object.entries(r2.sources).filter(([k]) => ['avs', 'lpp', 'pilier3a'].includes(k)).map(([k, s]) => h('li', {}, h('b', {}, `${k.toUpperCase()} ${r2.annee} — `), String(s))))));
+    h('ul', { class: 'r-sources', lang: 'fr' }, ...Object.entries(r1.sources).map(([k, s]) => h('li', {}, h('b', {}, `${regime(k)} — `), String(s))),
+      ...Object.entries(r2.sources).filter(([k]) => ['avs', 'lpp', 'pilier3a'].includes(k)).map(([k, s]) => h('li', {}, h('b', {}, `${regime(k)} ${r2.annee} — `), String(s))))));
   // confidentialité et limites : ce qu'un courtier ou une compagnie doit pouvoir lire avant d'utiliser l'outil avec un client
   blocs.push(h('div', { class: 'carte apropos' }, h('h2', {}, t('ap_titre')),
     h('ul', { class: 'r-sources' }, ...['ap_appareil', 'ap_reseau', 'ap_verrou', 'ap_effacer', 'ap_limites', 'ap_controle'].map(cle => h('li', {}, t(cle, { v: VERSION, d: manifeste?.version ?? '—' }))))));

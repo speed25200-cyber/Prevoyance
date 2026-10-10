@@ -14,12 +14,51 @@ import { Impots } from '../../../moteur/src/index.js';
 import * as Conformite from '../conformite.js';
 import * as ConseilTexte from '../conseil-texte.js';
 import * as Marque from '../marque.js';
+import { imageRelief } from '../relief.js';
+
+// Couverture sans marque : le relief du client (ses trois piliers sous l'altitude du besoin), aux teintes du rapport imprimé.
+const TEINTES_RELIEF = { fond: '#ffffff', trait: '#b3a792', p1: '#17335c', p2: '#3f6fb0', p3: '#9dbfe6', besoin: '#d9542b', ok: '#1f8a5b' };
+let reliefCouverture = { cle: '', image: /** @type {string|null} */ (null) };
+function imageCouverture(a) {
+  if (document.documentElement.classList.contains('natif')) return null;
+  const x = a.risques.retraite, verse = n => Math.round(x.sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0));
+  const montants = { p1: verse(1), p2: verse(2), p3: verse(3), besoin: Math.round(x.besoin) }, cle = JSON.stringify(montants);
+  if (reliefCouverture.cle !== cle) reliefCouverture = { cle, image: imageRelief(montants, { couleurs: TEINTES_RELIEF }) };
+  return reliefCouverture.image;
+}
 
 const GRAVITES = ['critique', 'attention', 'opportunite', 'info'];
 
 export function monter(ctx, racine) {
   racine.replaceChildren(h('div', { id: 'rapport-zone' }));
   afficher(ctx);
+}
+
+/**
+ * À l'écran, dans le navigateur : chaque feuille garde sa vraie largeur A4 (celle de l'impression) et se réduit d'un
+ * bloc à la place disponible — la feuille de style lit `--echelle-page`. Avant, la feuille rétrécissait sans son
+ * contenu, qui était alors coupé en bas.
+ */
+const A4 = 793.7;   // 210 mm, en points d'écran
+const surLargeur = new ResizeObserver(entrees => {
+  for (const e of entrees) /** @type {HTMLElement} */ (e.target).style.setProperty('--echelle-page', Math.min(1, e.contentRect.width / A4).toFixed(4));
+});
+function ajusterFeuilles(zone) {
+  surLargeur.disconnect();
+  const feuilles = zone.querySelector('.rapport');
+  if (!feuilles || document.documentElement.classList.contains('natif')) return;
+  feuilles.style.setProperty('--echelle-page', Math.min(1, feuilles.clientWidth / A4).toFixed(4));
+  surLargeur.observe(feuilles);
+  // filet de sécurité : une feuille dont le contenu dépasse encore (dossier très chargé, langue plus longue) est
+  // resserrée d'un rien — jusqu'à 14 % — plutôt que coupée ; le réglage suit la feuille jusque dans le PDF
+  for (const feuille of /** @type {NodeListOf<HTMLElement>} */ (feuilles.querySelectorAll('.page:not(.couverture)'))) {
+    const corps = /** @type {HTMLElement[]} */ ([...feuille.children]).filter(e => !e.matches('header, footer'));
+    let serre = 1;
+    while (feuille.scrollHeight > feuille.clientHeight + 1 && serre > 0.87) {
+      serre -= 0.02;
+      for (const e of corps) e.style.setProperty('zoom', serre.toFixed(2));
+    }
+  }
 }
 
 const page = (classe, ...contenu) => h('section', { class: 'page ' + classe }, ...contenu);
@@ -67,6 +106,7 @@ export function afficher(ctx) {
     return e;
   };
   const repere = (nom, valeur) => h('div', {}, h('small', {}, nom), valeur);
+  const relief = teintes ? null : imageCouverture(a);
   const couverture = teintes
     // avec une marque : un grand aplat à sa couleur — logo, nom et adresse en haut, titre et anneau du score dessus —, puis les repères du dossier
     ? page('couverture griffe',
@@ -81,7 +121,8 @@ export function afficher(ctx) {
         repere(t('rp_date'), h('b', {}, date)), repere(t('rp_conseiller'), h('b', { class: 'r-conseiller' }, etat.conseiller || '—')),
         repere(t('canton'), h('b', {}, a.canton ? `${a.canton} · ${t('ct_' + a.canton)}` : '—'))))
     : page('couverture',
-      h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
+      relief ? h('img', { class: 'r-piliers r-relief', src: relief, alt: '', width: 1680, height: 896 })
+        : h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
       h('div', {}, h('p', { class: 'surtitre' }, t('rp_surtitre', { a: a.annee })), h('h1', {}, t('rp_h1')), h('p', { class: 'r-client' }, d.nom || t('sansNom'))),
       h('table', { class: 'r-fiche' },
         ligne(t('rp_date'), date), ligne(t('rp_conseiller'), h('span', { class: 'r-conseiller' }, etat.conseiller || '—')),
@@ -202,7 +243,8 @@ export function afficher(ctx) {
   // ---- informations de l'intermédiaire (art. 45 LSA) et procès-verbal de conseil, avec les signatures
   const legales = Conformite.pages(ctx, { page, entete, pied, ligne }, (avecDeces ? 9 : 8) + decalage);
 
-  zone.replaceChildren(outils, Conformite.bandeau(ctx), h('div', { class: 'rapport' + (teintes ? ' griffe' : ''),
+  zone.replaceChildren(h('aside', { class: 'rapport-cote' }, outils, Conformite.bandeau(ctx)), h('div', { class: 'rapport' + (teintes ? ' griffe' : ''),
     style: teintes ? { '--marque': teintes.bande, '--marque-encre': teintes.encre, '--marque-filet': teintes.filet, '--marque-filet-bande': teintes.filetBande,
       '--marque-texte': teintes.texte, '--marque-claire': teintes.claire, '--marque-p1': teintes.piliers[0], '--marque-p2': teintes.piliers[1], '--marque-p3': teintes.piliers[2] } : {} }, ...[couverture, synthese, retraite, invalidite, deces, pageConseil, pagePlan, pageRoute, sources, ...legales].filter(Boolean)));
+  ajusterFeuilles(zone);
 }

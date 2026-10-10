@@ -11,6 +11,7 @@ import { dossier, garder } from '../etat.js';
 import { curseur } from '../formulaire.js';
 import { RISQUES } from './analyse.js';
 import * as ConseilTexte from '../conseil-texte.js';
+import * as Partage from '../partage.js';
 
 /** @type {Record<string, HTMLElement>} */ let r = {};
 
@@ -66,6 +67,8 @@ export function monter(ctx, racine) {
           h('div', { class: 'rangee' }, prime('renteInvalidite', 'pl_primeInvalidite'), prime('capitalDeces', 'pl_primeDeces')),
           h('div', { class: 'rangee' }, prime('ijm', 'pl_primeIjm'), prime('laa', 'pl_primeLaa')))),
       h('div', { class: 'carte' }, h('h2', {}, t('pl_effet')), ref('effets', h('div', { class: 'effets' })), ref('fiscal', h('div')))),
+    // ce qu'il faut demander aux assureurs pour couvrir les risques du plan
+    ref('demande', h('div', { class: 'carte' })),
     // deux offres reçues, côte à côte : ce que chacune comble, et à quel prix
     h('div', { class: 'carte' }, h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('of_titre')), h('p', {}, t('of_d')))),
       h('div', { class: 'champs nus' }, ...[0, 1].flatMap(i => [
@@ -84,20 +87,25 @@ export function afficher(ctx) {
   compter(r.scoreAvant, avant.score, v => String(Math.round(v)));
   compter(r.scoreApres, apres.score, v => String(Math.round(v)));
   r.scoreApres.style.color = couleurCouverture(apres.score / 100);
-  const restantes = RISQUES.filter(c => apres.risques[c].lacune > 0 && apres.risques[c].besoin > 0).length;
+  // un risque reste ouvert s'il manque un revenu aujourd'hui, plus tard (rentes d'enfants qui s'éteignent), ou un capital
+  const pire = x => Math.max(x.lacune, x.lacuneMax ?? 0);
+  const restantes = RISQUES.filter(c => apres.risques[c].besoin > 0 && (pire(apres.risques[c]) > 0 || (apres.risques[c].capital ?? 0) > 0)).length;
   r.phrase.textContent = restantes === 0 ? t('pl_toutCouvert') : restantes === 1 ? t('pl_reste1') : t('pl_reste', { n: restantes });
   const mensuel = ((mesures.versement3a ?? 0) + (mesures.epargneLibre ?? 0)) / 12;
-  r.sousPhrase.textContent = t('pl_effort', { m: f.chf(mensuel), r: f.chf(mesures.rachatLPP ?? 0) });
+  r.sousPhrase.textContent = (mesures.rachatLPP ?? 0) > 0 ? t('pl_effort', { m: f.chf(mensuel), r: f.chf(mesures.rachatLPP) }) : t('pl_effortSeul', { m: f.chf(mensuel) });
   r.conseil.replaceChildren(ConseilTexte.carte(ctx));   // le conseil suit le plan réglé par le conseiller
+  afficherDemande(ctx, mesures, avant);
   r.effets.replaceChildren(...RISQUES.filter(c => avant.risques[c].besoin > 0).map(c => {
     const x = avant.risques[c], y = apres.risques[c], echelle = Math.max(x.besoin, 1);
+    // la lacune montrée est la plus grande à venir ; les barres, la couverture de cette année-là
+    const manque = pire(x), reste = pire(y), plusTard = x.lacune === 0 && manque > 0;
     return h('div', { class: 'effet' },
-      h('div', { class: 'effet-tete' }, h('span', {}, t(c)), h('b', { class: y.lacune > 0 ? 'lacune' : 'ok' },
-        y.lacune > 0 ? `− ${f.chf(y.lacuneMensuelle)} ${t('parMois')}` : t('aucuneLacune'))),
+      h('div', { class: 'effet-tete' }, h('span', {}, t(c)), h('b', { class: reste > 0 ? 'lacune' : 'ok' },
+        reste > 0 ? `− ${f.chf(reste / 12)} ${t('parMois')}` : t('aucuneLacune'))),
       h('div', { class: 'effet-barres' },
-        h('i', { class: 'avant', style: { width: `${Math.min(100, x.total / echelle * 100)}%` } }),
-        h('i', { class: 'apres', style: { width: `${Math.min(100, y.total / echelle * 100)}%`, background: couleurCouverture(y.couverture) } })),
-      h('small', {}, x.lacune > 0 ? t('pl_avantLacune', { m: f.chf(x.lacuneMensuelle) }) : t('pl_dejaCouvert')));
+        h('i', { class: 'avant', style: { width: `${Math.min(100, (x.besoin - manque) / echelle * 100)}%` } }),
+        h('i', { class: 'apres', style: { width: `${Math.min(100, (y.besoin - reste) / echelle * 100)}%`, background: couleurCouverture(y.couverture) } })),
+      h('small', {}, manque > 0 ? t(plusTard ? 'pl_plusTard' : 'pl_avantLacune', { m: f.chf(manque / 12) }) : t('pl_dejaCouvert')));
   }));
   // les deux offres : chacune appliquée au dossier, puis comparées
   if (r.offres) {
@@ -122,6 +130,42 @@ export function afficher(ctx) {
     h('div', { class: 'chiffre plus' }, h('small', {}, t('pl_ecoRachat')), h('b', {}, f.chf(ecoRachat)), h('span', {}, t('pl_uneFois')))),
     budget(ctx, mesures, eco3a),
     h('p', { class: 'petit' }, t('pl_primes')));
+}
+
+/**
+ * Demande d'offre : les lignes à transmettre aux assureurs pour les assurances de risque du plan. Aucun nom, aucune
+ * adresse : seulement ce qui sert au tarif (sexe, année de naissance, activité, canton, revenu, prestations voulues).
+ * @returns {string[]} lignes du texte, dans la langue de l'interface ; vide si le plan n'assure aucun risque
+ */
+export function lignesDemande({ t, f, regles }, mesures, avant) {
+  const d = dossier(), p = d[d.cible === 'conjoint' ? 'conjoint' : 'personne'] ?? {}, P = avant.personne, lignes = [];
+  const rente = mesures.renteInvalidite ?? 0, capital = mesures.capitalDeces ?? 0;
+  if (!(rente > 0 || capital > 0 || mesures.ijm || mesures.laa)) return lignes;
+  const ijm = regles.maladie.ijmUsuelle;
+  lignes.push(t('do_l_personne', { sexe: t(p.sexe === 'f' ? 'femme' : 'homme'), annee: String(p.dateNaissance ?? '').slice(0, 4), statut: t(p.statut ?? 'salarie'), canton: d.canton }));
+  lignes.push(t('do_l_revenu', { m: f.chf(P.revenu) }));
+  if (rente > 0) lignes.push(t('do_l_rente', { m: f.chf(rente), age: P.ageReference.ans, d: Math.round(ijm.jours / 365 * 12) }));
+  if (capital > 0) lignes.push(t('do_l_capital', { m: f.chf(capital), n: Math.max(1, avant.risques.decesMaladie.annees) }));
+  if (mesures.ijm) lignes.push(t('do_l_ijm', { t: Math.round(ijm.taux * 100), j: ijm.jours, d: ijm.delaiJours }));
+  if (mesures.laa) lignes.push(t('do_l_laa', { m: f.chf(Math.min(P.revenu, regles.laa.gainAssureMax)) }));
+  lignes.push(t('do_l_aPreciser'), t('do_l_fin'));
+  return lignes;
+}
+
+function afficherDemande(ctx, mesures, avant) {
+  if (!r.demande) return;
+  const { t } = ctx, lignes = lignesDemande(ctx, mesures, avant);
+  const etat = h('small', { class: 'petit', role: 'status' }, ''), texte = [t('do_objet'), '', ...lignes.map(l => `• ${l}`)].join('\n');
+  // dans l'app iPhone / iPad : la feuille de partage d'iOS (Copier, Mail, Messages) ; dans un navigateur : le presse-papiers
+  const copier = h('button', { type: 'button', class: 'pastille', onclick: async () => {
+    if (await Partage.texte(texte) === 'copie') etat.textContent = t('do_copie');   // presse-papiers refusé : le texte reste à l'écran
+  } }, t(Partage.dansApp() ? 'do_partager' : 'do_copier'));
+  const courriel = h('a', { class: 'pastille', href: `mailto:?subject=${encodeURIComponent(t('do_objet'))}&body=${encodeURIComponent(texte)}` }, t('do_courriel'));
+  r.demande.replaceChildren(
+    h('div', { class: 'carte-tete' }, h('div', {}, h('h2', {}, t('do_titre')), h('p', {}, t('do_d'))),
+      // dans l'app iPhone / iPad, un lien « mailto » décrit à l'app ne serait qu'un libellé sans effet : « Partager » propose Mail
+      lignes.length ? h('div', { class: 'demande-actions' }, copier, document.documentElement.classList.contains('natif') ? null : courriel, etat) : null),
+    lignes.length ? h('ul', { class: 'demande-lignes' }, ...lignes.map(l => h('li', {}, l))) : h('p', { class: 'petit' }, t('do_rien')));
 }
 
 /** Budget annuel et mensuel du plan : épargne, primes des offres saisies, moins l'économie d'impôt récurrente. */

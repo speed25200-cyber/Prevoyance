@@ -7,6 +7,10 @@ struct DossierResume: Identifiable, Equatable {
     let date: String
     let score: Int
     let ouvert: Bool
+    /// Ce qu'il reste à faire en premier dans ce dossier (portefeuille du conseiller) ; vide si rien n'est ouvert.
+    let reste: String
+    /// Vrai quand un risque d'invalidité ou de décès n'est pas couvert : la ligne est mise en avant.
+    let urgent: Bool
 }
 
 /// L'écran d'accueil : ce que l'on voit à l'ouverture de l'app.
@@ -78,6 +82,15 @@ struct Accueil: View {
                         .tracking(2.4)
                         .foregroundStyle(Color.secondary)
                         .padding(.leading, 4)
+                    // le bilan du portefeuille (dès deux dossiers) : couverture moyenne, 3a encore déductible
+                    if let bilan = navigation.textes["portefeuille"], !bilan.isEmpty {
+                        Text(bilan)
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, 4)
+                            .opacity(arrive ? 1 : 0)
+                    }
                     ForEach(Array(navigation.dossiers.enumerated()), id: \.element.id) { rang, dossier in
                         Button {
                             navigation.ouvrir(dossier: dossier.id)
@@ -88,6 +101,31 @@ struct Accueil: View {
                         .opacity(arrive ? 1 : 0)
                         .offset(y: arrive ? 0 : 24)
                         .animation(.spring(response: 0.6, dampingFraction: 0.82).delay(0.12 + Double(rang) * 0.06), value: arrive)
+                    }
+                    // les échéances de tous les dossiers pour l'agenda, et le portefeuille en tableau : la page prépare le
+                    // fichier, la feuille de partage d'iOS le remet (Fichiers, Mail, AirDrop)
+                    if !navigation.dossiers.isEmpty {
+                        HStack(spacing: 10) {
+                            ForEach(["ics", "csv"], id: \.self) { quoi in
+                                if let nom = navigation.textes[quoi == "ics" ? "echeances" : "exporter"], !nom.isEmpty {
+                                    Button {
+                                        navigation.exporter(quoi)
+                                    } label: {
+                                        Label(nom, systemImage: quoi == "ics" ? "calendar.badge.plus" : "square.and.arrow.up")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundStyle(Color.primary)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                            .padding(.horizontal, 14)
+                                            .frame(height: 40)
+                                            .verreArrondi(rayon: 20)
+                                    }
+                                    .buttonStyle(Appui())
+                                }
+                            }
+                        }
+                        .opacity(arrive ? 1 : 0)
+                        .animation(.easeOut(duration: 0.5).delay(0.3), value: arrive)
                     }
                 }
 
@@ -165,7 +203,7 @@ struct Accueil: View {
         .ignoresSafeArea()
     }
 
-    /// La carte d'un dossier : nom, date, score de couverture en anneau.
+    /// La carte d'un dossier : nom, date, score de couverture en anneau, et ce qu'il reste à faire en premier.
     private func carte(_ dossier: DossierResume) -> some View {
         HStack(spacing: 16) {
             ZStack {
@@ -180,12 +218,20 @@ struct Accueil: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(dossier.nom).font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.primary).lineLimit(1)
                 Text(dossier.date).font(.system(size: 14)).foregroundStyle(Color.secondary)
+                if !dossier.reste.isEmpty {
+                    Text(dossier.reste)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(dossier.urgent ? Teinte.accent : Color.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
             }
             Spacer(minLength: 8)
             Image(systemName: "chevron.right").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.secondary)
         }
         .padding(.horizontal, 18)
-        .frame(height: 78)
+        .padding(.vertical, 12)
+        .frame(minHeight: 78)
         .verreArrondi(rayon: 26)
     }
 

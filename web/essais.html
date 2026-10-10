@@ -82,7 +82,7 @@
     // langues
     for (const l of ['de', 'it', 'en', 'fr']) { d.querySelector(`[data-langue=${l}]`).click(); await jusqua(() => d.documentElement.lang === l && d.querySelectorAll('.page').length >= 6); }
     noter('retour au français', d.documentElement.lang === 'fr');
-    const manquants = [...d.querySelectorAll('#vue *, #saisie *, .barre *')].filter(e => e.children.length === 0 && /^(a_|s_|sc_|pl_|rp_|dn_|v_|ct_|att_|p_|pr_)\w+$/.test(e.textContent.trim())).map(e => e.textContent.trim());
+    const manquants = [...d.querySelectorAll('#vue *, #saisie *, .barre *')].filter(e => e.children.length === 0 && /^(a_|s_|sc_|pl_|rp_|dn_|v_|ct_|att_|p_|pr_|ev_|pf_|do_|ag_)\w+$/.test(e.textContent.trim())).map(e => e.textContent.trim());
     noter('aucun texte manquant', manquants.length === 0, manquants.slice(0, 8).join(', '));
     // traductions : chaque langue doit porter exactement les clés du français
     const i18n = await import('./src/i18n.js'), fr = i18n.clesDe('fr');
@@ -90,6 +90,58 @@
       const cles = i18n.clesDe(l), absentes = [...fr].filter(c => !cles.has(c)), enTrop = [...cles].filter(c => !fr.has(c));
       noter(`traduction ${l} complète (${cles.size} textes)`, absentes.length === 0 && enTrop.length === 0, [...absentes, ...enTrop].slice(0, 10).join(', '));
     }
+    // fonctions d'octobre 2026 : « Et si… », adresse qui suit la vue, demande d'offre, portefeuille, accords, enfants qui vieillissent
+    d.querySelector('#onglets [data-vue=scenarios]').click();
+    noter('Et si : au moins cinq événements, en tête des scénarios', await jusqua(() => d.querySelectorAll('#scenarios > .carte:first-child .evenement').length >= 5), String(d.querySelectorAll('#scenarios .evenement').length));
+    noter('adresse : elle suit la vue ouverte', w.location.hash === '#scenarios', w.location.hash);
+    d.querySelector('#onglets [data-vue=plan]').click();
+    const demande = await jusqua(() => d.querySelectorAll('.demande-lignes li').length >= 3);
+    noter('demande d’offre : des lignes, sans le nom du dossier', demande && !/Rochat/i.test(d.querySelector('.demande-lignes')?.textContent ?? ''), (d.querySelector('.demande-lignes')?.textContent ?? '').slice(0, 90));
+    noter('plan : aucune phrase ne parle d’un rachat de zéro franc', !/CHF\s0\./.test(d.querySelector('.plan-tete .note')?.textContent ?? ''), d.querySelector('.plan-tete .note')?.textContent);
+    d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'p', bubbles: true }));
+    const lignesPortefeuille = () => d.querySelectorAll('dialog.portefeuille-vue .pf-liste > li').length;
+    noter('portefeuille : la touche P l’ouvre, une ligne par dossier', await jusqua(() => lignesPortefeuille() === p.etat.dossiers.length), `${lignesPortefeuille()} ligne(s), ${p.etat.dossiers.length} dossier(s)`);
+    d.querySelector('dialog.portefeuille-vue .pf-gestes .pastille:last-child')?.click();
+    noter('portefeuille : il se referme', !d.querySelector('dialog.portefeuille-vue'));
+    const accords = [i18n.accorder('1 année(s) manquante(s)', 'fr'), i18n.accorder('3 lacune(s)', 'fr'), i18n.accorder('1 fehlende(s) Jahr(e)', 'de'),
+      i18n.accorder('2 fehlende(s) Jahr(e)', 'de'), i18n.accorder('1 year(s)', 'en'), i18n.accorder('widow(er)’s pension', 'en')].join(' | ');
+    noter('accords : singulier et pluriel dans chaque langue', accords === '1 année manquante | 3 lacunes | 1 fehlendes Jahr | 2 fehlende Jahre | 1 year | widow(er)’s pension', accords);
+    const Etat = await import('./src/etat.js');
+    const vieilli = Etat.vieillirEnfants({ enfants: [4, 7], enfantsLe: '2024-10-01' }, '2026-10-10'), jeune = Etat.vieillirEnfants({ enfants: [4], enfantsLe: '2026-01-15' }, '2026-10-10');
+    noter('enfants : l’âge avance avec les années du dossier', vieilli.enfants.join() === '6,9' && vieilli.enfantsLe === '2026-10-01' && jeune.enfants.join() === '4', `${vieilli.enfants} le ${vieilli.enfantsLe} ; ${jeune.enfants}`);
+    // l'agenda des échéances (.ics) et les segments du portefeuille
+    const Agenda = await import('./src/agenda.js'), Partage = await import('./src/partage.js'), Portefeuille = await import('./src/portefeuille.js');
+    const echeances = Agenda.echeances(p.etat.dossiers, p.ctx), agenda = Agenda.enICS(echeances, p.ctx), lignesAgenda = agenda.split('\r\n');
+    const octets = new TextEncoder();
+    noter('agenda : un événement par échéance, fichier bien formé', echeances.length >= 3 && lignesAgenda[0] === 'BEGIN:VCALENDAR' && agenda.trimEnd().endsWith('END:VCALENDAR')
+      && agenda.split('BEGIN:VEVENT').length - 1 === echeances.length && agenda.split('END:VEVENT').length - 1 === echeances.length, `${echeances.length} échéance(s)`);
+    noter('agenda : aucune ligne de plus de 75 octets, dates d’une journée', lignesAgenda.every(l => octets.encode(l).length <= 75) && /DTSTART;VALUE=DATE:\d{8}\r\nDTEND;VALUE=DATE:\d{8}/.test(agenda),
+      String(Math.max(...lignesAgenda.map(l => octets.encode(l).length))));
+    const trois = echeances.find(e => e.cle === 'versement3a');
+    noter('agenda : le versement 3a tombe le 1er décembre, un anniversaire du 29 février devient le 28', (!trois || trois.jour.endsWith('1201'))
+      && Agenda.jourDe({ cle: 'anticipationLPP', annee: 2031, v: {} }, '1988-02-29') === '20310228' && Agenda.jourDe({ cle: 'anticipationLPP', annee: 2032, v: {} }, '1988-02-29') === '20320229'
+      && Agenda.jourDe({ cle: 'renteAVS', annee: 2052, v: { mois: 4, anneeRente: 2052 } }, '1987-03-21') === '20520401', trois?.jour ?? 'sans 3a');
+    noter('agenda : les virgules et points-virgules du texte sont protégés', !/^(SUMMARY|DESCRIPTION):.*[^\\][,;]/m.test(agenda.replace(/\r\n /g, '')));
+    noter('partage : dans un navigateur, pas de pont vers l’app', Partage.dansApp() === false);
+    const portefeuille = Portefeuille.calculer(p.ctx), segment3a = Portefeuille.segment(portefeuille, '3a'), tous = Portefeuille.segment(portefeuille, 'tous');
+    noter('portefeuille : un segment ne garde que les dossiers concernés, triés par montant', tous.dossiers.length === portefeuille.dossiers.length
+      && segment3a.dossiers.every(x => x.potentiel3a > 0) && segment3a.dossiers.every((x, i, l) => i === 0 || l[i - 1].potentiel3a >= x.potentiel3a)
+      && segment3a.somme === segment3a.dossiers.reduce((n, x) => n + x.potentiel3a, 0), `${segment3a.dossiers.length} dossier(s) 3a, ${segment3a.somme}`);
+    d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'p', bubbles: true }));
+    const puces = await jusqua(() => d.querySelectorAll('dialog.portefeuille-vue .pf-segments .pastille').length === 6);
+    d.querySelector('dialog.portefeuille-vue [data-segment="3a"]')?.click();
+    noter('portefeuille : six segments, celui choisi filtre la liste', puces && d.querySelector('dialog.portefeuille-vue [data-segment="3a"]')?.getAttribute('aria-pressed') === 'true'
+      && d.querySelectorAll('dialog.portefeuille-vue .pf-liste > li').length === segment3a.dossiers.length, `${d.querySelectorAll('dialog.portefeuille-vue .pf-liste > li').length} ligne(s)`);
+    d.querySelector('dialog.portefeuille-vue .pf-gestes .pastille:last-child')?.click();
+    // la peau « carte » (navigateur) : elle passe devant les feuilles d'origine, le relief tient la synthèse, le rapport garde ses feuilles
+    noter('carte : la peau du navigateur est appliquée', getComputedStyle(d.documentElement).getPropertyValue('--relief-fond').trim() !== '' && /Inter/.test(getComputedStyle(d.body).fontFamily), getComputedStyle(d.body).fontFamily.slice(0, 30));
+    d.querySelector('#onglets [data-vue=analyse]').click();
+    noter('carte : la synthèse porte le relief, ou à défaut la scène d’origine', await jusqua(() => !!d.querySelector('.tete .relief-toile, .tete .scene-toile')), d.querySelector('.tete')?.className);
+    d.querySelector('#onglets [data-vue=rapport]').click();
+    const feuille = await jusqua(() => !!d.querySelector('.rapport .page'));
+    const fondPage = feuille ? getComputedStyle(d.querySelector('.rapport .page')).backgroundColor : '';
+    noter('carte : une page du rapport reste sur papier blanc, avec ses feuilles d’origine', feuille && fondPage === 'rgb(255, 255, 255)', fondPage);
+    noter('rapport : la couverture porte son image (relief du client, ou image d’origine)', !!d.querySelector('.rapport .page.couverture img, .rapport .page.couverture .r-bandeau'));
     // vitesse du moteur : une analyse complète doit rester très en dessous d'une image à 120 Hz (8,3 ms)
     const moteur = await import('../moteur/src/index.js'), TOURS = 3000, debut = Date.now();
     let temoin = null;
