@@ -1,0 +1,87 @@
+# À copier dans .github/workflows/ios-controle.yml (depuis GitHub, ou un accès avec le droit « workflow ») pour l'activer.
+# Contrôle de l'app iPhone / iPad sur un Mac de GitHub : le projet compile-t-il pour le simulateur ? Puis l'autotest
+# de l'app dans les simulateurs iPhone et iPad. Même contenu que les étapes « ios-controle » et « autotest » de
+# codemagic.yaml ; rien n'est signé ni envoyé nulle part. Dépôt public : ces minutes de Mac sont gratuites.
+name: iOS — contrôle
+
+on:
+  push:
+    branches: [claude/fondations, main]
+    paths: ['ios/**', 'web/**', 'moteur/**', '.github/workflows/ios-controle.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-controle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compiler:
+    name: Compiler pour le simulateur
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Essais du moteur de calcul
+        run: node moteur/tests/run.mjs
+      - name: Xcode le plus récent de la machine
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          xcodebuild -version
+      - name: Générer le projet Xcode
+        working-directory: ios
+        run: |
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          xcodegen generate
+      - name: Construire pour le simulateur (sans signature)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build -project Prevoyance.xcodeproj -scheme Prevoyance -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO > build.log 2>&1 || true
+          grep -E "error:|BUILD SUCCEEDED|BUILD FAILED" build.log | sort -u | head -80
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Vérifier que le moteur et les écrans sont dans l'app
+        working-directory: ios
+        run: |
+          APP="build/dd/Build/Products/Debug-iphonesimulator/Prevoyance.app"
+          test -f "$APP/web/index.html"
+          test -f "$APP/web/carte.css"
+          test -f "$APP/web/src/relief.js"
+          test -f "$APP/moteur/src/index.js"
+          test -f "$APP/moteur/regles/ch-2026.json"
+          test -f "$APP/moteur/manifeste.json"
+          echo "Contenu embarqué : OK"
+      - name: Journal de construction
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journal-de-construction
+          path: ios/build.log
+          if-no-files-found: ignore
+
+  autotest:
+    name: Autotest dans les simulateurs iPhone et iPad
+    needs: compiler
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode le plus récent de la machine
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+      - name: Générer le projet Xcode
+        working-directory: ios
+        run: |
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          xcodegen generate
+      - name: Autotest de l'app (ponts, chiffrement, six écrans, PDF, scan)
+        run: bash ios/autotest.sh
+      - name: Captures des simulateurs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures-autotest
+          path: ios/build/captures
+          if-no-files-found: ignore

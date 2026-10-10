@@ -31,6 +31,11 @@ chargée avec la classe `natif` et les cinq ponts, tailles iPhone et iPad : 37 c
 l'app recevrait. Ce qui reste à vérifier par le premier passage de Codemagic : la compilation, puis l'autotest dans
 les simulateurs (il contrôle désormais la présence du pont `partager`).
 
+À défaut de Codemagic, `outils/ci/ios-controle-github.yml` fait le même contrôle sur un Mac de GitHub (gratuit pour ce
+dépôt public) : compilation pour le simulateur, puis autotest. Il s'active en le copiant dans
+`.github/workflows/ios-controle.yml` depuis GitHub, ou depuis un poste dont l'accès porte le droit « workflow »
+(`gh auth refresh -h github.com -s workflow`).
+
 ## Construire sur un Mac
 
 ```bash
