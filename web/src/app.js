@@ -27,9 +27,10 @@ import * as EcranVerrou from './verrou-ecran.js';
 import * as Palette from './palette.js';
 import * as Portefeuille from './portefeuille.js';
 import { installerCarte, titrer } from './carte.js';
+import { chargerTerrain } from './relief.js';
 
 // dans l'app iPhone / iPad : le mur filmé derrière le verre ; dans le navigateur : la carte (papier, relief, feuilles qui entrent)
-if (document.documentElement.classList.contains('natif')) installerFond(); else installerCarte();
+if (document.documentElement.classList.contains('natif')) installerFond(); else { installerCarte(); chargerTerrain(); }   // le terrain du relief se charge d'avance
 
 /** Icônes de la navigation (traits simples, comme celles du système). */
 const ICONES = {'dossier': '<path d="M12 12a3.6 3.6 0 1 0 0-7.2 3.6 3.6 0 0 0 0 7.2z"/><path d="M4.8 19.6c.9-3.1 3.7-4.9 7.2-4.9s6.3 1.8 7.2 4.9"/>',

@@ -22,7 +22,7 @@ html:not(.natif) {
   --titre: 'Fraunces', 'Iowan Old Style', Georgia, serif;
   --verre: transparent; --verre-bord: var(--filet); --verre-flou: none; --verre-ombre: 0 0 0 0 transparent; --verre-reflet: 0 0 0 0 transparent;
   --bulle: transparent; --bulle-ombre: 0 0 0 0 transparent; --puits: transparent; --puits-bord: transparent; --halo: none; --tel: var(--fond);
-  --relief-fond: var(--fond); --relief-trait: #a3927a;
+  --relief-fond: var(--fond); --relief-trait: #13161b;
 }
 @media (prefers-color-scheme: dark) {
   html:not(.natif) {
@@ -31,7 +31,7 @@ html:not(.natif) {
     --p1: #3f74e6; --p2: #9fc3ff; --p3: #7fe3d6; --salaire: #2a313c; --attente: #e0b055; --lacune: #ff6a4d; --ok: #45c08a;
     --critique: #ff6a4d; --attention: #e0b055; --opportunite: #45c08a; --info: #adb0b6;
     --accent: #eeeae0; --sur-accent: #0a0d12; --trait: #eeeae0; --bleu: #9cc0ff; --bleu-2: #7fa9f5;
-    --relief-trait: #68717f;
+    --relief-trait: #f1eee6;
   }
 }
 
@@ -213,6 +213,8 @@ html:not(.natif) .relief-reperes { position: absolute; inset: 0; z-index: 1; poi
 html:not(.natif) .repere { position: absolute; left: 0; top: 0; display: grid; gap: 3px; margin: 0; white-space: nowrap; transform: translate3d(calc(var(--x, 0) * 1px), calc(var(--y, 0) * 1px), 0); transition: opacity .5s var(--aise); will-change: transform; }
 html:not(.natif) .repere span { font: 600 9.5px/1 var(--police); letter-spacing: .18em; text-transform: uppercase; color: var(--encre-2); }
 html:not(.natif) .repere b { font: 400 17px/1 var(--titre); letter-spacing: -.01em; }
+/* sur la photographie du massif, un halo à la couleur du fond garde les étiquettes lisibles */
+html:not(.natif) .repere b, html:not(.natif) .repere span { text-shadow: 0 0 3px var(--fond), 0 0 8px var(--fond), 0 0 14px var(--fond); }
 html:not(.natif) .repere.sommet { padding-left: 22px; margin-top: -2px; }
 html:not(.natif) .repere.sommet i { position: absolute; left: -5px; top: 0; width: 10px; height: 9px; background: var(--encre); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 html:not(.natif) .repere.besoin { justify-items: center; text-align: center; color: var(--lacune); transform: translate3d(calc(var(--x, 0) * 1px - 50%), calc(var(--y, 0) * 1px - 100% - 10px), 0); }

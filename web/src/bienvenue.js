@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Page d'entrée : la prévoyance lue comme une carte. Un relief en courbes de niveau, calculé en direct (relief.js),
+ * Page d'entrée : la prévoyance lue sur un vrai sommet. Le Weisshorn, éclairé et calculé en direct (relief.js),
  * reste derrière la page : vu d'en haut au début, il s'incline quand le récit commence, ses trois étages s'allument
  * (les trois piliers), l'anneau du besoin apparaît, puis le massif monte jusqu'à lui (le plan). Dans le simulateur,
  * ce relief devient celui du visiteur : chaque réglage refait le calcul avec le vrai moteur, et la montagne suit.
@@ -10,7 +10,7 @@
 import { analyser, ANNEES, Impots } from '../../moteur/src/index.js';
 import { dossierVide, versDossier, CANTONS } from './etat.js';
 import * as Donnees from './donnees.js';
-import { creerRelief } from './relief.js';
+import { creerRelief, chargerTerrain } from './relief.js';
 
 const $ = id => /** @type {HTMLElement} */ (document.getElementById(id));
 const racine = document.documentElement;
@@ -50,6 +50,7 @@ const T = {
     f5: 'Deux offres, comparées', f5t: 'Prime, rente d’invalidité, capital décès : l’effet réel de chaque offre sur vos lacunes.',
     f6: 'Rapport signé', f6t: 'Un PDF aux couleurs de votre cabinet, tirées de votre logo. Prêt à remettre au client.',
     v1: 'cas de calcul contrôlés à la main', v2: 'cantons, barèmes fiscaux réels', v3: 'langues : FR · DE · IT · EN', v4: 'donnée envoyée à un serveur',
+    source: 'Relief : le Weisshorn (4506 m), Valais — altitudes swissALTI3D et photographie aérienne SWISSIMAGE, © swisstopo.',
     pied: 'Estimations selon les règles légales de l’année ; elles ne remplacent ni un certificat de prévoyance ni un conseil personnalisé.',
     l_atteint: 'Revenu garanti', l_lacune: 'Lacune', l_equi: 'Équidistance des courbes', l_altitude: 'Altitude = revenu annuel', l_charge: 'Levé du relief', l_exemple: 'Exemple calculé',
     marque: 'Prévoyance',
@@ -82,6 +83,7 @@ const T = {
     f5: 'Zwei Offerten im Vergleich', f5t: 'Prämie, Invalidenrente, Todesfallkapital: die echte Wirkung jeder Offerte auf Ihre Lücken.',
     f6: 'Signierter Bericht', f6t: 'Ein PDF in den Farben Ihres Büros, aus Ihrem Logo abgeleitet. Bereit für den Kunden.',
     v1: 'von Hand geprüfte Rechenfälle', v2: 'Kantone, echte Steuertarife', v3: 'Sprachen: FR · DE · IT · EN', v4: 'Daten an einen Server gesendet',
+    source: 'Relief: das Weisshorn (4506 m), Wallis — Höhenmodell swissALTI3D und Luftbild SWISSIMAGE, © swisstopo.',
     pied: 'Schätzungen nach den gesetzlichen Regeln des Jahres; sie ersetzen weder einen Vorsorgeausweis noch eine persönliche Beratung.',
     l_atteint: 'Gesichertes Einkommen', l_lacune: 'Lücke', l_equi: 'Äquidistanz der Höhenkurven', l_altitude: 'Höhe = Jahreseinkommen', l_charge: 'Geländeaufnahme', l_exemple: 'Berechnetes Beispiel',
     marque: 'Vorsorge',
@@ -114,6 +116,7 @@ const T = {
     f5: 'Due offerte a confronto', f5t: 'Premio, rendita d’invalidità, capitale di decesso: l’effetto reale di ogni offerta sulle lacune.',
     f6: 'Rapporto firmato', f6t: 'Un PDF con i colori del vostro studio, tratti dal logo. Pronto da consegnare al cliente.',
     v1: 'casi di calcolo verificati a mano', v2: 'cantoni, tariffe fiscali reali', v3: 'lingue: FR · DE · IT · EN', v4: 'dati inviati a un server',
+    source: 'Rilievo: il Weisshorn (4506 m), Vallese — altitudini swissALTI3D e fotografia aerea SWISSIMAGE, © swisstopo.',
     pied: 'Stime secondo le regole legali dell’anno; non sostituiscono né un certificato di previdenza né una consulenza personale.',
     l_atteint: 'Reddito garantito', l_lacune: 'Lacuna', l_equi: 'Equidistanza delle curve', l_altitude: 'Altitudine = reddito annuo', l_charge: 'Rilievo del terreno', l_exemple: 'Esempio calcolato',
     marque: 'Previdenza',
@@ -146,6 +149,7 @@ const T = {
     f5: 'Two offers, compared', f5t: 'Premium, disability pension, death capital: the real effect of each offer on your gaps.',
     f6: 'Signed report', f6t: 'A PDF in your firm’s colours, drawn from your logo. Ready to hand to the client.',
     v1: 'calculation cases checked by hand', v2: 'cantons, real tax scales', v3: 'languages: FR · DE · IT · EN', v4: 'data sent to a server',
+    source: 'Terrain: the Weisshorn (4,506 m), Valais — swissALTI3D elevations and SWISSIMAGE aerial photograph, © swisstopo.',
     pied: 'Estimates under the year’s legal rules; they replace neither a pension certificate nor personal advice.',
     l_atteint: 'Guaranteed income', l_lacune: 'Gap', l_equi: 'Contour interval', l_altitude: 'Elevation = annual income', l_charge: 'Surveying the terrain', l_exemple: 'Worked example',
     marque: 'Pension',
@@ -235,13 +239,6 @@ function ecrire() {
     ligne.append(chiffre, nom);
     return ligne;
   }));
-  // la bande : les trois piliers, deux fois, pour boucler sans raccord
-  const bande = /** @type {HTMLElement} */ ($('bande').firstElementChild);
-  bande.replaceChildren(...[0, 1].flatMap(() => ['s_p1', 's_p2', 's_p3'].flatMap((cle, i) => {
-    const mot = document.createElement('span'), jalon = document.createElement('i');
-    mot.textContent = t(cle); if (i % 2) mot.className = 'creux';
-    return [mot, jalon];
-  })));
   for (const b of $('langues').children) b.setAttribute('aria-pressed', String(/** @type {HTMLElement} */ (b).dataset.langue === langue));
   for (const j of jalons) j.nom.textContent = t(j.cle ?? 'marque').replace(/<[^>]+>/g, ' ');
   textes = {};
@@ -264,9 +261,12 @@ const annee = ANNEES[0];
  */
 function calculer({ age, revenu, depart, canton, statut }) {
   if (!reference) return null;
+  // la personne a « age » ans et demi : au milieu de son année d'âge, loin de son anniversaire (née pile il y a « age »
+  // ans, elle changeait d'âge — donc de rente — selon l'heure de la visite) ; la date est écrite en heure locale
   const naissance = new Date();
-  naissance.setFullYear(naissance.getFullYear() - age);
-  const d = { ...dossierVide(), canton, ageRetraite: depart, personne: { dateNaissance: naissance.toISOString().slice(0, 10), sexe: 'h', statut, revenu } };
+  naissance.setDate(1); naissance.setMonth(naissance.getMonth() - 6); naissance.setFullYear(naissance.getFullYear() - age);
+  const dateNaissance = `${naissance.getFullYear()}-${String(naissance.getMonth() + 1).padStart(2, '0')}-15`;
+  const d = { ...dossierVide(), canton, ageRetraite: depart, personne: { dateNaissance, sexe: 'h', statut, revenu } };
   try {
     const impots = Impots.localiser(reference.impots, reference.communes, d.canton, { commune: null, confession: 'sans' });
     const r = analyser(versDossier(d, 'personne'), reference.regles, { impots }).risques.retraite;
@@ -280,8 +280,9 @@ const recit = $('recit'), essai = $('essai'), fonctions = $('fonctions'), fin = 
 const chapitres = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.chapitre')]);
 const etapes = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.route li')]);
 const etages = /** @type {HTMLElement[]} */ ([1, 2, 3].map(n => document.querySelector(`.etages [data-etage="${n}"]`)));
-const relief = creerRelief(/** @type {HTMLCanvasElement} */ ($('relief')), { fige });
-if (!relief) racine.classList.add('sans-relief');
+// Le relief se pose dès que son terrain (les altitudes du Weisshorn) est chargé ; d'ici là, la page se lit sans lui.
+/** @type {ReturnType<typeof creerRelief>} */ let relief = null;
+const etiquettes = /** @type {HTMLElement[]} */ ([1, 2, 3].map(n => $('rep-e' + n)));
 
 // Avant que les règles soient chargées : une silhouette plausible, sans aucun chiffre affiché.
 const ESQUISSE = { p1: 26000, p2: 30000, p3: 5000, besoin: 76000, mensuel: 0, couverture: 0.8 };
@@ -292,15 +293,19 @@ let phase = '', avancement = 0, dernierY = scrollY, elan = 0, planifie = false;
 /** @type {number[]} */ let positions = [];
 /** @type {Record<string, string>} */ let textes = {};
 
-// Les vues du relief : d'en haut (la carte), puis de biais pour chaque chapitre. Décalage en demi-largeurs d'écran.
+// Les vues du relief, toujours du côté du soleil levant (le sud-est) : l'arrivée à hauteur de sommet, puis un peu plus
+// haut pour lire les étages, puis face au dénivelé. Décalage en demi-largeurs d'écran.
 const vues = etroit => ({
-  carte: { azimut: 0.35, elevation: 1.5607, distance: etroit ? 7.6 : 4.5, cibleY: 0, dx: etroit ? 0 : 0.36, dy: etroit ? 0.5 : 0 },
-  piliers: { azimut: 0.62, elevation: 0.46, distance: etroit ? 7.4 : 4, cibleY: 0.38, dx: etroit ? 0 : 0.4, dy: etroit ? 0.52 : -0.04 },
-  lacune: { azimut: -0.1, elevation: 0.3, distance: etroit ? 7.4 : 3.9, cibleY: 0.5, dx: etroit ? 0 : 0.4, dy: etroit ? 0.5 : -0.08 },
-  plan: { azimut: -0.6, elevation: 0.36, distance: etroit ? 7.4 : 4, cibleY: 0.46, dx: etroit ? 0 : 0.4, dy: etroit ? 0.5 : -0.06 },
-  essai: { azimut: 0.5, elevation: 0.36, distance: etroit ? 5.8 : 4.4, cibleY: 0.42, dx: etroit ? 0 : 0.26, dy: etroit ? 0.46 : 0.2 },
-  fin: { azimut: 0.95, elevation: 1.5607, distance: etroit ? 6.4 : 3.5, cibleY: 0, dx: etroit ? 0 : 0.44, dy: etroit ? 0.46 : 0 },
+  carte: { azimut: 0.5, elevation: 0.1, distance: etroit ? 3.6 : 1.75, cibleY: 0.68, dx: etroit ? 0 : 0.3, dy: etroit ? 0.44 : 0.04 },
+  piliers: { azimut: 0.74, elevation: 0.24, distance: etroit ? 4.6 : 2.5, cibleY: 0.5, dx: etroit ? 0 : 0.36, dy: etroit ? 0.5 : 0 },
+  lacune: { azimut: 0.36, elevation: 0.06, distance: etroit ? 3.9 : 1.95, cibleY: 0.78, dx: etroit ? 0 : 0.36, dy: etroit ? 0.54 : -0.04 },
+  plan: { azimut: 0.14, elevation: 0.12, distance: etroit ? 4.2 : 2.15, cibleY: 0.72, dx: etroit ? 0 : 0.36, dy: etroit ? 0.5 : -0.02 },
+  essai: { azimut: 0.55, elevation: 0.14, distance: etroit ? 3.8 : 2.2, cibleY: 0.68, dx: etroit ? 0 : 0.26, dy: etroit ? 0.36 : 0.1 },
+  fin: { azimut: 0.5, elevation: 0.08, distance: etroit ? 3.8 : 1.9, cibleY: 0.68, dx: etroit ? 0 : 0.34, dy: etroit ? 0.36 : 0.04 },   // le point de vue de l'arrivée, au lever du soleil
 });
+// L'heure avance avec la page : l'heure bleue à l'arrivée, la première lueur sur les étages, le soleil qui se lève
+// quand le plan comble la lacune.
+const HEURES = { hero: 0.24, recit: 0.25, essai: 0.4, pages: 0.4, fin: 0.47, calme: 0.4 };
 const melange = (u, v, k) => Object.fromEntries(Object.keys(u).map(cle => [cle, u[cle] + (v[cle] - u[cle]) * k]));
 /** Écrit un texte seulement s'il a changé (les repères sont replacés à chaque image). */
 function noter(id, texte) { if (textes[id] !== texte) { textes[id] = texte; $(id).textContent = texte; } }
@@ -339,7 +344,7 @@ function mettreEnScene() {
   itineraire.style.setProperty('--part', ((phase === 'recit' ? 1 + Math.min(2.999, r * 3) : k) / (positions.length - 1)).toFixed(4));
   jalons.forEach((j, i) => { j.bouton.classList.toggle('ici', i === k); j.bouton.classList.toggle('passe', i < k); });
   racine.dataset.phase = phase;
-  if (!epingle) { if (relief) { relief.viser(dansFenetre(vues(etroit).essai), true); relief.scene({ bandes: [1, 1, 1], anneau: 1 }, true); relief.regler(sim ?? exemple ?? ESQUISSE, true); } return; }
+  if (!epingle) { if (relief) { relief.viser(dansFenetre(vues(etroit).essai), true); relief.scene({ bandes: [1, 1, 1], anneau: 1, heure: HEURES.calme }, true); relief.regler(sim ?? exemple ?? ESQUISSE, true); } return; }
 
   // les chapitres du récit
   const rang = phase === 'hero' ? -1 : rangRecit;
@@ -347,7 +352,7 @@ function mettreEnScene() {
 
   // le relief
   const V = vues(etroit), donnees = exemple ?? ESQUISSE;
-  let vue = V.carte, bandes = [0, 0, 0], anneau = 0, montants = donnees, opacite = 1;
+  let vue = V.carte, bandes = [0, 0, 0], anneau = 0, montants = donnees, opacite = 1, heure = HEURES[phase];
   if (phase === 'hero') vue = { ...V.carte, distance: V.carte.distance - 0.5 * borne(y / h) };
   else if (phase === 'recit') {
     vue = melange(melange(melange(V.carte, V.piliers, lisse(0, 0.2, r)), V.lacune, lisse(0.3, 0.44, r)), V.plan, lisse(0.62, 0.76, r));
@@ -355,6 +360,7 @@ function mettreEnScene() {
     anneau = lisse(0.33, 0.4, r);
     const gain = lisse(0.72, 0.95, r), manque = Math.max(0, donnees.besoin - donnees.p1 - donnees.p2 - donnees.p3);
     montants = { ...donnees, p2: donnees.p2 + manque * 0.55 * gain, p3: donnees.p3 + manque * 0.45 * gain };
+    heure += 0.06 * lisse(0.3, 0.44, r) + 0.14 * gain;
     etapes.forEach((e, i) => e.classList.toggle('fait', r > 0.7 + i * 0.08));
     etages.forEach((e, i) => e.classList.toggle('eteint', bandes[i] < 0.5));
     if (exemple) noter('compteur', nombre(exemple.mensuel * (1 - Math.pow(1 - lisse(0.34, 0.46, r), 3))));
@@ -363,17 +369,19 @@ function mettreEnScene() {
     opacite = phase === 'pages' ? 0 : phase === 'fin' ? 0.9 : 1;
   }
   // les étiquettes du relief : dans le récit sur grand écran seulement (ailleurs le texte passe dessous), toujours dans le simulateur
-  reperes.classList.toggle('voit-sommet', !!exemple && (phase === 'essai' || (!etroit && phase === 'recit' && r > 0.22)));
+  reperes.classList.toggle('voit-sommet', !!exemple && (phase === 'essai' || (!etroit && phase === 'recit' && r > 0.3)));
   reperes.classList.toggle('voit-besoin', !!exemple && (phase === 'essai' || (!etroit && phase === 'recit' && r > 0.38)));
+  reperes.classList.toggle('voit-voie', phase === 'fin' && !etroit);
+  // sur le versant, le nom de chaque étage, le temps du premier chapitre
+  etiquettes.forEach((e, i) => e.classList.toggle('la', !!exemple && !etroit && phase === 'recit' && bandes[i] > 0.5 && r < 0.3));
   racine.style.setProperty('--relief-o', String(opacite));
-  territoire.classList.toggle('la', phase === 'fin' && !!relief);
   if (!relief) return;
   relief.actif(opacite > 0);
   // dans le simulateur, le relief est attaché à sa fenêtre : une fois arrivé, il la suit sans retard au défilement
   if (phase !== 'essai') arriveeEssai = 0; else if (!arriveeEssai) arriveeEssai = performance.now();
   relief.viser(vue, fige);
   if (phase === 'essai' && performance.now() - arriveeEssai > 900) relief.viser({ dx: vue.dx, dy: vue.dy }, true);
-  relief.scene({ bandes, anneau, eclat: phase === 'hero' || phase === 'fin' ? 1 : 0.45 }, fige); relief.regler(montants, fige);
+  relief.scene({ bandes, anneau, heure, eclat: phase === 'hero' || phase === 'fin' ? 1 : 0.45 }, fige); relief.regler(montants, fige);
   if (fige) relief.redessiner();
 }
 /**
@@ -385,7 +393,7 @@ function dansFenetre(base) {
   if (b.height < 60 || b.width < 60) return base;
   // un peu sous le milieu de la fenêtre, et assez loin pour que l'étiquette du besoin, au-dessus de l'anneau, y tienne aussi
   return { ...base, dx: ((b.left + b.width / 2) / innerWidth) * 2 - 1, dy: 1 - ((b.top + b.height * 0.57) / innerHeight) * 2,
-    distance: borne(4.4 * (0.63 * innerHeight) / b.height, 3.4, 12) };
+    distance: borne(2.1 * (0.63 * innerHeight) / b.height, 1.7, 8) };
 }
 let arriveeEssai = 0;
 const demanderScene = () => { if (!planifie) { planifie = true; requestAnimationFrame(mettreEnScene); } };
@@ -395,14 +403,10 @@ addEventListener('resize', demanderScene);
 /** Pose une étiquette là où tombe son repère. */
 const poser = (id, point) => { const e = $(id); e.style.setProperty('--x', point.x.toFixed(1)); e.style.setProperty('--y', point.y.toFixed(1)); };
 const trait = /** @type {SVGLineElement} */ (document.querySelector('#rep-trait line'));
-const territoire = $('territoire');
-relief?.suivre(r => {
+const voie = /** @type {SVGPathElement} */ (document.querySelector('#rep-voie path'));
+/** Appelé après chaque image du relief : les étiquettes suivent leurs repères. */
+function suivreReperes(r) {
   const m = r.reperes(), manque = m.besoin - m.total, comble = manque <= m.besoin * 0.004;
-  // à la fin de la page, la photographie du sommet tient exactement dans l'anneau du besoin
-  if (phase === 'fin') {
-    territoire.style.setProperty('--tx', m.anneau.x.toFixed(1)); territoire.style.setProperty('--ty', m.anneau.y.toFixed(1));
-    territoire.style.setProperty('--tr', Math.max(0, (m.dessous.y - m.dessus.y) / 2).toFixed(1));
-  }
   poser('rep-sommet', m.sommet); poser('rep-besoin', m.dessus); poser('rep-ecart', { x: m.sommet.x, y: Math.max((m.sommet.y + m.dessous.y) / 2, m.dessous.y + 26) });
   trait.setAttribute('x1', m.sommet.x.toFixed(1)); trait.setAttribute('y1', (m.sommet.y - 3).toFixed(1));
   trait.setAttribute('x2', m.anneau.x.toFixed(1)); trait.setAttribute('y2', m.anneau.y.toFixed(1));
@@ -413,7 +417,19 @@ relief?.suivre(r => {
   reperes.classList.toggle('atteint', comble);
   reperes.classList.toggle('proche', !comble && manque <= m.besoin * 0.09);   // sommet tout près de l'anneau : les étiquettes se chevaucheraient
   reperes.classList.toggle('voit-ecart', reperes.classList.contains('voit-besoin') && !comble);
-});
+  // le nom des étages : à droite du versant, ou à gauche s'il n'y a plus la place ; rien pour un étage vide
+  m.flancs.forEach((point, i) => {
+    poser('rep-e' + (i + 1), point);
+    etiquettes[i].classList.toggle('gauche', point.x > innerWidth - 400);
+    etiquettes[i].classList.toggle('vide', m['p' + (i + 1)] < 1);
+  });
+  // à la fin, l'itinéraire : il part du bas de la page et monte jusqu'au sommet
+  if (phase === 'fin') {
+    const l = innerWidth, h = innerHeight, s = m.sommet, bas = m.pied.y - s.y, n = v => v.toFixed(0);
+    voie.setAttribute('d', `M -10 ${n(h * 0.95)} C ${n(l * 0.2)} ${n(h * 0.93)} ${n(s.x - l * 0.34)} ${n(s.y + bas * 1.02)} ${n(s.x - bas * 0.86)} ${n(s.y + bas * 0.66)} S ${n(s.x - bas * 0.12)} ${n(s.y + bas * 0.2)} ${n(s.x)} ${n(s.y)}`);
+    poser('rep-arrivee', s);
+  }
+}
 
 /** Le récit reprend les chiffres de l'exemple calculé (personne type du simulateur) : rien n'est écrit en dur. */
 function raconter() {
@@ -459,9 +475,17 @@ $('reglages').addEventListener('submit', e => e.preventDefault());
 // ------------------------------------------------------------------------------------------------ ouverture de la page
 for (const groupe of [document.querySelectorAll('.hero .voir'), document.querySelectorAll('.essai .voir'), document.querySelectorAll('.fin .voir')])
   groupe.forEach((e, i) => /** @type {HTMLElement} */ (e).style.setProperty('--d', String(i)));
+// le terrain arrive : le relief se pose, les étiquettes s'y accrochent, la scène se règle
+const terrainPret = chargerTerrain().then(ok => {
+  relief = ok ? creerRelief(/** @type {HTMLCanvasElement} */ ($('relief')), { fige }) : null;
+  racine.classList.toggle('sans-relief', !relief);
+  if (!relief) return;
+  relief.suivre(suivreReperes);
+  if (anime && !racine.classList.contains('ouvert')) relief.scene({ trace: 0 }, true);
+  mettreEnScene();
+});
 if (anime) {
   for (const e of document.querySelectorAll('.voir, #preuves, .fin')) vigie.observe(e);
-  relief?.scene({ trace: 0 }, true);
   let ouverte = false;
   const ouvrir = () => {
     if (ouverte) return;
@@ -472,70 +496,41 @@ if (anime) {
   const monter = maintenant => {
     const part = borne((maintenant - debut) / 950);
     $('chargement-n').textContent = String(Math.round(part * 100));
-    if (part < 1) requestAnimationFrame(monter); else ouvrir();
+    // le compteur est au bout : la page s'ouvre dès que le terrain est là (on ne l'attend pas plus de trois secondes)
+    if (part < 1) requestAnimationFrame(monter); else Promise.race([terrainPret, new Promise(suite => setTimeout(suite, 3000))]).then(ouvrir);
   };
   requestAnimationFrame(monter);
-  setTimeout(ouvrir, 2400);   // jamais d'écran de chargement qui reste, même si les images ne tournent pas (onglet en arrière-plan)
+  setTimeout(ouvrir, 5200);   // jamais d'écran de chargement qui reste, même si les images ne tournent pas (onglet en arrière-plan)
 } else {
   racine.classList.add('ouvert');
   for (const e of document.querySelectorAll('.voir, #preuves, .fin')) e.classList.add('vu');
 }
 
-// ------------------------------------------------------------------------------------------------ la bande qui défile
-if (anime) {
-  const bande = $('bande'), texte = /** @type {HTMLElement} */ (bande.firstElementChild);
-  let enVue = false, x = 0, v = 0, avant = 0, tourne = false;
-  const pas = maintenant => {
-    const ecoule = Math.min(50, maintenant - avant) / 16.7;
-    avant = maintenant;
-    v += (elan - v) * 0.12; elan *= 0.82;
-    x -= (0.7 + v * 0.42) * ecoule;
-    const demi = texte.scrollWidth / 2;
-    if (demi > 0) x = ((x % demi) - demi) % demi;
-    texte.style.setProperty('--bx', x.toFixed(1));
-    if (enVue) requestAnimationFrame(pas); else tourne = false;
-  };
-  new IntersectionObserver(entrees => {
-    enVue = entrees[entrees.length - 1].isIntersecting;
-    if (enVue && !tourne) { tourne = true; avant = performance.now(); requestAnimationFrame(pas); }
-  }).observe(bande);
-}
-
-// ------------------------------------------------------------------------------------------------ le pointeur : réticule, altitude, boutons aimantés
+// ------------------------------------------------------------------------------------------------ le pointeur : sur le massif, il lit l'altitude
 if (anime && matchMedia('(hover: hover) and (pointer: fine)').matches) {
-  const curseur = document.createElement('div'), etiquette = document.createElement('p'), valeur = document.createElement('b'), nom = document.createElement('span');
-  curseur.className = 'curseur'; curseur.setAttribute('aria-hidden', 'true');
-  etiquette.append(valeur, nom); curseur.append(document.createElement('i'), etiquette);
-  document.body.append(curseur);
-  let cx = 0, cy = 0, x = 0, y = 0, tourne = false;
+  const sonde = document.createElement('p'), valeur = document.createElement('b'), nom = document.createElement('span');
+  sonde.className = 'sonde'; sonde.setAttribute('aria-hidden', 'true');
+  sonde.append(valeur, nom);
+  document.body.append(sonde);
+  let cx = 0, cy = 0, attente = false;
   /** @type {Element|null} */ let dessous = null;
-  const suivre = () => {
-    x += (cx - x) * 0.22; y += (cy - y) * 0.22;
-    curseur.style.setProperty('--x', x.toFixed(1)); curseur.style.setProperty('--y', y.toFixed(1));
-    const lien = !!dessous?.closest?.('a, button, input, select, label');
-    curseur.classList.toggle('lien', lien);
-    // hors des commandes, là où le relief est visible : le réticule lit l'altitude sous le pointeur
-    const sonde = !lien && relief && (phase === 'hero' || phase === 'recit' || phase === 'essai' || phase === 'fin') && !dessous?.closest?.('.resultat, .reglages, .haut') ? relief.sonder(cx, cy) : null;
-    curseur.classList.toggle('sonde', !!sonde && !!exemple);
-    if (sonde && exemple) { valeur.textContent = `CHF ${nombre(Math.round(sonde.altitude / 100) * 100)}`; nom.textContent = t('s_p' + sonde.etage); }
-    if (Math.abs(cx - x) + Math.abs(cy - y) > 0.3) requestAnimationFrame(suivre); else tourne = false;
+  const lire = () => {
+    attente = false;
+    const libre = relief && exemple && (phase === 'hero' || phase === 'recit' || phase === 'essai' || phase === 'fin')
+      && !dessous?.closest?.('a, button, input, select, label, .resultat, .reglages, .haut');
+    const lu = libre ? relief.sonder(cx, cy) : null;
+    sonde.classList.toggle('la', !!lu);
+    if (!lu) return;
+    sonde.style.setProperty('--x', String(cx)); sonde.style.setProperty('--y', String(cy));
+    valeur.textContent = `CHF ${nombre(Math.round(lu.altitude / 100) * 100)}`; nom.textContent = t('s_p' + lu.etage);
   };
   addEventListener('pointermove', e => {
     if (e.pointerType !== 'mouse') return;
     cx = e.clientX; cy = e.clientY; dessous = /** @type {Element|null} */ (e.target);
-    curseur.classList.add('la');
-    if (!tourne) { tourne = true; requestAnimationFrame(suivre); }
+    if (!attente) { attente = true; requestAnimationFrame(lire); }
   }, { passive: true });
-  document.addEventListener('pointerleave', () => curseur.classList.remove('la'));
-  // boutons aimantés : ils viennent un peu vers le pointeur
-  for (const b of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.bouton'))) {
-    b.addEventListener('pointermove', e => {
-      const boite = b.getBoundingClientRect();
-      b.style.setProperty('--ax', ((e.clientX - boite.left - boite.width / 2) * 0.16).toFixed(1));
-      b.style.setProperty('--ay', ((e.clientY - boite.top - boite.height / 2) * 0.3).toFixed(1));
-    });
-    b.addEventListener('pointerleave', () => { b.style.setProperty('--ax', '0'); b.style.setProperty('--ay', '0'); });
-  }
+  document.addEventListener('pointerleave', () => sonde.classList.remove('la'));
+  addEventListener('scroll', () => sonde.classList.remove('la'), { passive: true });
 }
 
 // ------------------------------------------------------------------------------------------------ les aperçus : la fonction survolée, en image
@@ -553,7 +548,7 @@ if (anime && matchMedia('(hover: hover) and (pointer: fine)').matches) {
     const ligne = /** @type {HTMLElement|null} */ (/** @type {Element} */ (e.target).closest('li'));
     if (!ligne || e.pointerType !== 'mouse') return;
     const n = [...grille.children].indexOf(ligne);
-    if (n !== rang) { rang = n; image.src = `images/apercus/${matchMedia('(prefers-color-scheme: dark)').matches ? 'sombre' : 'clair'}-f${n + 1}.webp`; }
+    if (n !== rang) { rang = n; image.src = `images/apercus/sombre-f${n + 1}.webp`; }
     // l'image se tient dans la colonne du titre, à gauche de la liste, à la hauteur du pointeur (sans recouvrir le titre)
     const titre = /** @type {HTMLElement} */ (document.querySelector('.fonctions-tete')).getBoundingClientRect();
     apercu.style.width = `${Math.round(Math.min(titre.width, 540))}px`;

@@ -14,13 +14,17 @@ import { Impots } from '../../../moteur/src/index.js';
 import * as Conformite from '../conformite.js';
 import * as ConseilTexte from '../conseil-texte.js';
 import * as Marque from '../marque.js';
-import { imageRelief } from '../relief.js';
+import { imageRelief, chargerTerrain } from '../relief.js';
 
 // Couverture sans marque : le relief du client (ses trois piliers sous l'altitude du besoin), aux teintes du rapport imprimé.
-const TEINTES_RELIEF = { fond: '#ffffff', trait: '#b3a792', p1: '#17335c', p2: '#3f6fb0', p3: '#9dbfe6', besoin: '#d9542b', ok: '#1f8a5b' };
+const TEINTES_RELIEF = { fond: '#ffffff', trait: '#13161b', besoin: '#d9542b', ok: '#1f8a5b' };
 let reliefCouverture = { cle: '', image: /** @type {string|null} */ (null) };
-function imageCouverture(a) {
+let terrainConnu = false;   // le terrain du relief a fini de se charger (qu'il soit là ou non)
+function imageCouverture(a, ctx) {
   if (document.documentElement.classList.contains('natif')) return null;
+  // le terrain n'est pas encore là (le rapport est la première vue ouverte) : la couverture garde son image d'origine,
+  // et le rapport se redessine dès qu'il arrive
+  if (!terrainConnu) { chargerTerrain().then(pret => { terrainConnu = true; if (pret && etat.vue === 'rapport') afficher(ctx); }); return null; }
   const x = a.risques.retraite, verse = n => Math.round(x.sources.filter(s => s.pilier === n).reduce((s, y) => s + y.montant, 0));
   const montants = { p1: verse(1), p2: verse(2), p3: verse(3), besoin: Math.round(x.besoin) }, cle = JSON.stringify(montants);
   if (reliefCouverture.cle !== cle) reliefCouverture = { cle, image: imageRelief(montants, { couleurs: TEINTES_RELIEF }) };
@@ -106,7 +110,7 @@ export function afficher(ctx) {
     return e;
   };
   const repere = (nom, valeur) => h('div', {}, h('small', {}, nom), valeur);
-  const relief = teintes ? null : imageCouverture(a);
+  const relief = teintes ? null : imageCouverture(a, ctx);
   const couverture = teintes
     // avec une marque : un grand aplat à sa couleur — logo, nom et adresse en haut, titre et anneau du score dessus —, puis les repères du dossier
     ? page('couverture griffe',
@@ -123,6 +127,7 @@ export function afficher(ctx) {
     : page('couverture',
       relief ? h('img', { class: 'r-piliers r-relief', src: relief, alt: '', width: 1680, height: 896 })
         : h('img', { class: 'r-piliers', src: 'images/colonnes-clair.webp', alt: '', width: 2880, height: 1236 }),
+      relief ? h('p', { class: 'r-credit' }, t('rl_credit')) : null,
       h('div', {}, h('p', { class: 'surtitre' }, t('rp_surtitre', { a: a.annee })), h('h1', {}, t('rp_h1')), h('p', { class: 'r-client' }, d.nom || t('sansNom'))),
       h('table', { class: 'r-fiche' },
         ligne(t('rp_date'), date), ligne(t('rp_conseiller'), h('span', { class: 'r-conseiller' }, etat.conseiller || '—')),

@@ -142,6 +142,24 @@
     const fondPage = feuille ? getComputedStyle(d.querySelector('.rapport .page')).backgroundColor : '';
     noter('carte : une page du rapport reste sur papier blanc, avec ses feuilles d’origine', feuille && fondPage === 'rgb(255, 255, 255)', fondPage);
     noter('rapport : la couverture porte son image (relief du client, ou image d’origine)', !!d.querySelector('.rapport .page.couverture img, .rapport .page.couverture .r-bandeau'));
+    // le relief : son terrain réel (altitudes et photographie de swisstopo) se charge, et il se règle sur les montants
+    const Relief = await import('./src/relief.js');
+    noter('relief : le terrain réel se charge (altitudes et photographie)', await Relief.chargerTerrain() === true);
+    const toileRelief = document.createElement('canvas');
+    const rel = Relief.creerRelief(toileRelief, { fige: true, taille: [480, 300], couleurs: { fond: '#0a0d12', trait: '#f1eee6', besoin: '#ff6a4d', ok: '#45c08a' } });
+    if (!rel) noter('relief : sans WebGL ici, la page garde sa version sans relief', true, 'WebGL indisponible');
+    else {
+      rel.regler({ p1: 20000, p2: 30000, p3: 10000, besoin: 80000 }, true); rel.viser({ azimut: 0.5, elevation: 0.12, distance: 2, cibleY: 0.7, dx: 0, dy: 0 }, true); rel.redessiner();
+      const sous = rel.reperes();
+      rel.regler({ besoin: 40000 }, true); rel.redessiner();
+      const dessus = rel.reperes();
+      noter('relief : le sommet est sous l’anneau quand il manque de l’argent, au-dessus quand le besoin est couvert',
+        sous.total === 60000 && sous.sommet.y > sous.anneau.y + 4 && dessus.sommet.y < dessus.anneau.y - 4 && sous.flancs.length === 3,
+        `sommet ${Math.round(sous.sommet.y)} / anneau ${Math.round(sous.anneau.y)}, puis ${Math.round(dessus.sommet.y)} / ${Math.round(dessus.anneau.y)}`);
+      const image = toileRelief.toDataURL('image/png');
+      noter('relief : l’image est bien dessinée', image.length > 20000, `${Math.round(image.length / 1024)} Ko`);
+      rel.detruire();
+    }
     // vitesse du moteur : une analyse complète doit rester très en dessous d'une image à 120 Hz (8,3 ms)
     const moteur = await import('../moteur/src/index.js'), TOURS = 3000, debut = Date.now();
     let temoin = null;

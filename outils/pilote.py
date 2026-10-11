@@ -30,8 +30,9 @@ DOSSIER = Path(__file__).resolve().parent / "tmp-capture"
 
 
 class Navigateur:
-    def __init__(self, largeur=1440, hauteur=900, sombre=False, mobile=False, calme=False, port=9377):
-        self.largeur, self.hauteur, self.sombre, self.mobile, self.calme, self.port = largeur, hauteur, sombre, mobile, calme, port
+    def __init__(self, largeur=1440, hauteur=900, sombre=False, mobile=False, calme=False, port=9377, carte=False):
+        # carte : dessiner avec la vraie carte graphique de la machine (pour mesurer la fluidité), au lieu du rendu logiciel
+        self.largeur, self.hauteur, self.sombre, self.mobile, self.calme, self.port, self.carte = largeur, hauteur, sombre, mobile, calme, port, carte
         self.numero, self.erreurs, self.tampon = 0, [], b""
 
     def __enter__(self):
@@ -40,7 +41,8 @@ class Navigateur:
         shutil.rmtree(self.profil, ignore_errors=True)
         self.processus = subprocess.Popen(
             [str(EDGE), "--headless=new", "--no-first-run", "--hide-scrollbars", f"--user-data-dir={self.profil}", f"--remote-debugging-port={self.port}",
-             "--remote-allow-origins=*", "--enable-unsafe-swiftshader", f"--window-size={max(self.largeur, 500)},{self.hauteur}", "about:blank"],
+             "--remote-allow-origins=*", *(["--enable-gpu", "--ignore-gpu-blocklist"] if self.carte else ["--enable-unsafe-swiftshader"]),
+             f"--window-size={max(self.largeur, 500)},{self.hauteur}", "about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(80):
             try:

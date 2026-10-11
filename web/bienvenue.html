@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f2eee5" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0a0d12" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#080b14">
 <meta name="robots" content="noindex">
 <title>Prévoyance — votre retraite, vue d’en haut</title>
 <meta name="description" content="L’analyse de prévoyance suisse : les trois piliers, la lacune chiffrée au franc près, un plan daté.">
@@ -15,12 +14,14 @@
 <link rel="preload" href="polices/fraunces-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="polices/inter-normal-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="polices/polices.css">
-<link rel="stylesheet" href="bienvenue.css?v=6">
-<script src="src/pret.js?v=6"></script>
-<script type="module" src="src/bienvenue.js?v=6"></script>
+<link rel="preload" href="images/terrain/weisshorn.png" as="image" media="(pointer: fine)">
+<link rel="preload" href="images/terrain/weisshorn-photo.webp" as="image" media="(pointer: fine)">
+<link rel="stylesheet" href="bienvenue.css?v=7">
+<script src="src/pret.js?v=7"></script>
+<script type="module" src="src/bienvenue.js?v=7"></script>
 </head>
 <body>
-<!-- Le relief : une montagne en courbes de niveau, calculée en direct. Son altitude est un revenu annuel. -->
+<!-- Le relief : un vrai sommet (le Weisshorn), éclairé et calculé en direct. Son altitude est un revenu annuel. -->
 <canvas class="relief" id="relief" aria-hidden="true"></canvas>
 
 <!-- Le cadre de la carte : coins, graduations, légende. Décor, sans rôle. -->
@@ -36,11 +37,13 @@
   <p class="repere sommet" id="rep-sommet"><i></i><span data-t="l_atteint">Revenu garanti</span><b id="rep-sommet-n"></b></p>
   <p class="repere besoin" id="rep-besoin"><i></i><span data-t="s_besoin">Besoin à la retraite</span><b id="rep-besoin-n"></b></p>
   <p class="repere ecart" id="rep-ecart"><span data-t="l_lacune">Lacune</span><b id="rep-ecart-n"></b></p>
+  <p class="repere etage" id="rep-e1"><span data-t="s_p1">1er pilier · AVS</span></p>
+  <p class="repere etage" id="rep-e2"><span data-t="s_p2">2e pilier · caisse de pension</span></p>
+  <p class="repere etage" id="rep-e3"><span data-t="s_p3">3e pilier et fortune</span></p>
   <svg class="denivele" id="rep-trait"><line x1="0" y1="0" x2="0" y2="0"/></svg>
+  <svg class="voie" id="rep-voie"><path d=""/></svg>
+  <i class="arrivee" id="rep-arrivee"></i>
 </div>
-
-<!-- Le territoire : la photographie aérienne d'un sommet, vue dans l'anneau à la fin de la page (la carte devient le terrain). -->
-<div class="territoire" id="territoire" aria-hidden="true"><i></i></div>
 
 <div class="chargement" id="chargement" aria-hidden="true">
   <svg viewBox="0 0 200 200">
@@ -147,19 +150,11 @@
     <figure class="apercu" id="apercu" aria-hidden="true"><img alt="" width="1200" height="800" decoding="async"></figure>
   </section>
 
-  <div class="bande" id="bande" aria-hidden="true"><p></p></div>
-
   <section class="preuves-bloc">
     <ul class="preuves" id="preuves"></ul>
   </section>
 
   <section class="fin" id="fin" data-repere="ouvrir">
-    <div class="itin" aria-hidden="true">
-      <svg class="trace" viewBox="0 0 1200 220" preserveAspectRatio="none">
-        <path d="M0 196 C140 190 190 150 290 152 S420 118 520 122 S640 70 730 74 S850 34 930 30 S1010 20 1040 12"/>
-      </svg>
-      <i></i>
-    </div>
     <h2 class="voir" data-t="c4_titre" data-mots>Voyez clair.<br><em>Décidez tôt.</em></h2>
     <p class="chapo voir" data-t="c4_texte">L’analyse complète se fait en quelques minutes. Vos données restent sur votre appareil.</p>
     <p class="actions voir">
@@ -172,6 +167,7 @@
 <footer class="pied">
   <a class="griffe" href="#top" aria-label="Prévoyance"><i aria-hidden="true"></i><span data-t="marque">Prévoyance</span></a>
   <p data-t="pied">Estimations selon les règles légales de l’année ; elles ne remplacent ni un certificat de prévoyance ni un conseil personnalisé.</p>
+  <p class="source" data-t="source">Relief : le Weisshorn (4506 m), Valais — altitudes swissALTI3D et photographie aérienne SWISSIMAGE, © swisstopo.</p>
 </footer>
 </body>
 </html>

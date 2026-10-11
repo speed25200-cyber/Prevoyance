@@ -50,30 +50,40 @@ l'app native (adresse interne `prevoyance://`), sa disponibilité reste à véri
 S'y ajoutent aussi : un portefeuille de dossiers (créer, dupliquer, exporter, importer) et sa **vue d'ensemble** (touche P : tous les dossiers classés par ce qu'il reste à faire, 3a encore déductible, rachats possibles, rentes et capitaux de risque à assurer, export CSV), ses **segments** (invalidité, décès, retraite, 3a, rachat : la liste d'une campagne, du plus gros montant au plus petit), l'**agenda des échéances** (fichier .ics pour Outlook, Apple Calendrier ou Google Agenda : les dates légales d'un dossier ou de tout le portefeuille, tirées de la feuille de route du moteur), l'analyse de chacun des deux
 membres d'un couple, un mode présentation plein écran, le clair et le sombre selon l'appareil.
 
-## L'apparence : la carte
+## L'apparence : un vrai sommet
 
-Dans le navigateur, la page d'entrée et l'application partagent un même parti pris : **la prévoyance se lit comme une
-carte nationale**. La retraite est un relief dont les trois étages sont les trois piliers ; le besoin est une altitude
-à atteindre (l'anneau en pointillé) ; la lacune est le dénivelé qui reste ; le plan est l'itinéraire. Papier le jour,
-encre la nuit, Fraunces pour les titres et les montants, Inter pour le reste, le triangle des sommets comme jalon.
+Dans le navigateur, la page d'entrée et l'application partagent un même parti pris : **la prévoyance se lit sur un vrai
+sommet**. La retraite est une montagne dont les trois étages sont les trois piliers ; le besoin est une altitude à
+atteindre (l'anneau en pointillé) ; la lacune est le dénivelé qui reste ; le plan est l'itinéraire. Fraunces pour les
+titres et les montants, Inter pour le reste, le triangle des sommets comme jalon.
 
-- **Le relief** (`web/src/relief.js`) est calculé en direct (WebGL, sans bibliothèque) à partir des montants du
-  moteur : une montagne en courbes de niveau, vue d'en haut ou de biais. Sans WebGL, la page garde sa version sans
-  relief ; en mouvement réduit, une image fixe.
-- **La page d'entrée** (`web/bienvenue.html`) : la carte vue d'en haut, puis un récit épinglé qui incline le relief,
-  allume ses étages, pose l'anneau du besoin et fait monter le massif jusqu'à lui ; le simulateur fait du relief
-  celui du visiteur (vrai moteur) ; à la fin, la photographie aérienne d'un sommet tient dans l'anneau.
-  `?fige` fige la page pour une capture (`?fige&recit=0.5`, `?fige&vers=essai`).
+- **Le relief** (`web/src/relief.js`) est calculé et éclairé en direct (WebGL, sans bibliothèque) à partir des
+  montants du moteur. Le terrain est réel : **le Weisshorn (4506 m, Valais) et son massif, sur 8 km**, d'après les
+  données ouvertes de swisstopo — les altitudes de swissALTI3D pour la forme, la photographie aérienne SWISSIMAGE pour
+  la roche et les glaciers (mention « © swisstopo » dans la page d'entrée, l'application et le rapport). Par-dessus :
+  une neige fraîche calculée, la lumière d'un lever de soleil (ombre portée des arêtes, ligne d'ombre qui descend du
+  sommet), une mer de brouillard dans les vallées, des chaînes lointaines, puis la carte — limites des étages et
+  courbes de niveau. Sur fond sombre : l'heure bleue et l'aube ; sur papier : une photographie en noir et blanc.
+  Sans WebGL, ou si le terrain ne se charge pas, la page garde sa version sans relief ; en mouvement réduit, une image
+  fixe.
+- **Le terrain embarqué** (`web/images/terrain/`, 2,6 Mo en tout) est fabriqué par `outils/terrain.py` : il télécharge
+  les tuiles de swisstopo dans un dossier hors du dépôt, puis écrit une carte d'altitudes (PNG, 16 bits) et une
+  photographie (WebP), chacune en deux finesses (ordinateur, téléphone), plus fines au centre qu'au bord.
+  `outils/relief-essai.html` montre le relief seul, réglé par l'adresse (heure, vue, montants).
+- **La page d'entrée** (`web/bienvenue.html`), toujours sombre : l'arrivée à l'heure bleue, puis un récit épinglé —
+  les étages se dessinent sur le versant, l'anneau du besoin se pose, le massif monte jusqu'à lui pendant que le
+  soleil se lève ; le simulateur fait du relief celui du visiteur (vrai moteur) ; à la fin, l'itinéraire monte
+  jusqu'au sommet. `?fige` fige la page pour une capture (`?fige&recit=0.5`, `?fige&vers=essai`).
 - **L'application** : `web/carte.css` est la peau du navigateur. Les feuilles d'origine restent chargées, rangées
   dans la couche CSS « socle » (voir `index.html`) ; la peau, hors couche, passe toujours devant. Tous ses sélecteurs
   commencent par `html:not(.natif)` : **l'app iPhone / iPad garde son apparence**. Les pages A4 du rapport reviennent
   aux feuilles d'origine (ce qu'on voit est ce qui s'imprime) ; sans marque, leur couverture porte le relief du client.
-- Les images `web/images/apercus/` sont de vraies captures de l'application (dossier d'exemple) ; `web/images/sommet.webp`
-  est une image de synthèse (aucun lieu réel).
-- **Fluidité.** Le relief ne dessine jamais plus de 2,4 millions de points par image, et réduit encore d'un cran si
-  les images tardent. Mesuré sur une carte graphique intégrée modeste (Intel UHD 630, octobre 2026) : 9 à 12 ms par
-  image en plein écran, soit sous les 16,7 ms d'un écran à 60 Hz ; sans cette limite, un écran à densité 2 demandait
-  17 à 23 ms.
+- Les images `web/images/apercus/` sont de vraies captures de l'application (dossier d'exemple).
+- **Fluidité.** Mesuré sur une carte graphique intégrée modeste (Intel UHD 630, octobre 2026) : environ 20 ms par
+  image à 1440 × 900, soit 30 images par seconde à pleine finesse — trop peu. Le relief ne dessine donc jamais plus de
+  1,25 million de points par image, et dessine moins fin, par crans, quand les images tardent (il sait reconnaître un
+  écran plafonné à 30 images par seconde, et n'y touche pas). Sur une telle carte, il se stabilise autour de 60 % à
+  80 % de la finesse de l'écran. Non mesuré sur téléphone ni sur Safari.
 
 ## Structure
 
@@ -86,7 +96,7 @@ encre la nuit, Fraunces pour les titres et les montants, Inter pour le reste, le
 | `moteur/tests/` | Les cas de test du moteur : chaque valeur attendue est calculée à la main d'après les textes et montants officiels. |
 | `web/` | La page d'entrée (`bienvenue.html`) et l'application (`index.html`), `src/` (vues, graphiques, relief, textes), `essais.html` (essais de l'interface). |
 | `ios/` | L'application native : une enveloppe qui embarque `web/` et `moteur/`. |
-| `outils/` | Relevé des impôts (`donnees/maj_impots.py`), essais et captures en arrière-plan (`essais.ps1`, `capture.ps1`), contrôle de l'interface comme un visiteur (`pilote.py`, `cadre.html`). |
+| `outils/` | Relevé des impôts (`donnees/maj_impots.py`), essais et captures en arrière-plan (`essais.py`, `essais.ps1`, `capture.ps1`), contrôle de l'interface comme un visiteur (`pilote.py`, `cadre.html`), terrain du relief (`terrain.py`, `relief-essai.html`). |
 
 ## Le moteur
 
@@ -146,8 +156,8 @@ python -m http.server 8790                       # depuis la racine du dépôt
 ```
 
 - Moteur : ouvrir `http://localhost:8790/moteur/tests/index.html`, ou `node moteur/tests/run.mjs` (259 cas).
-- Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `powershell -File outils\essais.ps1` (63 essais : parcours, quatre langues complètes, largeur de téléphone,
-  pages légales du rapport, chiffrement, peau du navigateur, agenda des échéances, segments du portefeuille).
+- Interface : ouvrir `http://localhost:8790/web/essais.html`, ou `python outils/essais.py` (67 essais : parcours, quatre langues complètes, largeur de téléphone,
+  pages légales du rapport, chiffrement, peau du navigateur, agenda des échéances, segments du portefeuille, terrain et relief).
 - App iPhone / iPad, moitié « page » : `web/src/autotest.js` (celui que l'app exécute dans le simulateur) se rejoue hors
   de l'app avec `outils/pilote.py`, la page chargée comme l'app la charge (classe `natif`, ponts présents).
 - À l'œil : `outils/pilote.py` pilote Edge sans fenêtre (largeur d'un vrai téléphone, clair ou sombre, mouvement

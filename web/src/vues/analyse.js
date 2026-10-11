@@ -7,7 +7,7 @@
 import { h, compter, couleurCouverture, COULEUR_PILIER } from '../ui.js';
 import { creerGraphique, COUCHES } from '../graphique.js';
 import { creerScene } from '../scene.js';
-import { creerRelief } from '../relief.js';
+import { creerRelief, chargerTerrain } from '../relief.js';
 import { etat, garder, dossier } from '../etat.js';
 import * as Formulaire from '../formulaire.js';
 
@@ -19,12 +19,13 @@ const VAR_COUCHE = { salaire: '--salaire', attente: '--attente', pilier1: '--p1'
 /** @type {any} */ let graphique = null;
 /** @type {any} */ let scene = null;
 /** @type {ReturnType<typeof creerRelief>} */ let relief = null;
+let terrainConnu = false;   // le terrain du relief a fini de se charger (qu'il soit là ou non)
 /** @type {(() => void)|null} */ let surLargeur = null;
 /** @type {Record<string, string>} */ let ecrits = {};
 /** @type {(x: number) => string} */ let chf = String;
-// La vue du relief dans la synthèse : de biais, le massif à droite du chiffre (ou centré, au-dessus, sur un écran étroit).
-const VUE_LARGE = { azimut: 0.55, elevation: 0.36, distance: 3.7, cibleY: 0.46, dx: 0.46, dy: 0.1 };
-const VUE_ETROITE = { azimut: 0.55, elevation: 0.36, distance: 4.3, cibleY: 0.46, dx: 0, dy: 0 };
+// La vue du relief dans la synthèse : le sommet à hauteur d'œil, à droite du chiffre (ou centré, au-dessus, sur un écran étroit).
+const VUE_LARGE = { azimut: 0.55, elevation: 0.12, distance: 2.05, cibleY: 0.7, dx: 0.42, dy: 0.04 };
+const VUE_ETROITE = { azimut: 0.55, elevation: 0.14, distance: 2.5, cibleY: 0.68, dx: 0, dy: 0 };
 
 /** Approche la caméra d'un pilier (1 à 3) et allume son point ; `null` : vue d'ensemble. */
 function viser(n) {
@@ -80,7 +81,8 @@ export function monter(ctx, racine) {
       h('div', { class: 'carte pliable' }, h('h2', {}, t('potentiels')), ref('potentiels', h('div')))),
     ref('menage', h('div', { class: 'carte', hidden: true })),
     h('div', { class: 'carte' }, h('h2', {}, t('alertes')), ref('alertes', h('ul', { class: 'alertes' }))),
-    h('p', { class: 'avertissement' }, t('avertissement')));
+    h('p', { class: 'avertissement' }, t('avertissement')),
+    avecRelief ? h('p', { class: 'avertissement source-relief' }, t('rl_source')) : null);
   // téléphone : le détail et les leviers sont repliés ; on les ouvre en touchant leur titre
   const etroit = matchMedia('(max-width: 640px)');
   for (const carte of racine.querySelectorAll('.pliable')) {
@@ -102,6 +104,12 @@ export function monter(ctx, racine) {
     rel.suivre(placerReperes);
     // désigner un pilier allume son étage et éteint les deux autres
     scene = { viser: n => rel.scene({ bandes: [0, 1, 2].map(k => (n === null || k === n ? 1 : 0.14)) }), pointer() {} };
+  } else if (avecRelief && !terrainConnu) {
+    // le terrain du relief n'est pas encore chargé : la synthèse se lit sans lui, et la vue se remonte dès qu'il arrive
+    tete.classList.add('avec-relief');
+    scene = { viser() {}, pointer() {} };
+    const toile = r.reliefToile;
+    chargerTerrain().then(() => { terrainConnu = true; if (toile?.isConnected) ctx.recalculer(true); });
   } else {
     r.reliefToile?.remove(); r.reliefReperes?.remove();
     scene = creerScene(/** @type {HTMLCanvasElement} */ (r.sceneToile), [r.repere1, r.repere2, r.repere3]);

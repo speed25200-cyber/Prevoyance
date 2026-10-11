@@ -47,7 +47,10 @@ if "--acces" in sys.argv:
     for page in ("bienvenue.html", "index.html"):
         p = sortie / "web" / page
         p.write_text(p.read_text(encoding="utf-8").replace("<head>", '<head>\n<script src="garde.js"></script>', 1), encoding="utf-8")
-    (sortie / ".htaccess").write_text('Header set X-Robots-Tag "noindex, nofollow"\nOptions -Indexes\n', encoding="utf-8")
+    # pages, scripts et feuilles de style : le navigateur redemande toujours au serveur s'ils ont changé (sinon il garde
+    # l'ancienne version des heures durant, et l'on croit que le dépôt n'a pas eu lieu)
+    (sortie / ".htaccess").write_text('Header set X-Robots-Tag "noindex, nofollow"\nOptions -Indexes\n'
+                                      '<FilesMatch "\\.(html|js|css|json|webmanifest)$">\nHeader set Cache-Control "no-cache"\n</FilesMatch>\n', encoding="utf-8")
 
 fichiers = [f for f in sortie.rglob("*") if f.is_file()]
 print(f"{sortie} : {len(fichiers)} fichiers, {sum(f.stat().st_size for f in fichiers) / 1e6:.1f} Mo")

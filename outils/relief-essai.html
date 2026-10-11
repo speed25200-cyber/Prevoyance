@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<title>Relief — banc d'essai</title>
+<!-- Banc d'essai du relief (web/src/relief.js) : le relief seul, plein cadre, réglé par l'adresse. Pour juger une
+     lumière, une vue ou une forme sans passer par les pages.
+     Usage : relief-essai.html?fond=sombre&heure=0.25&az=0.5&el=0.25&d=4.2&y=0.5&dx=0.3&dy=0&p1=24648&p2=33545&p3=10733&besoin=83200&bandes=1,1,1&fige -->
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--relief-fond); }
+  body.sombre { --relief-fond: #0a0d12; --relief-trait: #eeeae0; --lacune: #ff6a4d; --ok: #45c08a; }
+  body.clair { --relief-fond: #f2eee5; --relief-trait: #13161b; --lacune: #d93a25; --ok: #1d8658; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  pre { position: fixed; left: 12px; bottom: 8px; margin: 0; font: 12px/1.4 ui-monospace, monospace; color: #fff; mix-blend-mode: difference; }
+</style>
+</head>
+<body>
+<canvas id="toile"></canvas>
+<pre id="note"></pre>
+<script type="module">
+  import { creerRelief, chargerTerrain } from '../web/src/relief.js';
+  const q = new URLSearchParams(location.search), n = (cle, defaut) => q.has(cle) ? Number(q.get(cle)) : defaut;
+  document.body.className = q.get('fond') === 'clair' ? 'clair' : 'sombre';
+  await chargerTerrain();
+  const debut = performance.now();
+  const relief = creerRelief(document.getElementById('toile'), { fige: q.has('fige') });
+  const note = document.getElementById('note');
+  if (!relief) note.textContent = 'WebGL indisponible';
+  else {
+    relief.regler({ p1: n('p1', 24648), p2: n('p2', 33545), p3: n('p3', 10733), besoin: n('besoin', 83200) }, true);
+    relief.viser({ azimut: n('az', 0.5), elevation: n('el', 0.25), distance: n('d', 4.2), cibleY: n('y', 0.5), dx: n('dx', 0.3), dy: n('dy', 0) }, true);
+    relief.scene({ bandes: (q.get('bandes') ?? '1,1,1').split(',').map(Number), anneau: n('anneau', 1), heure: n('heure', 0.25), courbes: n('courbes', 1), trace: 1.1 }, true);
+    relief.redessiner();
+    window.relief = relief;
+    if (!q.has('muet')) note.textContent = `prêt en ${Math.round(performance.now() - debut)} ms`;
+  }
+</script>
+</body>
+</html>

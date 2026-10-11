@@ -108,3 +108,8 @@ dialog.portefeuille-vue > p.petit { padding: 0 28px; }
 @media print { .page .r-deux { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8mm; } }
 .page .alertes { gap: 4px; }
 .page .alertes li { font-size: 13px; line-height: 1.4; padding: 7px 12px; }
+
+/* ------------------------------------------------------------------ le relief : d'où il vient
+   Le crédit de l'image de couverture se pose sur son bord bas, sans déplacer la suite de la page (marges qui s'annulent). */
+.couverture .r-credit { position: relative; margin: -6mm 0 2.4mm; font-size: 6.5pt; line-height: 3.6mm; letter-spacing: .06em; text-align: right; color: #5f646c; }
+.avertissement.source-relief { margin-top: -6px; opacity: .8; }

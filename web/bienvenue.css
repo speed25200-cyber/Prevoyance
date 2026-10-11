@@ -1,27 +1,21 @@
 /* Prévoyance — page d'entrée.
-   Parti pris : la prévoyance se lit comme une carte nationale. La retraite est un relief (ses trois étages sont les
-   trois piliers), le besoin est une altitude à atteindre, la lacune est le dénivelé qui reste, le plan est l'itinéraire.
-   Deux motifs, partout : les courbes de niveau (le relief, calculé en direct) et l'itinéraire (le trait pointillé, ses
-   jalons en triangle, comme les sommets d'une carte). Deux familles : Fraunces pour les titres et les grands chiffres,
-   Inter pour le reste. Papier le jour, encre la nuit.
+   Parti pris : la prévoyance se lit sur un vrai sommet. La retraite est une montagne (le Weisshorn, éclairé et calculé
+   en direct ; ses trois étages sont les trois piliers), le besoin est une altitude à atteindre, la lacune est le
+   dénivelé qui reste, le plan est l'itinéraire. Le jour se lève à mesure qu'on avance : l'heure bleue à l'arrivée,
+   l'aube quand le plan comble la lacune. Par-dessus, la carte : le cadre, les repères, le trait pointillé et ses jalons
+   en triangle. Deux familles : Fraunces pour les titres et les grands chiffres, Inter pour le reste. Une seule
+   ambiance, sombre : la nuit qui finit.
    Sans script, ou en mouvement réduit : tout est visible et les chapitres se lisent à la suite. */
 
 :root {
-  --papier: #f2eee5; --papier-2: #e8e3d7; --encre: #13161b; --encre-2: #4d535c; --encre-3: #666c76;
-  --filet: rgba(19, 22, 27, .17); --filet-2: rgba(19, 22, 27, .08); --bistre: #a3927a;
-  --p1: #17346c; --p2: #2b67dc; --p3: #2f9fc2; --lacune: #d93a25; --ok: #1d8658; --accent: #2b67dc; --sur-accent: #ffffff;
-  --relief-fond: var(--papier); --relief-trait: var(--bistre);
+  --papier: #080b14; --papier-2: #10151f; --encre: #f1eee6; --encre-2: #b9bcc4; --encre-3: #8d92a0;
+  --filet: rgba(241, 238, 230, .2); --filet-2: rgba(241, 238, 230, .09); --bistre: #68717f;
+  --p1: #4a7dea; --p2: #9fc3ff; --p3: #7fe3d6; --lacune: #ff6a4d; --ok: #4fc892; --accent: #f3b995; --sur-accent: #080b14;
+  --relief-fond: var(--papier); --relief-trait: #f4f1ea;
   --titre: 'Fraunces', 'Iowan Old Style', Georgia, serif;
   --texte: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --aise: cubic-bezier(.22, 1, .36, 1); --aise-2: cubic-bezier(.65, 0, .35, 1);
   --bord: clamp(22px, 5vw, 84px); --cadre: clamp(8px, 1.2vw, 18px);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --papier: #0a0d12; --papier-2: #11161d; --encre: #eeeae0; --encre-2: #adb0b6; --encre-3: #858a93;
-    --filet: rgba(238, 234, 224, .17); --filet-2: rgba(238, 234, 224, .08); --bistre: #68717f;
-    --p1: #3f74e6; --p2: #9fc3ff; --p3: #7fe3d6; --lacune: #ff6a4d; --ok: #45c08a; --accent: #9cc0ff; --sur-accent: #0a0d12;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -44,10 +38,9 @@ h1 em, h2 em { font-weight: 300; color: var(--accent); }
 .sur b { flex: none; font: italic 300 20px/1 var(--titre); letter-spacing: 0; text-transform: none; white-space: nowrap; color: var(--encre); }
 .chapo { max-width: 46ch; font-size: clamp(17px, 1.45vw, 21px); line-height: 1.5; color: var(--encre-2); text-wrap: pretty; }
 
-/* ------------------------------------------------------------------ le grain du papier, sur toute la page */
-body::after { content: ""; position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: .5; mix-blend-mode: multiply;
+/* ------------------------------------------------------------------ un grain de pellicule, sur toute la page */
+body::after { content: ""; position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: .26; mix-blend-mode: screen;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .22 0'/></filter><rect width='220' height='220' filter='url(%23g)'/></svg>"); }
-@media (prefers-color-scheme: dark) { body::after { mix-blend-mode: screen; opacity: .28; } }
 
 /* ------------------------------------------------------------------ le relief, fixe derrière la page */
 .relief { position: fixed; left: 0; top: 0; width: 100%; height: 100vh; height: 100lvh; z-index: 0; pointer-events: none; opacity: var(--relief-o, 1); transition: opacity .9s var(--aise); }
@@ -78,27 +71,37 @@ html[data-phase="essai"] .cadre-note, html[data-phase="pages"] .cadre-note, html
 .repere.besoin { justify-items: center; text-align: center; color: var(--lacune); transform: translate3d(calc(var(--x, 0) * 1px - 50%), calc(var(--y, 0) * 1px - 100% - 12px), 0); }
 .repere.besoin span { color: inherit; }
 .repere.besoin i { display: none; }
-.repere.ecart { padding-right: 14px; text-align: right; color: var(--lacune); transform: translate3d(calc(var(--x, 0) * 1px - 100%), calc(var(--y, 0) * 1px - 50%), 0); }
+/* sur un ciel qui s'éclaire, les étiquettes rouges gardent une plaque de nuit derrière elles */
+.repere.besoin, .repere.ecart { padding: 7px 10px 8px; background: color-mix(in srgb, var(--papier) 58%, transparent); }
+.repere.ecart { margin-left: -12px; text-align: right; color: var(--lacune); transform: translate3d(calc(var(--x, 0) * 1px - 100%), calc(var(--y, 0) * 1px - 50%), 0); }
 .repere.ecart span { color: inherit; }
 .reperes.atteint .repere.besoin { color: var(--ok); }
 .reperes.atteint .repere.sommet, .reperes.proche .repere.sommet, .reperes.proche .repere.ecart { opacity: 0; }
 .denivele { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .5s var(--aise); }
 .denivele line { stroke: var(--lacune); stroke-width: 1.2; stroke-dasharray: 3 4; }
 .reperes.voit-sommet .sommet, .reperes.voit-besoin .besoin, .reperes.voit-ecart .ecart, .reperes.voit-ecart .denivele { opacity: 1; }
+/* le nom d'un étage, accroché au versant par un trait */
+.repere.etage { padding-left: 38px; transform: translate3d(calc(var(--x, 0) * 1px), calc(var(--y, 0) * 1px - 50%), 0); }
+.repere.etage span { color: var(--encre); text-shadow: 0 1px 14px rgba(4, 6, 12, .7); }
+.repere.etage::before { content: ""; position: absolute; left: 0; top: 50%; width: 30px; height: 1px; background: var(--encre); opacity: .75; }
+.repere.etage::after { content: ""; position: absolute; left: -3px; top: calc(50% - 2.5px); width: 5px; height: 5px; border-radius: 50%; background: var(--encre); }
+.repere.etage.la { opacity: 1; }
+.repere.etage.vide { display: none; }
+.repere.etage span { padding: 6px 8px; background: color-mix(in srgb, var(--papier) 72%, transparent); }
+.repere.etage.gauche { padding-left: 0; padding-right: 38px; transform: translate3d(calc(var(--x, 0) * 1px - 100%), calc(var(--y, 0) * 1px - 50%), 0); }
+.repere.etage.gauche::before { left: auto; right: 0; }
+.repere.etage.gauche::after { left: auto; right: -3px; }
+/* l'itinéraire de la fin : un trait pointillé qui monte jusqu'au sommet, et son jalon */
+.voie { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; clip-path: inset(0 100% 0 0); transition: opacity .5s, clip-path 0s .5s; }
+.voie { filter: drop-shadow(0 0 2px rgba(4, 6, 12, .95)) drop-shadow(0 0 5px rgba(4, 6, 12, .6)); }
+.voie path { fill: none; stroke: var(--encre); stroke-width: 1.5; stroke-dasharray: 6 7; }
+.arrivee { position: absolute; left: 0; top: 0; width: 14px; height: 12px; margin: -15px 0 0 -7px; background: var(--lacune); clip-path: polygon(50% 0, 100% 100%, 0 100%); opacity: 0;
+  transform: translate3d(calc(var(--x, 0) * 1px), calc(var(--y, 0) * 1px), 0); transition: opacity .4s; }
+.reperes.voit-voie .voie { opacity: 1; clip-path: inset(0 0 0 0); transition: opacity .5s, clip-path 2.6s var(--aise-2) .3s; }
+.reperes.voit-voie .arrivee { opacity: 1; transition: opacity .6s 2.6s; }
+.repere b, .repere span { text-shadow: 0 1px 14px rgba(4, 6, 12, .6); }
 
-/* ------------------------------------------------------------------ le territoire : dans l'anneau du besoin, le vrai sommet vu d'avion
-   (placé par le script sur l'anneau du relief ; fondu dans le papier le jour, dans la nuit le soir) */
-.territoire { position: fixed; left: 0; top: 0; z-index: 1; width: calc(var(--tr, 0) * 2px); height: calc(var(--tr, 0) * 2px); border-radius: 50%; overflow: hidden; pointer-events: none;
-  transform: translate3d(calc(var(--tx, 0) * 1px - 50%), calc(var(--ty, 0) * 1px - 50%), 0); opacity: 0; clip-path: circle(0 at 50% 50%); mix-blend-mode: multiply; will-change: transform; }
-.territoire i { position: absolute; inset: -6%; background: url(images/sommet.webp) center / cover no-repeat; filter: saturate(.8) contrast(1.05); }
-.territoire.la { opacity: 1; clip-path: circle(50% at 50% 50%); }
-.anime .territoire { transition: opacity .9s var(--aise), clip-path 1.7s var(--aise-2); }
-.anime .territoire.la i { animation: territoire 26s ease-in-out infinite alternate; }
-@keyframes territoire { to { transform: scale(1.12) rotate(3deg); } }
-.sans-relief .territoire { display: none; }
-@media (prefers-color-scheme: dark) { .territoire { mix-blend-mode: screen; } .territoire i { filter: saturate(.55) brightness(.5) contrast(1.25); } }
-
-/* ------------------------------------------------------------------ chargement : la carte se lève */
+/* ------------------------------------------------------------------ chargement : le relief se lève */
 .chargement { display: none; }
 .anime .chargement { position: fixed; inset: 0; z-index: 60; display: grid; place-content: center; justify-items: center; gap: 26px; background: var(--papier);
   clip-path: inset(0 0 0 0); transition: clip-path .95s var(--aise-2), visibility 0s .95s; animation: chargement-secours 0s linear 4s forwards; }
@@ -134,7 +137,7 @@ html[data-phase="essai"] .cadre-note, html[data-phase="pages"] .cadre-note, html
   color: var(--encre); transform: translate3d(calc(var(--ax, 0) * 1px), calc(var(--ay, 0) * 1px), 0); transition: color .45s var(--aise), transform .6s var(--aise), border-color .45s; }
 .bouton::before { content: ""; position: absolute; inset: -1px; z-index: -1; background: var(--encre); transform: scaleX(0); transform-origin: right center; transition: transform .6s var(--aise-2); }
 .bouton::after { content: ""; flex: none; width: 9px; height: 8px; background: currentColor; clip-path: polygon(50% 0, 100% 100%, 0 100%); transition: transform .5s var(--aise); }
-.bouton.fil { background: var(--papier); }
+.bouton.fil { background: color-mix(in srgb, var(--papier) 46%, transparent); }
 .bouton.fil::after, .bouton.petit::after { display: none; }
 .bouton.plein { background: var(--encre); color: var(--papier); }
 .bouton.plein::before { background: var(--accent); }
@@ -167,11 +170,12 @@ html[data-phase="pages"] .itineraire { opacity: 0; pointer-events: none; }
 
 @media (min-width: 1101px) { .js .hero, .js .essai, .js .fonctions, .js .preuves-bloc { padding-right: calc(var(--bord) + 76px); } }
 
-/* ------------------------------------------------------------------ héros : la carte, vue d'en haut */
+/* ------------------------------------------------------------------ héros : le sommet à l'heure bleue */
 main { position: relative; z-index: 2; }
 .hero { position: relative; min-height: min(100vh, 1200px); min-height: min(100svh, 1200px); display: flex; flex-direction: column; justify-content: flex-end; gap: clamp(18px, 3vh, 34px);
   padding: 130px var(--bord) clamp(56px, 9vh, 96px); }
-.hero h1 { margin-left: -.045em; }
+.hero h1 { margin-left: -.045em; text-shadow: 0 2px 40px rgba(4, 6, 12, .45); }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, color-mix(in srgb, var(--papier) 62%, transparent) 0%, transparent 46%); }
 .hero-pied { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px 48px; flex-wrap: wrap; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .defiler { position: absolute; left: 50%; top: calc(min(100vh, 1200px) - var(--cadre) - 78px); top: calc(min(100svh, 1200px) - var(--cadre) - 78px); display: grid; justify-items: center; gap: 8px; transform: translateX(-50%); font: 600 9.5px/1 var(--texte); letter-spacing: .3em; text-transform: uppercase; color: var(--encre-3); }
@@ -187,8 +191,8 @@ main { position: relative; z-index: 2; }
 .chapitre h2 { font-size: clamp(44px, 6.4vw, 112px); margin-left: -.04em; }
 .js .recit { height: 460vh; }
 .js .recit-cadre { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
-/* un voile de papier du côté du texte : il se lit sans effort, le relief reste entier de l'autre côté */
-.js .recit-cadre::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--papier) 0%, color-mix(in srgb, var(--papier) 82%, transparent) 30%, color-mix(in srgb, var(--papier) 0%, transparent) 56%); }
+/* un voile de nuit du côté du texte : il se lit sans effort, le ciel se devine dessous, le massif reste entier de l'autre côté */
+.js .recit-cadre::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--papier) 84%, transparent) 0%, color-mix(in srgb, var(--papier) 62%, transparent) 30%, color-mix(in srgb, var(--papier) 0%, transparent) 58%); }
 .js .chapitre { position: absolute; inset: 0; min-height: 0; visibility: hidden; pointer-events: none; }
 .js .chapitre.actif { visibility: visible; pointer-events: auto; }
 .fige .chapitre:not(.actif) { display: none; }
@@ -224,7 +228,7 @@ main { position: relative; z-index: 2; }
 .essai-tete { align-self: end; }
 .essai-cote { display: grid; grid-template-rows: minmax(300px, 1fr) auto; gap: 18px; min-width: 0; }
 .essai-scene { min-height: 0; }
-.essai::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, var(--papier) 0%, color-mix(in srgb, var(--papier) 84%, transparent) 34%, color-mix(in srgb, var(--papier) 0%, transparent) 60%); }
+.essai::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, color-mix(in srgb, var(--papier) 88%, transparent) 0%, color-mix(in srgb, var(--papier) 70%, transparent) 34%, color-mix(in srgb, var(--papier) 0%, transparent) 62%); }
 .essai-tete { display: grid; gap: clamp(16px, 2.4vh, 26px); min-width: 0; }
 .essai h2 { font-size: clamp(42px, 5.6vw, 96px); margin-left: -.04em; }
 .reglages { display: grid; gap: 22px; margin-top: 14px; padding-top: 26px; border-top: 1px solid var(--encre); max-width: 560px; }
@@ -249,7 +253,7 @@ main { position: relative; z-index: 2; }
   background-size: 6px 6px; background-position: right 8px center, right 2px center; background-repeat: no-repeat; }
 .reglages select option { color: #13161b; background: #fff; }
 
-.resultat { position: relative; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 6px 34px; align-items: start; padding: 22px 26px 24px; border: 1px solid var(--filet); background: var(--papier); }
+.resultat { position: relative; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 6px 34px; align-items: start; padding: 22px 26px 24px; border: 1px solid var(--filet); background: color-mix(in srgb, var(--papier) 90%, transparent); }
 .resultat > .etiquette, .resultat > .grandchiffre, .resultat > .couverture { grid-column: 1; }
 .resultat > .sources { grid-column: 2; grid-row: 1 / span 3; margin: 0; }
 .resultat > .bouton { grid-column: 1 / -1; margin-top: 12px; white-space: normal; text-align: center; line-height: 1.3; padding-block: 12px; }
@@ -293,13 +297,6 @@ main { position: relative; z-index: 2; }
 html:not(.anime) .apercu { display: none; }
 @media (max-width: 1000px) { .apercu { display: none; } }
 
-/* ------------------------------------------------------------------ bande : les trois piliers, en grand, qui défilent avec la page */
-.bande { position: relative; overflow: hidden; padding: clamp(10px, 2vw, 30px) 0; background: var(--papier); border-top: 1px solid var(--filet); border-bottom: 1px solid var(--filet); }
-.bande p { display: flex; width: max-content; white-space: nowrap; font: italic 300 clamp(54px, 9.5vw, 160px)/1.1 var(--titre); letter-spacing: -.03em; transform: translate3d(calc(var(--bx, 0) * 1px), 0, 0); will-change: transform; }
-.bande span { padding-right: .34em; }
-.bande span.creux { color: transparent; -webkit-text-stroke: 1px var(--encre); }
-.bande i { align-self: center; width: .16em; height: .14em; margin-right: .34em; background: var(--lacune); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-
 /* ------------------------------------------------------------------ ce qui rassure : quatre chiffres */
 .preuves-bloc { position: relative; padding: clamp(70px, 9vw, 130px) var(--bord); background: var(--papier); }
 .preuves { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -308,35 +305,25 @@ html:not(.anime) .apercu { display: none; }
 .preuves b { font: 300 clamp(60px, 9vw, 156px)/.86 var(--titre); letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
 .preuves span { max-width: 22ch; text-wrap: balance; font: 500 12px/1.5 var(--texte); letter-spacing: .14em; text-transform: uppercase; color: var(--encre-2); }
 
-/* ------------------------------------------------------------------ fin : la carte entière, et l'itinéraire jusqu'au sommet */
+/* ------------------------------------------------------------------ fin : le soleil se lève sur le sommet, et l'itinéraire y mène */
 .fin { position: relative; display: grid; justify-items: start; align-content: center; gap: clamp(20px, 3.4vh, 38px); min-height: min(100vh, 1100px); min-height: min(100svh, 1100px); padding: 120px 46vw 130px var(--bord); }
-.fin::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, var(--papier) 0%, color-mix(in srgb, var(--papier) 80%, transparent) 30%, color-mix(in srgb, var(--papier) 0%, transparent) 52%); }
+.fin::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, color-mix(in srgb, var(--papier) 88%, transparent) 0%, color-mix(in srgb, var(--papier) 66%, transparent) 30%, color-mix(in srgb, var(--papier) 0%, transparent) 56%); }
 .fin h2 { font-size: clamp(50px, 7.6vw, 150px); margin-left: -.04em; }
 .fin .chapo { max-width: 40ch; }
 .fin .actions { margin-top: 10px; }
-.itin { position: absolute; left: 0; right: 0; bottom: 0; z-index: -1; height: clamp(120px, 22vh, 220px); }
-.trace { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.trace path { fill: none; stroke: var(--encre); stroke-width: 1.2; stroke-dasharray: 5 7; vector-effect: non-scaling-stroke; opacity: .5; }
-.itin i { position: absolute; left: 86.67%; top: 5.45%; width: 14px; height: 12px; margin: -13px 0 0 -7px; background: var(--lacune); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 
 .pied { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 18px 40px; flex-wrap: wrap; padding: 30px var(--bord) calc(34px + var(--cadre) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--filet); background: var(--papier); color: var(--encre-3); font-size: 13px; }
 .pied p { max-width: 78ch; }
+.pied .source { flex-basis: 100%; font-size: 11.5px; letter-spacing: .04em; }
 .pied .griffe { margin: 0; color: var(--encre); }
 
-/* ------------------------------------------------------------------ pointeur : un réticule qui lit l'altitude */
-.curseur { position: fixed; left: 0; top: 0; z-index: 80; width: 38px; height: 38px; margin: -19px 0 0 -19px; pointer-events: none; opacity: 0;
-  transform: translate3d(calc(var(--x, 0) * 1px), calc(var(--y, 0) * 1px), 0); transition: opacity .3s; }
-.curseur.la { opacity: 1; }
-.curseur i { position: absolute; inset: 0; border: 1px solid var(--encre); border-radius: 50%; transition: transform .5s var(--aise), border-color .3s, background .3s; }
-.curseur i::before, .curseur i::after { content: ""; position: absolute; left: 50%; top: 50%; background: var(--encre); opacity: 0; transition: opacity .3s; }
-.curseur i::before { width: 1px; height: 54px; margin: -27px 0 0 -.5px; } .curseur i::after { width: 54px; height: 1px; margin: -.5px 0 0 -27px; }
-.curseur p { position: absolute; left: 34px; top: 26px; display: grid; gap: 4px; padding: 8px 10px 9px; white-space: nowrap; background: var(--papier); border: 1px solid var(--filet); opacity: 0; transform: translateY(6px); transition: opacity .3s, transform .4s var(--aise); }
-.curseur p b { font: 400 17px/1 var(--titre); font-variant-numeric: tabular-nums; }
-.curseur p span { font: 600 9.5px/1 var(--texte); letter-spacing: .18em; text-transform: uppercase; color: var(--encre-2); }
-.curseur.lien i { transform: scale(1.55); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.curseur.sonde i { transform: scale(.42); border-color: var(--lacune); }
-.curseur.sonde i::before, .curseur.sonde i::after { opacity: .55; }
-.curseur.sonde p { opacity: 1; transform: none; }
+/* ------------------------------------------------------------------ pointeur : sur le massif, une fiche donne l'altitude lue */
+.sonde { position: fixed; left: 0; top: 0; z-index: 40; display: grid; gap: 4px; padding: 8px 10px 9px; white-space: nowrap; pointer-events: none; opacity: 0;
+  background: color-mix(in srgb, var(--papier) 84%, transparent); border: 1px solid var(--filet);
+  transform: translate3d(calc(var(--x, 0) * 1px + 16px), calc(var(--y, 0) * 1px + 18px), 0); transition: opacity .25s; }
+.sonde.la { opacity: 1; }
+.sonde b { font: 400 17px/1 var(--titre); font-variant-numeric: tabular-nums; }
+.sonde span { font: 600 9.5px/1 var(--texte); letter-spacing: .18em; text-transform: uppercase; color: var(--encre-2); }
 
 /* ------------------------------------------------------------------ mouvement : entrées au défilement, titres mot à mot */
 .mot { display: inline-block; overflow: hidden; vertical-align: top; padding: .06em .04em .14em; margin: -.06em -.04em -.14em; }
@@ -353,18 +340,14 @@ html:not(.anime) .apercu { display: none; }
 .anime .index li.vu { opacity: 1; transform: none; }
 .anime .preuves li { opacity: 0; transform: translate3d(0, 34px, 0); transition: opacity .9s var(--aise), transform .9s var(--aise); transition-delay: calc(var(--i, 0) * 90ms); }
 .anime .preuves.vu li { opacity: 1; transform: none; }
-.anime .trace path { stroke-dasharray: 1500; stroke-dashoffset: 1500; transition: stroke-dashoffset 2.6s var(--aise-2) .2s; }
-.anime .fin.vu .trace path { stroke-dashoffset: 0; }
-.anime .itin i { opacity: 0; transform: translateY(10px) scale(.4); transition: opacity .5s 2.5s, transform .9s var(--aise) 2.5s; }
-.anime .fin.vu .itin i { opacity: 1; transform: none; }
 .anime .cadre .coin { transition: transform 1.2s var(--aise) .2s, opacity 1.2s .2s; }
 .anime:not(.ouvert) .cadre .coin { opacity: 0; transform: scale(2.4); }
 .anime .cadre .regle, .anime .cadre-note { transition: opacity 1.2s .7s; }
 .anime:not(.ouvert) .cadre .regle, .anime:not(.ouvert) .cadre-note { opacity: 0; }
 
 /* ------------------------------------------------------------------ tablette et téléphone
-   Jusqu'à 1000 points de large, le relief tient le haut de l'écran et le texte se lit dessous, sur du papier plein :
-   aucun titre, aucune phrase ne croise une courbe de niveau. */
+   Jusqu'à 1000 points de large, le relief tient le haut de l'écran et le texte se lit dessous, sur un fond plein :
+   aucun titre, aucune phrase ne passe sur la montagne. */
 @media (max-width: 1000px) {
   .fonctions { grid-template-columns: minmax(0, 1fr); }
   .fonctions-tete { position: static; }
@@ -387,7 +370,6 @@ html:not(.anime) .apercu { display: none; }
   .resultat::before, .resultat::after { display: none; }
   .fin { align-content: end; padding: 58vh var(--bord) 110px; }
   .fin::before { background: linear-gradient(180deg, color-mix(in srgb, var(--papier) 0%, transparent) 40%, color-mix(in srgb, var(--papier) 94%, transparent) 54%, var(--papier) 62%); }
-  .itin { display: none; }
 }
 @media (max-width: 760px) {
   .haut { padding-left: calc(var(--cadre) + 12px); padding-right: calc(var(--cadre) + 12px); }
@@ -418,4 +400,4 @@ html:not(.anime) .apercu { display: none; }
   html { scroll-behavior: auto; }
   * { animation: none !important; transition: none !important; }
 }
-@media print { .relief, .cadre, .reperes, .haut, .itineraire, .chargement, .curseur, .bande { display: none !important; } }
+@media print { .relief, .cadre, .reperes, .haut, .itineraire, .chargement, .sonde { display: none !important; } }
